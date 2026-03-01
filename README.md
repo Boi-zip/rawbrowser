@@ -25,9 +25,3 @@ git clone https://github.com/sharp4real/rawbrowser.git
 cd rawbrowser
 npm install
 npm start
-Build for your platform:
-
-bash
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
