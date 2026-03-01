@@ -1,4 +1,4 @@
-<img src="https://github.com/sharp4real/rawbrowser/blob/main/logo.png" width="48" height="48" align="left" style="margin-right: 15px;"> # RAW Browser
+<img src="https://github.com/sharp4real/rawbrowser/blob/main/logo.png" width="48" height="48" align="left" style="margin-right: 15px;"> **Raw Browser**
 
 A privacy-first desktop browser built on Electron. No telemetry, no data collection—just a fast, clean browser that works for you.
 
