@@ -1,0 +1,72 @@
+{
+  "name": "raw-browser",
+  "version": "1.0.0",
+  "description": "Raw — privacy-first browser. Built-in ad blocking, tracker blocking, fingerprint resistance.",
+  "main": "main.js",
+  "scripts": {
+    "start": "node launch.js",
+    "dev": "node launch.js --inspect",
+    "build": "electron-builder --publish never",
+    "build:mac": "electron-builder --mac --publish never",
+    "build:win": "electron-builder --win --publish never",
+    "build:linux": "electron-builder --linux --publish never",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "browser",
+    "electron",
+    "privacy",
+    "ad-block"
+  ],
+  "author": "Raw Browser",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.raw.browser",
+    "productName": "Raw",
+    "copyright": "Raw Browser",
+    "files": [
+      "main.js",
+      "preload.js",
+      "blocklist.js",
+      "launch.js",
+      "index.html",
+      "offline.html",
+      "assets/**/*",
+      "!**/node_modules/.cache/**"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/logo.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "darkModeSupport": true
+    },
+    "win": {
+      "icon": "assets/logo.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "icon": "assets/logo.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Network;WebBrowser"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/logo.ico",
+      "uninstallerIcon": "assets/logo.ico"
+    }
+  }
+}
