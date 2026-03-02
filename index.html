@@ -29,22 +29,35 @@
   --acc2: #00bdb0;
   --acc-g: rgba(0,212,200,.12);
   --acc-f: rgba(0,212,200,.06);
+  --acc-raw: 0,212,200;
   --red:  #ff5f57;
   --grn:  #28c840;
   --ylw:  #ffbd2e;
   --amb:  #ffb74d;
   --f: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --chrome-h: 76px;
-  --tab-h: 30px;
-  --nav-h: 46px;
+  --chrome-h: 82px;
+  --tab-h: 34px;
+  --nav-h: 48px;
   --radius: 8px;
+  color-scheme: dark;
+}
+
+/* Global dark-mode input forcing */
+input, select, textarea, button { color-scheme: dark; }
+
+/* Performance: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* Accent color themes */
-body.accent-orange { --acc: #ff8c00; --acc2: #e07800; --acc-g: rgba(255,140,0,.12); --acc-f: rgba(255,140,0,.06); }
-body.accent-green  { --acc: #22c55e; --acc2: #16a34a; --acc-g: rgba(34,197,94,.12);  --acc-f: rgba(34,197,94,.06); }
-body.accent-white  { --acc: rgba(255,255,255,.85); --acc2: rgba(255,255,255,.6); --acc-g: rgba(255,255,255,.08); --acc-f: rgba(255,255,255,.04); }
-body.compact { --chrome-h: 66px; --tab-h: 26px; --nav-h: 40px; }
+body.accent-orange { --acc: #ff8c00; --acc2: #e07800; --acc-g: rgba(255,140,0,.12); --acc-f: rgba(255,140,0,.06); --acc-raw: 255,140,0; }
+body.accent-green  { --acc: #22c55e; --acc2: #16a34a; --acc-g: rgba(34,197,94,.12);  --acc-f: rgba(34,197,94,.06);  --acc-raw: 34,197,94; }
+body.accent-white  { --acc: rgba(255,255,255,.85); --acc2: rgba(255,255,255,.6); --acc-g: rgba(255,255,255,.08); --acc-f: rgba(255,255,255,.04); --acc-raw: 255,255,255; }
+body.compact { --chrome-h: 72px; --tab-h: 30px; --nav-h: 42px; }
 body.hide-favicons .tab-fav, body.hide-favicons .tab-fav-ph { display: none !important; }
 
 /* Wallpaper — applied to body, chrome always stays opaque so no bleed-through */
@@ -98,7 +111,9 @@ html, body {
   background: var(--bg1);
   border-bottom: 1px solid var(--ln);
   position: relative;
-  z-index: 200;
+  /* Must be above the #overlay (z-index:99000) so nav buttons always receive
+     pointer events even when a panel is open and the overlay is visible. */
+  z-index: 100001;
   display: flex;
   flex-direction: column;
   -webkit-app-region: drag;
@@ -165,13 +180,16 @@ body.platform-darwin #mac-spacer { display: block; }
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding-left: 4px;
   height: 100%;
   -webkit-app-region: no-drag;
+  scroll-behavior: smooth;
 }
+#tab-strip::-webkit-scrollbar { display: none; }
 
 /* Tab pill - dynamic width driven by computeTabWidth() → --tab-w CSS var */
 .tab {
@@ -207,8 +225,8 @@ body.platform-darwin #mac-spacer { display: block; }
   background: linear-gradient(90deg, var(--acc), var(--acc2));
   border-radius: 0 0 2px 2px;
 }
-.tab.pinned { flex: 0 0 32px; min-width: 32px; max-width: 32px; padding: 0; justify-content: center; }
-.tab.pinned .tab-title, .tab.pinned .tab-close { display: none; }
+.tab.pinned { flex: 0 0 32px; min-width: 32px; max-width: 32px; padding: 0; justify-content: center; gap: 0; }
+.tab.pinned .tab-title, .tab.pinned .tab-close, .tab.pinned .tab-audio { display: none; }
 
 /* New tab button — flat, tab-aligned */
 #btn-new-tab {
@@ -311,50 +329,102 @@ body.platform-linux #win-controls { display: flex; }
 .tab.active .tab-audio:hover { color: var(--t0); }
 .tab-audio svg { display: block; pointer-events: none; }
 
-/* Media panel */
+/* Media panel — clean mini-player cards */
 .media-tab-row {
-  display: flex; flex-direction: column; gap: 7px;
-  padding: 10px 12px; border-bottom: 1px solid var(--ln);
+  padding: 13px 14px 12px;
+  border-bottom: 1px solid var(--ln);
 }
 .media-tab-row:last-child { border-bottom: none; }
-.media-tab-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.media-tab-fav { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; object-fit: contain; }
-.media-tab-title { font-size: 12px; color: var(--t1); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-.media-tab-url { font-size: 10.5px; color: var(--t3); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.media-tab-controls { display: flex; align-items: center; gap: 5px; }
-.media-ctrl { width: 30px; height: 26px; border: none; background: var(--bg3); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t2); transition: background .12s, color .12s; font-family: var(--f); font-size: 11px; }
-.media-ctrl:hover { background: var(--bg4); color: var(--t1); }
-.media-ctrl.muted { color: var(--acc); background: rgba(0,212,200,.08); }
-.media-ctrl svg { display: block; pointer-events: none; }
-#media-empty { padding: 24px 16px; text-align: center; color: var(--t3); font-size: 12px; }
 
-/* btn-media waveform animation when audio is playing */
-#btn-media { overflow: visible; }
-#btn-media.playing { color: var(--acc); }
-#btn-media .wv1, #btn-media .wv2,
-#btn-media .wv3, #btn-media .wv4 { transform: scaleY(.45); }
-#btn-media.playing .wv1 { animation: wvBar 1.1s ease-in-out infinite; }
-#btn-media.playing .wv2 { animation: wvBar 1.1s ease-in-out infinite .18s; }
-#btn-media.playing .wv3 { animation: wvBar 1.1s ease-in-out infinite .36s; }
-#btn-media.playing .wv4 { animation: wvBar 1.1s ease-in-out infinite .54s; }
-@keyframes wvBar {
-  0%,100% { transform: scaleY(.35); }
-  50%      { transform: scaleY(1);   }
+.media-tab-top {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+}
+.media-tab-fav { width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; object-fit: contain; }
+.media-tab-title { font-size: 12px; color: var(--t0); font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.media-switch-btn {
+  width: 22px; height: 22px; flex-shrink: 0;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--t3); display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; transition: background .1s, color .1s;
+}
+.media-switch-btn:hover { background: var(--bg4); color: var(--t1); }
+.media-switch-btn svg { display: block; pointer-events: none; }
+
+.media-center-row {
+  display: flex; align-items: center; justify-content: center; margin-bottom: 11px;
+}
+.media-play-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--acc); color: #000;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: opacity .12s, transform .1s, background .12s;
+  box-shadow: 0 2px 12px rgba(0,212,200,.3);
+}
+.media-play-btn:hover { opacity: .85; transform: scale(1.07); }
+.media-play-btn svg { display: block; pointer-events: none; }
+
+.media-vol-row { display: flex; align-items: center; gap: 8px; }
+.media-vol-icon { flex-shrink: 0; color: var(--t3); display: flex; align-items: center; }
+.media-vol-slider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1; height: 3px; border-radius: 2px;
+  background: var(--bg5); outline: none; cursor: pointer;
+}
+.media-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--acc); cursor: pointer;
+  border: none; box-shadow: 0 0 5px rgba(0,212,200,.4);
+  transition: transform .1s;
+}
+.media-vol-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+.media-vol-pct { font-size: 10px; color: var(--t3); min-width: 26px; text-align: right; flex-shrink: 0; }
+.media-mute-btn {
+  width: 24px; height: 24px; flex-shrink: 0;
+  border: none; background: transparent; border-radius: 5px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--t3); transition: background .1s, color .1s;
+}
+.media-mute-btn:hover { background: var(--bg4); color: var(--t1); }
+.media-mute-btn.muted { color: var(--acc); }
+.media-mute-btn svg { display: block; pointer-events: none; }
+#media-empty { padding: 28px 16px; text-align: center; color: var(--t3); font-size: 12px; line-height: 1.5; }
+
+/* btn-media speaker icon — waves pulse when audio is playing (no accent colour change) */
+#btn-media .wv-s { opacity: .45; }
+#btn-media .wv-l { opacity: .25; }
+#btn-media.playing .wv-s { animation: wvPulse 1.3s ease-in-out infinite .15s; opacity: .8; }
+#btn-media.playing .wv-l { animation: wvPulse 1.3s ease-in-out infinite .42s; opacity: .55; }
+/* seek/skip row in media panel */
+.media-seek-row { display:flex;align-items:center;gap:6px;margin-bottom:9px; }
+.media-seek-slider { -webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:2px;background:var(--bg5);outline:none;cursor:pointer; }
+.media-seek-slider::-webkit-slider-thumb { -webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:50%;background:var(--acc);cursor:pointer;border:none;box-shadow:0 0 5px rgba(0,212,200,.4);transition:transform .1s; }
+.media-seek-slider::-webkit-slider-thumb:hover { transform:scale(1.3); }
+.media-time-lbl { font-size:10px;color:var(--t3);min-width:34px;flex-shrink:0;font-variant-numeric:tabular-nums; }
+.media-skip-btn { width:22px;height:22px;flex-shrink:0;border:none;background:transparent;cursor:pointer;color:var(--t3);display:flex;align-items:center;justify-content:center;border-radius:5px;transition:background .1s,color .1s;font-size:10px;font-weight:600;font-family:var(--f); }
+.media-skip-btn:hover { background:var(--bg4);color:var(--t1); }
+@keyframes wvPulse {
+  0%, 100% { opacity: .3; }
+  50%       { opacity: 1; }
 }
 
-/* Nav row — flex: left | stretch-center | right */
+/* Nav row — side columns are max-content; omnibox takes all remaining space */
 #nav-row {
   height: var(--nav-h);
   min-height: var(--nav-h);
   max-height: var(--nav-h);
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
   align-items: center;
-  padding: 0 0 0 4px;
+  padding: 0 4px;
   border-top: 1px solid var(--ln);
   background: var(--bg2);
   flex-shrink: 0;
   -webkit-app-region: drag;
 }
+#nav-left  { justify-self: start; }
+#nav-right { justify-self: end; }
 #nav-row > * { -webkit-app-region: no-drag; }
 
 body.platform-darwin #nav-row { padding-left: 10px; }
@@ -383,7 +453,6 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   align-items: center;
   gap: 1px;
   flex-shrink: 0;
-  padding-left: 2px;
   -webkit-app-region: no-drag;
 }
 
@@ -407,15 +476,13 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 6px;
+  padding: 0 4px;
   -webkit-app-region: no-drag;
 }
 #omni-inner {
   position: relative;
   width: 100%;
-  max-width: 660px;
-  height: 30px;
+  height: 32px;
   display: flex;
   align-items: center;
 }
@@ -439,16 +506,18 @@ body.platform-darwin #nav-row { padding-left: 10px; }
 #omnibox {
   position: relative;
   width: 100%;
-  height: 30px;
+  height: 32px;
   background: var(--bg3);
   border: 1px solid var(--ln);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0 12px 0 30px;
   font-family: var(--f);
   font-size: 12.5px;
   font-weight: 400;
-  line-height: 30px;
+  line-height: 32px;
   color: var(--t0);
+  text-align: left;
+  direction: ltr;
   outline: none;
   caret-color: var(--acc);
   letter-spacing: -.01em;
@@ -465,7 +534,7 @@ body.platform-darwin #nav-row { padding-left: 10px; }
 
 /* Omnibox suggestion dropdown */
 #omni-wrap.sugg-open #omnibox {
-  border-radius: 8px 8px 0 0;
+  border-radius: 10px 10px 0 0;
   border-bottom-color: transparent;
 }
 #omni-sugg {
@@ -498,19 +567,24 @@ body.platform-darwin #nav-row { padding-left: 10px; }
 .os-fav.os-fav-err { display: none; }
 .os-url  { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Zoom pill */
+/* Zoom pill — hidden until zoom ≠ 100%. Width collapses to 0 so it doesn't
+   push the omnibox away from the history button when not in use. */
 #zoom-pill {
   font-size: 10px; color: var(--t2); padding: 2px 6px;
   cursor: pointer; flex-shrink: 0;
   font-weight: 500; letter-spacing: .02em;
   border-radius: 4px;
-  transition: color .1s, background .1s;
-  opacity: 0; 
+  transition: color .1s, background .1s, width .15s, opacity .15s;
+  opacity: 0;
   pointer-events: none;
-  width: 44px; text-align: center;
+  width: 0; overflow: hidden; padding: 0;
+  text-align: center;
   -webkit-app-region: no-drag;
 }
-#zoom-pill.show { opacity: 1; pointer-events: auto; }
+#zoom-pill.show {
+  opacity: 1; pointer-events: auto;
+  width: 44px; padding: 2px 6px; overflow: visible;
+}
 #zoom-pill:hover { color: var(--acc); background: var(--bg4); }
 
 /* Right nav */
@@ -520,8 +594,8 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   gap: 1px;
   flex-shrink: 0;
   justify-content: flex-end;
-  padding-right: 4px;
   -webkit-app-region: no-drag;
+  justify-self: end;
 }
 #nav-right .ib { width: 28px; }
 
@@ -686,7 +760,7 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
 .ext-desc { font-size: 11px; color: var(--t3); margin-top: 2px; line-height: 1.35; }
 
 /* NOTES PANEL */
-#panel-notes { width: 300px; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+#panel-notes { width: 300px; padding: 0; overflow: hidden; flex-direction: column; }
 #notes-list-view, #notes-edit-view { display: flex; flex-direction: column; flex: 1; }
 /* List view */
 #notes-list { overflow-y: auto; max-height: 380px; }
@@ -799,7 +873,7 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
 .cb.wide { grid-column: span 2; }
 
 /* GEO LOCATION PANEL */
-#panel-geo { width: 320px; max-height: 540px; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+#panel-geo { width: 320px; max-height: 540px; padding: 0; overflow: hidden; flex-direction: column; }
 
 /* Agreement screen */
 #geo-agree { padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -941,19 +1015,52 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
   position: fixed;
   background: var(--bg2); border: 1px solid var(--ln2);
   border-radius: 12px;
-  box-shadow: 0 24px 80px rgba(0,0,0,.85), 0 0 0 1px rgba(0,212,200,.04);
-  z-index: 99999;
+  box-shadow: 0 16px 50px rgba(0,0,0,.8), 0 0 0 1px rgba(0,212,200,.04);
+  /* Below #chrome (100001) but above #overlay (99000) */
+  z-index: 100000;
   overflow: hidden;
-  display: none; 
+  display: none;
   flex-direction: column;
   transform-origin: top center;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
-.panel.on { 
-  display: flex; 
-  opacity: 1;
+.panel.on {
+  display: flex;
+  animation: panelIn .17s cubic-bezier(.22,1,.36,1) both;
 }
+.panel.on[data-above] {
+  animation: panelInAbove .17s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(.96) translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes panelInAbove {
+  from { opacity: 0; transform: scale(.96) translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* New-tab slide-in from top */
+.tab.tab-new {
+  animation: tabNew .22s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes tabNew {
+  from { opacity: 0; transform: translateY(-10px) scaleX(.88); transform-origin: top center; }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Panel rail — fills the right-side exposed area when a panel is open,
+   so no dark body background shows between the chrome and the panel */
+#panel-rail {
+  display: none;
+  position: fixed;
+  top: var(--chrome-h);
+  right: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--bg1);
+  z-index: 90000;
+}
+#panel-rail.on { display: block; }
 
 /* Overlay */
 #overlay {
@@ -964,7 +1071,10 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
   background: transparent;
 }
 #overlay.on { display: block; }
+/* On newtab the overlay is normally transparent to clicks so the newtab page stays
+   interactive — BUT when a real panel is open it MUST catch clicks to dismiss it. */
 body.is-newtab #overlay.on { pointer-events: none; }
+body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 
 .panel-head {
   padding: 11px 14px 9px; border-bottom: 1px solid var(--ln);
@@ -1494,8 +1604,13 @@ body.is-newtab #overlay.on { pointer-events: none; }
 .ctx {
   position: fixed; min-width: 170px;
   background: var(--bg2); border: 1px solid var(--ln2);
-  border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.75);
+  border-radius: 10px; box-shadow: 0 10px 36px rgba(0,0,0,.75);
   z-index: 9999999; overflow: hidden;
+  animation: ctxIn .15s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes ctxIn {
+  from { opacity: 0; transform: scale(.94) translateY(-5px); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* NEWTAB EMBED LAYER */
@@ -1767,110 +1882,116 @@ body.is-newtab #overlay.on { pointer-events: none; }
 #setup-overlay {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(4,4,4,.92);
-  backdrop-filter: blur(18px) saturate(0.7);
+  background: rgba(4,4,4,.94);
+  backdrop-filter: blur(24px) saturate(0.5);
   z-index: 99999999;
   align-items: center; justify-content: center;
   -webkit-app-region: drag;
 }
-#setup-overlay.on { display: flex; animation: setupFadeIn .4s ease; }
-#setup-overlay.hiding { animation: setupFadeOut .35s ease forwards; }
+#setup-overlay.on { display: flex; animation: setupFadeIn .35s ease; }
+#setup-overlay.hiding { animation: setupFadeOut .3s ease forwards; }
 #setup-card,
 #setup-card * { -webkit-app-region: no-drag; }
-@keyframes setupFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes setupFadeIn  { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes setupFadeOut { from { opacity: 1; } to { opacity: 0; } }
 
 #setup-card {
-  background: var(--bg2);
-  border: 1px solid rgba(0,212,200,.2);
-  border-radius: 20px;
-  width: 520px; max-width: 94vw;
+  background: linear-gradient(160deg, var(--bg2) 0%, var(--bg1) 100%);
+  border: 1px solid rgba(var(--acc-raw),.18);
+  border-radius: 18px;
+  width: 500px; max-width: 96vw;
   padding: 0;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 40px 120px rgba(0,0,0,.9), 0 0 60px rgba(0,212,200,.06);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 40px 120px rgba(0,0,0,.98), 0 0 80px rgba(var(--acc-raw),.08);
   position: relative; overflow: hidden;
 }
 /* Teal glow strip at top */
 #setup-card::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--acc), rgba(0,212,200,.5), transparent);
-  z-index: 1;
+  background: linear-gradient(90deg, transparent 5%, var(--acc) 40%, var(--acc2) 60%, transparent 95%);
+  z-index: 1; opacity: .9;
 }
-/* Subtle radial glow behind card */
+/* Subtle radial glow */
 #setup-card::after {
   content: '';
-  position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
-  width: 300px; height: 100px;
-  background: radial-gradient(ellipse, rgba(0,212,200,.12) 0%, transparent 70%);
+  position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 500px; height: 200px;
+  background: radial-gradient(ellipse, rgba(var(--acc-raw),.13) 0%, transparent 70%);
   pointer-events: none; z-index: 0;
 }
 #setup-card-inner {
   position: relative; z-index: 1;
-  padding: 32px 40px 28px;
+  padding: 18px 26px 18px;
+  max-height: 85vh; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
 }
 
 .setup-step {
   display: none; flex-direction: column;
-  align-items: center; text-align: center; gap: 14px;
-  min-height: 230px;
+  align-items: center; text-align: center; gap: 6px;
+  min-height: 160px;
 }
 .setup-step.active {
   display: flex;
-  animation: stepIn .32s cubic-bezier(.22,1,.36,1);
+  animation: stepIn .3s cubic-bezier(.22,1,.36,1);
 }
 @keyframes stepIn {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
 
 .setup-icon {
-  width: 68px; height: 68px;
-  background: rgba(0,212,200,.06);
-  border: 1px solid rgba(0,212,200,.2);
-  border-radius: 20px;
+  width: 56px; height: 56px;
+  background: rgba(var(--acc-raw),.07);
+  border: 1px solid rgba(var(--acc-raw),.22);
+  border-radius: 18px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--acc); flex-shrink: 0; margin-bottom: 4px;
-  box-shadow: 0 0 24px rgba(0,212,200,.1), inset 0 1px 0 rgba(255,255,255,.04);
+  color: var(--acc); flex-shrink: 0; margin-bottom: 2px;
+  box-shadow: 0 0 30px rgba(var(--acc-raw),.15), inset 0 1px 0 rgba(255,255,255,.07);
+  animation: iconGlow 3s ease-in-out infinite;
+}
+@keyframes iconGlow {
+  0%,100% { box-shadow: 0 0 40px rgba(var(--acc-raw),.18), inset 0 1px 0 rgba(255,255,255,.07); }
+  50%      { box-shadow: 0 0 60px rgba(var(--acc-raw),.32), inset 0 1px 0 rgba(255,255,255,.07); }
 }
 .setup-title {
-  font-size: 22px; font-weight: 680; color: var(--t0);
-  letter-spacing: -.04em; margin: 0;
+  font-size: 19px; font-weight: 700; color: var(--t0);
+  letter-spacing: -.05em; margin: 0; line-height: 1.2;
 }
 .setup-desc {
-  font-size: 13px; color: var(--t2); line-height: 1.7; margin: 0;
+  font-size: 12px; color: var(--t3); line-height: 1.6; margin: 0;
   max-width: 380px;
 }
 .setup-features {
-  display: flex; flex-direction: column; gap: 6px;
-  width: 100%; max-width: 420px; margin-top: 4px;
+  display: flex; flex-direction: column; gap: 7px;
+  width: 100%; max-width: 440px; margin-top: 2px;
 }
 .setup-feat {
-  display: flex; align-items: center; gap: 11px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid var(--ln);
-  border-radius: 10px; text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 15px;
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 11px; text-align: left;
   transition: background .15s, border-color .15s;
 }
-.setup-feat:hover { background: rgba(255,255,255,.05); border-color: var(--ln2); }
+.setup-feat:hover { background: rgba(255,255,255,.045); border-color: rgba(255,255,255,.1); }
 .setup-feat-icon { color: var(--acc); flex-shrink: 0; display: flex; }
-.setup-feat-text { font-size: 12.5px; color: var(--t1); line-height: 1.45; }
+.setup-feat-text { font-size: 12.5px; color: var(--t1); line-height: 1.5; }
 
 #setup-dots {
   display: flex; gap: 6px;
-  justify-content: center; margin-bottom: 28px;
+  justify-content: center; margin-bottom: 18px;
 }
 .setup-dot {
-  height: 5px; width: 5px; border-radius: 3px;
+  height: 5px; width: 5px; border-radius: 4px;
   background: rgba(255,255,255,.12);
-  transition: background .2s, width .28s cubic-bezier(.22,1,.36,1);
+  transition: background .22s, width .32s cubic-bezier(.22,1,.36,1), box-shadow .22s;
 }
-.setup-dot.active { background: var(--acc); width: 24px; box-shadow: 0 0 8px rgba(0,212,200,.5); }
+.setup-dot.active { background: var(--acc); width: 28px; box-shadow: 0 0 12px rgba(var(--acc-raw),.6); }
 
 #setup-controls {
   display: flex; justify-content: space-between; align-items: center;
-  margin-top: 26px; padding-top: 18px;
-  border-top: 1px solid rgba(255,255,255,.05);
+  margin-top: 18px; padding-top: 13px;
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 #setup-skip {
   font-size: 11.5px; color: var(--t3);
@@ -1880,17 +2001,155 @@ body.is-newtab #overlay.on { pointer-events: none; }
 }
 #setup-skip:hover { color: var(--t2); }
 #setup-next {
-  padding: 9px 26px;
+  padding: 8px 24px;
   background: var(--acc); color: #000;
   border: none; border-radius: 9px;
-  font-size: 13px; font-weight: 680;
+  font-size: 12.5px; font-weight: 700;
   cursor: pointer; font-family: var(--f);
-  letter-spacing: -.01em;
+  letter-spacing: -.02em;
   transition: background .15s, transform .1s, box-shadow .15s;
-  box-shadow: 0 2px 16px rgba(0,212,200,.3);
+  box-shadow: 0 2px 18px rgba(var(--acc-raw),.35);
 }
-#setup-next:hover  { background: #00e8da; box-shadow: 0 4px 24px rgba(0,212,200,.45); }
-#setup-next:active { transform: scale(.97); box-shadow: 0 1px 8px rgba(0,212,200,.2); }
+#setup-next:hover  { background: var(--acc2); box-shadow: 0 4px 26px rgba(var(--acc-raw),.52); transform: translateY(-1px); }
+#setup-next:active { transform: scale(.97) translateY(0); box-shadow: 0 1px 8px rgba(var(--acc-raw),.22); }
+
+/* ── Setup: new step components ─────────────────────────────────────────── */
+.setup-compare{width:100%;max-width:440px;margin-top:6px;}
+.sc-row{display:grid;grid-template-columns:1fr 50px 50px 50px 50px;align-items:center;padding:5px 2px;border-bottom:1px solid rgba(255,255,255,.05);gap:2px;transition:background .12s;border-radius:6px;}
+.sc-row:not(.sc-head):hover{background:rgba(255,255,255,.025);}
+.sc-row:last-child{border-bottom:none;}
+.sc-head{padding-bottom:10px;border-bottom:1.5px solid rgba(255,255,255,.09)!important;}
+.sc-head .sc-col{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);font-weight:600;text-align:center;}
+.sc-head .sc-hl-lbl{color:var(--acc)!important;font-weight:800;font-size:10px;}
+.sc-label{font-size:11.5px;color:var(--t2);display:flex;align-items:center;gap:7px;}.sc-label-icon{color:var(--acc);opacity:.7;flex-shrink:0;}
+.sc-col{text-align:center;font-size:14px;line-height:1;}
+.sc-yes{color:var(--acc);font-weight:700;font-size:15px;}.sc-no{color:rgba(255,80,60,.7);font-size:15px;}.sc-par{color:var(--t4);font-size:13px;}
+.tb-setup-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:100%;max-width:440px;margin-top:8px;}
+.tb-setup-card{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 5px 9px;background:rgba(255,255,255,.025);border:1.5px solid rgba(255,255,255,.06);border-radius:11px;cursor:pointer;transition:background .13s,border-color .13s;color:var(--t2);position:relative;user-select:none;}
+.tb-setup-card:hover{background:rgba(255,255,255,.05);}
+.tb-setup-card.on{background:rgba(0,212,200,.07);border-color:rgba(0,212,200,.28);color:var(--acc);}
+.tb-setup-card svg{display:block;}.tb-setup-lbl{font-size:9.5px;text-align:center;line-height:1.2;color:var(--t3);transition:color .13s;}
+.tb-setup-card.on .tb-setup-lbl{color:var(--acc);}
+.tb-setup-chk{position:absolute;top:4px;right:4px;width:13px;height:13px;border-radius:50%;background:var(--acc);display:none;align-items:center;justify-content:center;}
+.tb-setup-card.on .tb-setup-chk{display:flex;}
+.ext-setup-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;width:100%;max-width:440px;margin-top:8px;}
+.ext-setup-card{display:flex;align-items:center;gap:10px;padding:10px 11px;background:rgba(255,255,255,.025);border:1.5px solid rgba(255,255,255,.06);border-radius:11px;cursor:pointer;transition:background .13s,border-color .13s;user-select:none;}
+.ext-setup-card:hover{background:rgba(255,255,255,.05);}
+.ext-setup-card.on{background:rgba(0,212,200,.07);border-color:rgba(0,212,200,.28);}
+.ext-setup-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,.08);color:var(--t2);}
+.ext-setup-info{flex:1;min-width:0;}.ext-setup-name{font-size:11.5px;font-weight:600;color:var(--t1);}.ext-setup-desc{font-size:10px;color:var(--t4);margin-top:2px;line-height:1.25;}
+.ext-setup-ck{margin-left:auto;flex-shrink:0;width:16px;height:16px;border-radius:50%;background:var(--bg5);border:1.5px solid var(--ln2);display:flex;align-items:center;justify-content:center;transition:background .13s,border-color .13s;}
+.ext-setup-card.on .ext-setup-ck{background:var(--acc);border-color:transparent;}
+.theme-setup-row{display:flex;gap:14px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+.theme-swatch-btn{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;background:none;border:none;padding:6px 4px;font-family:var(--f);border-radius:12px;transition:background .15s;}
+.theme-swatch-btn:hover{background:rgba(255,255,255,.04);}
+.theme-swatch-outer{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid transparent;transition:border-color .2s,box-shadow .2s,transform .18s;box-sizing:border-box;}
+.theme-swatch-btn:hover .theme-swatch-outer{transform:scale(1.06);}
+.theme-swatch-btn.on .theme-swatch-outer{border-color:rgba(255,255,255,.8);box-shadow:0 0 22px rgba(255,255,255,.18);transform:scale(1.1);}
+.theme-swatch-dot{width:42px;height:42px;border-radius:50%;position:relative;box-shadow:0 4px 14px rgba(0,0,0,.45);transition:transform .18s;}
+.theme-swatch-btn.on .theme-swatch-dot::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.9);font-size:16px;font-weight:900;}
+.theme-swatch-lbl{font-size:10.5px;font-weight:600;color:var(--t3);letter-spacing:.02em;transition:color .18s;}.theme-swatch-btn.on .theme-swatch-lbl{color:var(--t1);}
+.setup-done-checks{display:flex;flex-direction:column;gap:6px;width:100%;max-width:360px;margin-top:6px;}
+.setup-done-row{display:flex;align-items:center;gap:10px;padding:9px 13px;background:rgba(var(--acc-raw),.04);border:1px solid rgba(var(--acc-raw),.12);border-radius:10px;opacity:0;transform:translateY(8px);animation:doneRowIn .4s cubic-bezier(.22,1,.36,1) forwards;}
+.setup-done-row:nth-child(1){animation-delay:.1s;}
+.setup-done-row:nth-child(2){animation-delay:.22s;}
+.setup-done-row:nth-child(3){animation-delay:.34s;}
+@keyframes doneRowIn{to{opacity:1;transform:none;}}
+.setup-done-icon{color:var(--acc);flex-shrink:0;display:flex;}.setup-done-text{font-size:12px;color:var(--t1);font-weight:500;}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCENT OVERRIDES — all rgba(0,212,200,...) replaced with rgba(var(--acc-raw),...)
+   This block ensures every theme (orange / green / white) fully overrides teal.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* Wallpaper search focus */
+body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!important;}
+/* Media player */
+.media-play-btn{box-shadow:0 2px 12px rgba(var(--acc-raw),.3);}
+.media-vol-slider::-webkit-slider-thumb{box-shadow:0 0 5px rgba(var(--acc-raw),.4);}
+.media-seek-slider::-webkit-slider-thumb{box-shadow:0 0 5px rgba(var(--acc-raw),.4);}
+/* Omnibox */
+#omnibox:focus{border-color:rgba(var(--acc-raw),.32);background:rgba(var(--acc-raw),.025);box-shadow:0 0 0 2.5px rgba(var(--acc-raw),.12);}
+#omni-sugg{border:1px solid rgba(var(--acc-raw),.32);border-top:none;}
+/* Sidebar add modal */
+#sb-add-box input:focus{border-color:rgba(var(--acc-raw),.35);box-shadow:0 0 0 2px rgba(var(--acc-raw),.12);}
+/* Find bar */
+#find-input:focus{border-color:rgba(var(--acc-raw),.35);}
+/* Notes */
+.note-card-icon{background:rgba(var(--acc-raw),.1);border:1px solid rgba(var(--acc-raw),.18);}
+.notes-btn.acc{background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.3);color:var(--acc);}
+.notes-btn.acc:hover{background:rgba(var(--acc-raw),.2);}
+/* Calculator */
+#panel-calc.sci #calc-mode-toggle{background:rgba(var(--acc-raw),.15);border-color:rgba(var(--acc-raw),.35);}
+.cb.eq:hover{background:rgba(var(--acc-raw),.85);}
+/* Geo */
+.geo-agree-icon{background:rgba(var(--acc-raw),.1);border:1px solid rgba(var(--acc-raw),.18);}
+#geo-agree-btn.ready:hover{background:var(--acc2);}
+#geo-search:focus{border-color:rgba(var(--acc-raw),.3);}
+.geo-city-row.active{background:rgba(var(--acc-raw),.07);}
+/* Panel shadow */
+.panel{box-shadow:0 16px 50px rgba(0,0,0,.8),0 0 0 1px rgba(var(--acc-raw),.04);}
+/* Panel search inputs */
+.panel-search input:focus{border-color:rgba(var(--acc-raw),.3);}
+/* Downloads active */
+.dl-icon-active{background:rgba(var(--acc-raw),.08);border-color:rgba(var(--acc-raw),.22);}
+/* Extension store header icon */
+.ext-store-header-icon{background:linear-gradient(135deg,rgba(var(--acc-raw),.2),rgba(var(--acc-raw),.08));border:1px solid rgba(var(--acc-raw),.3);}
+/* Extension rows */
+.ext-row.active{background:rgba(var(--acc-raw),.06);}
+.ic-teal{background:linear-gradient(145deg,rgba(var(--acc-raw),.28),rgba(var(--acc-raw),.18));border-color:rgba(var(--acc-raw),.28);color:var(--acc);}
+.ext-row.active .ext-row-status{color:var(--acc);background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.4);}
+/* Settings inputs */
+.set-select:focus{border-color:rgba(var(--acc-raw),.3);}
+.set-input-text:focus{border-color:rgba(var(--acc-raw),.3);}
+.set-btn-sm.acc{border-color:rgba(var(--acc-raw),.25);}
+.set-btn-sm.acc:hover{border-color:rgba(var(--acc-raw),.45);}
+/* Privacy panel */
+.priv-shield-big{background:rgba(var(--acc-raw),.08);border:1px solid rgba(var(--acc-raw),.2);}
+.priv-whitelist-row input:focus{border-color:rgba(var(--acc-raw),.3);}
+.priv-whitelist-row button{background:rgba(var(--acc-raw),.06);border:1px solid rgba(var(--acc-raw),.12);}
+.priv-whitelist-row button:hover{background:rgba(var(--acc-raw),.1);}
+/* Poison personas */
+.persona-card:hover{border-color:rgba(var(--acc-raw),.3);}
+.persona-card.active{box-shadow:0 0 0 1px rgba(var(--acc-raw),.2);}
+.poison-status.on{border-color:rgba(var(--acc-raw),.3);}
+/* Toasts */
+.toast.teal{border-color:rgba(var(--acc-raw),.25);}
+/* Newtab */
+#newtab-layer{background:radial-gradient(ellipse 80% 50% at 15% -5%,rgba(var(--acc-raw),.07) 0%,transparent 55%),radial-gradient(ellipse 60% 45% at 88% 108%,rgba(var(--acc-raw),.05) 0%,transparent 50%),var(--bg0);}
+.nt-logo-wrap img{filter:drop-shadow(0 6px 26px rgba(var(--acc-raw),.2));}
+.nt-logo-fb{background:rgba(var(--acc-raw),.04);border:1px solid rgba(var(--acc-raw),.12);}
+.nt-s-icon{color:rgba(var(--acc-raw),.3);}
+.nt-search{caret-color:rgba(var(--acc-raw),.7);}
+.nt-search:focus{border-color:rgba(var(--acc-raw),.28);background:rgba(var(--acc-raw),.03);box-shadow:0 0 0 3px rgba(var(--acc-raw),.07);}
+.nt-search-inner.sugg-open .nt-sugg-drop{border-top:1px solid rgba(var(--acc-raw),.18);}
+.nt-sugg-item:hover,.nt-sugg-item.sel{background:rgba(var(--acc-raw),.07);}
+.nt-privacy{color:rgba(var(--acc-raw),.14);}
+/* yt-dlp */
+.ytdlp-update-btn{border:1px solid rgba(var(--acc-raw),.2);}
+.ytdlp-update-btn:hover{border-color:rgba(var(--acc-raw),.4);}
+#ytdlp-url:focus{border-color:rgba(var(--acc-raw),.35);box-shadow:0 0 0 2px rgba(var(--acc-raw),.12);}
+.ytdlp-mode-btn.active{background:var(--acc-f);border-color:rgba(var(--acc-raw),.35);}
+.ytdlp-opts-row select:focus{border-color:rgba(var(--acc-raw),.3);}
+.ytdlp-dl-btn{background:rgba(var(--acc-raw),.1);border:1px solid rgba(var(--acc-raw),.25);}
+.ytdlp-dl-btn:hover{background:rgba(var(--acc-raw),.16);border-color:rgba(var(--acc-raw),.45);}
+.ytdlp-credits-text a{color:rgba(var(--acc-raw),.4);}
+/* Setup card */
+#setup-card{border:1px solid rgba(var(--acc-raw),.18);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 48px 140px rgba(0,0,0,.98),0 0 100px rgba(var(--acc-raw),.1);}
+#setup-card::before{background:linear-gradient(90deg,transparent 5%,var(--acc) 40%,var(--acc2) 60%,transparent 95%);}
+#setup-card::after{background:radial-gradient(ellipse,rgba(var(--acc-raw),.13) 0%,transparent 70%);}
+.setup-icon{background:rgba(var(--acc-raw),.07);border:1px solid rgba(var(--acc-raw),.22);box-shadow:0 0 40px rgba(var(--acc-raw),.18),inset 0 1px 0 rgba(255,255,255,.07);}
+.setup-dot.active{box-shadow:0 0 12px rgba(var(--acc-raw),.6);}
+#setup-next{box-shadow:0 2px 22px rgba(var(--acc-raw),.38);}
+#setup-next:hover{background:var(--acc2);box-shadow:0 5px 32px rgba(var(--acc-raw),.56);transform:translateY(-1px);}
+#setup-next:active{box-shadow:0 1px 8px rgba(var(--acc-raw),.22);transform:scale(.97) translateY(0);}
+.tb-setup-card.on{background:rgba(var(--acc-raw),.07);border-color:rgba(var(--acc-raw),.28);}
+.ext-setup-card.on{background:rgba(var(--acc-raw),.07);border-color:rgba(var(--acc-raw),.28);}
+.ext-setup-card.on .ext-setup-ck{background:var(--acc);border-color:transparent;}
+.setup-done-row{background:rgba(var(--acc-raw),.04);border-color:rgba(var(--acc-raw),.12);}
+/* Settings nav active item */
+.set-nav-item.active{background:var(--acc-f);color:var(--acc);border:1px solid var(--acc-g);}
+/* Toggle checked */
+.tog input:checked~.tog-tr{background:var(--acc);border-color:transparent;}
 </style>
 </head>
 <body>
@@ -1991,15 +2250,14 @@ body.is-newtab #overlay.on { pointer-events: none; }
           </svg>
         </button>
         <button class="ib" id="btn-media" title="Media controls" style="display:none">
-          <svg width="13" height="11" viewBox="0 0 13 11" fill="currentColor" style="overflow:visible">
-            <rect class="wv1" x="0"   y="0" width="2.2" height="11" rx="1.1" style="transform-origin:0 11px"/>
-            <rect class="wv2" x="3.6" y="0" width="2.2" height="11" rx="1.1" style="transform-origin:3.6px 11px"/>
-            <rect class="wv3" x="7.2" y="0" width="2.2" height="11" rx="1.1" style="transform-origin:7.2px 11px"/>
-            <rect class="wv4" x="10.8" y="0" width="2.2" height="11" rx="1.1" style="transform-origin:10.8px 11px"/>
+          <svg width="15" height="13" viewBox="0 0 15 13" fill="none">
+            <path d="M2 4.5H4.2L7.2 2.2v8.6L4.2 8.5H2V4.5Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="currentColor" fill-opacity=".18"/>
+            <path class="wv-s" d="M8.8 4.8c.65.6 1 1.4 1 2.2s-.35 1.6-1 2.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path class="wv-l" d="M10.6 3.1c1.2 1.05 1.85 2.5 1.85 3.9s-.65 2.85-1.85 3.9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
           </svg>
         </button>
         <button class="ib" id="btn-geo" title="Location Masking">
-          <svg width="13" height="14" viewBox="0 0 13 14" fill="none">
+          <svg width="13" height="14" viewBox="-0.6 -0.6 14.2 15.2" fill="none">
             <circle cx="6.5" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
             <path d="M6.5 13C6.5 13 1 9.2 1 5.5a5.5 5.5 0 0 1 11 0C12 9.2 6.5 13 6.5 13Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
           </svg>
@@ -2233,7 +2491,7 @@ body.is-newtab #overlay.on { pointer-events: none; }
 </div>
 
 <!-- MEDIA PANEL -->
-<div class="panel" id="panel-media" style="width:300px;max-height:420px">
+<div class="panel" id="panel-media" style="width:320px;max-height:480px">
   <div class="panel-head">
     <span class="panel-title">Now Playing</span>
   </div>
@@ -2338,11 +2596,14 @@ body.is-newtab #overlay.on { pointer-events: none; }
   <div id="notes-list-view">
     <div class="panel-head">
       <span class="panel-title">Notes</span>
-      <button class="notes-icon-btn" id="notes-new-btn" title="New note">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
+      <div style="display:flex;align-items:center;gap:2px">
+        <button class="notes-icon-btn" id="notes-new-btn" title="New note">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="notes-icon-btn" id="notes-close-panel-btn" title="Close" style="font-size:14px;line-height:1;color:var(--t3)">&#x2715;</button>
+      </div>
     </div>
     <div id="notes-list"></div>
     <div id="notes-empty" style="display:none">
@@ -2362,11 +2623,14 @@ body.is-newtab #overlay.on { pointer-events: none; }
         </svg>
       </button>
       <input id="notes-title-input" class="notes-title-input" placeholder="Untitled" spellcheck="false">
-      <button class="notes-icon-btn" id="notes-delete-btn" title="Delete note" style="color:rgba(248,113,113,.7)">
-        <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
-          <path d="M1 3h9M4 3V2a1 1 0 0 1 2 0v1M2 3l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+      <div style="display:flex;align-items:center;gap:2px">
+        <button class="notes-icon-btn" id="notes-delete-btn" title="Delete note" style="color:rgba(248,113,113,.7)">
+          <svg width="11" height="13" viewBox="0 0 11 13" fill="none">
+            <path d="M1 3h9M4 3V2a1 1 0 0 1 2 0v1M2 3l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9L9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="notes-icon-btn" id="notes-close-edit-btn" title="Close" style="font-size:14px;line-height:1;color:var(--t3)">&#x2715;</button>
+      </div>
     </div>
     <textarea id="notes-ta" placeholder="Start writing…" spellcheck="false"></textarea>
     <div id="notes-footer">
@@ -3170,6 +3434,7 @@ body.is-newtab #overlay.on { pointer-events: none; }
 
 <div id="toasts"></div>
 <div id="overlay"></div>
+<div id="panel-rail"></div>
 
 <!-- Sidebar add popup -->
 <div id="sb-add-modal">
@@ -3206,96 +3471,148 @@ body.is-newtab #overlay.on { pointer-events: none; }
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
+        <span class="setup-dot"></span>
       </div>
 
-      <!-- Step 0: Welcome -->
+      <!-- Step 0: Welcome + comparison table -->
       <div class="setup-step" data-step="0">
-        <div style="position:relative;margin-bottom:6px">
-          <img src="assets/logo.png" alt="RAW" style="width:80px;height:80px;border-radius:20px;object-fit:contain;display:block;box-shadow:0 8px 32px rgba(0,212,200,.2),0 0 0 1px rgba(0,212,200,.15)">
+        <div style="position:relative;margin-bottom:4px">
+          <img src="assets/logo.png" alt="RAW" style="width:52px;height:52px;border-radius:14px;object-fit:contain;display:block;box-shadow:0 6px 24px rgba(var(--acc-raw),.32),0 0 0 1px rgba(var(--acc-raw),.16)">
+          <span style="position:absolute;bottom:-5px;right:-8px;background:var(--acc);color:#000;font-size:7.5px;font-weight:800;letter-spacing:.04em;padding:2px 5px;border-radius:5px;line-height:1.2">PRIVATE</span>
         </div>
-        <h2 class="setup-title">Welcome to RAW</h2>
-        <p class="setup-desc" style="max-width:340px">A privacy-first browser built for people who care. Zero data collection, built-in ad blocking, fingerprint spoofing, and tools that actually work.</p>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <div style="padding:5px 12px;background:rgba(0,212,200,.08);border:1px solid rgba(0,212,200,.16);border-radius:20px;font-size:11px;color:var(--acc)">No telemetry</div>
-          <div style="padding:5px 12px;background:rgba(0,212,200,.08);border:1px solid rgba(0,212,200,.16);border-radius:20px;font-size:11px;color:var(--acc)">Ad-free</div>
-          <div style="padding:5px 12px;background:rgba(0,212,200,.08);border:1px solid rgba(0,212,200,.16);border-radius:20px;font-size:11px;color:var(--acc)">Open source</div>
+        <h2 class="setup-title" style="margin-bottom:2px;font-size:18px">Welcome to RAW</h2>
+        <p class="setup-desc" style="margin-bottom:10px;font-size:12px;opacity:.6">Privacy-first browsing. No telemetry, no compromises.</p>
+        <div class="setup-compare">
+          <div class="sc-row sc-head">
+            <div class="sc-label"></div>
+            <div class="sc-col sc-hl-lbl">RAW</div>
+            <div class="sc-col">Chrome</div>
+            <div class="sc-col">Firefox</div>
+            <div class="sc-col">Brave</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M4 6l1.5 1.5L8 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ad Blocking</div>
+            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-yes">✓</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5L2 3v3.5c0 2.2 1.7 3.8 4 4.5 2.3-.7 4-2.3 4-4.5V3L6 1.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg></span>Tracker Protection</div>
+            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div><div class="sc-col sc-yes">✓</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2" fill="currentColor" opacity=".5"/><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Fingerprint Spoofing</div>
+            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="4" width="8" height="6" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M4 4V3a2 2 0 014 0v1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Zero Telemetry</div>
+            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div><div class="sc-col sc-no">✕</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10c1-2 3-3 4-3s3 1 4 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><circle cx="6" cy="4.5" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M6 7.5v1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Poison Data Mode</div>
+            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div>
+          </div>
         </div>
       </div>
 
-      <!-- Step 1: Privacy -->
+      <!-- Step 1: Toolbar customization -->
       <div class="setup-step" data-step="1">
         <div class="setup-icon">
-          <svg width="28" height="31" viewBox="0 0 28 31" fill="none">
-            <path d="M14 2L2 7v10.5c0 7.7 5.5 13.8 12 14.5 6.5-.7 12-6.8 12-14.5V7L14 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M9 17l4 4L20 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
+            <rect x="1" y="1" width="26" height="20" rx="4" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M5 11h18M5 7h6M5 15h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
         </div>
-        <h2 class="setup-title">Privacy by Default</h2>
-        <div class="setup-features">
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8.5L6 12.5 13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="setup-feat-text">Blocks ads, trackers &amp; telemetry on every site</span>
-          </div>
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8.5L6 12.5 13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="setup-feat-text">Spoofs your fingerprint — looks like a different browser each time</span>
-          </div>
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 8.5L6 12.5 13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="setup-feat-text">Strips UTM params, blocks WebRTC &amp; beacon leaks</span>
-          </div>
-        </div>
+        <h2 class="setup-title">Your toolbar, your way.</h2>
+        <p class="setup-desc" style="margin-bottom:6px;font-size:12px">Choose which buttons appear in your toolbar. You can change this anytime.</p>
+        <div class="tb-setup-grid" id="setup-tb-grid"></div>
       </div>
 
-      <!-- Step 2: Poison -->
+      <!-- Step 2: Extensions -->
       <div class="setup-step" data-step="2">
         <div class="setup-icon">
-          <svg width="26" height="30" viewBox="0 0 26 30" fill="none">
-            <path d="M9 2h8M13 2v5.5M13 7.5C7 7.5 2 12.5 2 18.5 2 24 7.5 28 13 28s11-4 11-9.5C24 12.5 19 7.5 13 7.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="10" cy="18" r="1.8" fill="currentColor" opacity=".7"/>
-            <circle cx="16" cy="22" r="1.8" fill="currentColor" opacity=".7"/>
-            <circle cx="17" cy="15" r="1.2" fill="currentColor" opacity=".45"/>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 3l2.5 5 5.5.8-4 3.9.95 5.5L14 15.6l-4.95 2.6.95-5.5-4-3.9 5.5-.8L14 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M14 20v5M10 25h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
         </div>
-        <h2 class="setup-title">Poison the Trackers</h2>
-        <p class="setup-desc">Enable <strong style="color:var(--acc)">Poison Data</strong> to flood trackers with fake signals — fake location, fake cookies, fake persona. You become noise they can't profile.</p>
-        <div style="padding:10px 14px;background:rgba(0,212,200,.05);border:1px solid rgba(0,212,200,.14);border-radius:10px;font-size:12px;color:var(--t2);text-align:left;line-height:1.6;width:100%;max-width:380px">
-          Find it in the <strong style="color:var(--t1)">toolbar</strong> — the bug icon. Toggle it on any site to start sending fake signals.
+        <h2 class="setup-title">Pick your superpowers.</h2>
+        <p class="setup-desc" style="margin-bottom:6px;font-size:12px">Enable built-in extensions to boost your experience.</p>
+        <div class="ext-setup-grid" id="setup-ext-grid"></div>
+      </div>
+
+      <!-- Step 3: Theme -->
+      <div class="setup-step" data-step="3">
+        <div class="setup-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="11" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M13 4v3M13 19v3M4 13h3M19 13h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="13" cy="13" r="4" fill="currentColor" opacity=".35"/>
+          </svg>
+        </div>
+        <h2 class="setup-title">Let's pick your vibe.</h2>
+        <p class="setup-desc" style="margin-bottom:4px;font-size:12px">Choose an accent colour for your browser.</p>
+        <div class="theme-setup-row" id="setup-theme-row">
+          <button class="theme-swatch-btn" data-accent="teal">
+            <div class="theme-swatch-outer">
+              <div class="theme-swatch-dot" style="background:linear-gradient(135deg,#00e8da 0%,#00b8ae 50%,#007d78 100%);box-shadow:0 4px 22px rgba(0,212,200,.5)"></div>
+            </div>
+            <span class="theme-swatch-lbl">Teal</span>
+          </button>
+          <button class="theme-swatch-btn" data-accent="orange">
+            <div class="theme-swatch-outer">
+              <div class="theme-swatch-dot" style="background:linear-gradient(135deg,#ffb347 0%,#ff8c00 50%,#c46000 100%);box-shadow:0 4px 22px rgba(255,140,0,.5)"></div>
+            </div>
+            <span class="theme-swatch-lbl">Orange</span>
+          </button>
+          <button class="theme-swatch-btn" data-accent="green">
+            <div class="theme-swatch-outer">
+              <div class="theme-swatch-dot" style="background:linear-gradient(135deg,#5ef09a 0%,#22c55e 50%,#15803d 100%);box-shadow:0 4px 22px rgba(34,197,94,.5)"></div>
+            </div>
+            <span class="theme-swatch-lbl">Green</span>
+          </button>
+          <button class="theme-swatch-btn" data-accent="white">
+            <div class="theme-swatch-outer">
+              <div class="theme-swatch-dot" style="background:linear-gradient(135deg,#ffffff 0%,#d0d0d0 50%,#a0a0a0 100%);box-shadow:0 4px 22px rgba(255,255,255,.25)"></div>
+            </div>
+            <span class="theme-swatch-lbl">Mono</span>
+          </button>
         </div>
       </div>
 
-      <!-- Step 3: Built-in tools -->
-      <div class="setup-step" data-step="3">
-        <div class="setup-icon">
-          <svg width="28" height="26" viewBox="0 0 28 26" fill="none">
-            <rect x="1" y="4" width="26" height="17" rx="3" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M10 13l4 2.5 4-2.5-4-2.5-4 2.5Z" fill="currentColor" opacity=".55"/>
-            <path d="M8 22l2 3M20 22l-2 3M5 25h18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-          </svg>
+      <!-- Step 4: Done -->
+      <div class="setup-step" data-step="4">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+          <div style="width:80px;height:80px;border-radius:50%;background:rgba(var(--acc-raw),.10);border:1.5px solid rgba(var(--acc-raw),.25);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(var(--acc-raw),.15);animation:donePulse 2.6s ease-in-out infinite">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <path d="M8 19l7 7 13-15" stroke="var(--acc)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="34" stroke-dashoffset="34" style="animation:drawCheck .5s .15s cubic-bezier(.22,1,.36,1) forwards"/>
+            </svg>
+          </div>
+          <div style="position:absolute;width:96px;height:96px;border-radius:50%;border:1px solid rgba(var(--acc-raw),.12);animation:doneRing 2.6s ease-in-out infinite"></div>
         </div>
-        <h2 class="setup-title">Everything Built In</h2>
-        <div class="setup-features">
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="8.5" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 9.5v4M4 13.5h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-            <span class="setup-feat-text">Video downloader, screenshot tool &amp; add-ons</span>
+        <style>
+          @keyframes donePulse{0%,100%{box-shadow:0 0 40px rgba(var(--acc-raw),.15);}50%{box-shadow:0 0 60px rgba(var(--acc-raw),.28);}}
+          @keyframes doneRing{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(1.08);opacity:.2;}}
+          @keyframes drawCheck{to{stroke-dashoffset:0;}}
+        </style>
+        <h2 class="setup-title">You're all set.</h2>
+        <p class="setup-desc" style="margin-bottom:10px;font-size:12.5px">RAW is configured and ready to go.</p>
+        <div class="setup-done-checks">
+          <div class="setup-done-row">
+            <div class="setup-done-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 8.5l2.5 2.5L11 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="setup-done-text">Ad blocking &amp; tracker protection active</div>
           </div>
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="setup-feat-text">Bookmarks, history, notes &amp; session restore</span>
+          <div class="setup-done-row">
+            <div class="setup-done-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 8.5l2.5 2.5L11 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="setup-done-text">Fingerprint spoofing enabled</div>
           </div>
-          <div class="setup-feat">
-            <span class="setup-feat-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
-            <span class="setup-feat-text">Location masking, translate &amp; media controls</span>
+          <div class="setup-done-row">
+            <div class="setup-done-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 8.5l2.5 2.5L11 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="setup-done-text">Toolbar &amp; extensions configured</div>
           </div>
-        </div>
-        <div style="margin-top:4px;padding:9px 13px;background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.18);border-radius:9px;display:flex;align-items:flex-start;gap:9px;width:100%;max-width:420px;box-sizing:border-box">
-          <svg style="flex-shrink:0;margin-top:1px;color:#ffaa00;opacity:.9" width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1L1 12h12L7 1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M7 5.5v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="10" r=".7" fill="currentColor"/></svg>
-          <span style="font-size:11.5px;color:var(--t2);line-height:1.55"><strong style="color:rgba(255,170,0,.9);font-weight:600">Beta</strong> — RAW is actively developed. Bugs may appear; features may change.</span>
         </div>
       </div>
 
       <div id="setup-controls">
-        <button id="setup-skip">Don't show again</button>
+        <button id="setup-skip">Skip setup</button>
         <button id="setup-next">Get Started →</button>
       </div>
 
@@ -3347,6 +3664,9 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
+  // Discard stale snapshot if all panels are already closed
+  // (race: panel:hide fired before async chain completed)
+  if (!document.querySelector('.panel.on')) return;
   snap.innerHTML = `<img src="${dataURL}">`;
   snap.style.display = 'block';
 });
@@ -3358,7 +3678,7 @@ ipcRenderer.on('panel:snapshot:clear', () => {
 });
 
 /* IPC events */
-ipcRenderer.on('tab:open',         (_, t)  => { S.tabs.push(t); renderTabs(); });
+ipcRenderer.on('tab:open',         (_, t)  => { S._newTabId = t.id; S.tabs.push(t); renderTabs(); });
 ipcRenderer.on('panels:closeAll', () => closeAllDrops());
 ipcRenderer.on('tab:close',        (_, id) => { 
   S.tabs = S.tabs.filter(x=>x.id!==id); 
@@ -3379,6 +3699,11 @@ ipcRenderer.on('tab:update',       (_, t)  => {
     updateBmBtn();
     updateNewtabLayer(t.url);
   }
+});
+ipcRenderer.on('tabs:reorder',     (_, tabs) => {
+  // Full tab list from main process — reorder S.tabs to match (pinned first)
+  S.tabs = tabs;
+  renderTabs();
 });
 ipcRenderer.on('nav:state',        (_, ns) => applyNavState(ns));
 ipcRenderer.on('bookmarks:set',    (_, b)  => { S.bookmarks = b; renderBookmarks(); updateBmBtn(); });
@@ -3513,6 +3838,11 @@ function renderTabs() {
       audioBtn.addEventListener('mousedown', e => e.stopPropagation());
     }
 
+    // Animate newly-opened tabs sliding in from the top
+    if (t.id === S._newTabId) {
+      el.classList.add('tab-new');
+      S._newTabId = null;
+    }
     strip.appendChild(el);
   }
 
@@ -3522,11 +3852,12 @@ function renderTabs() {
 
 function showTabCtx(tab, cx, cy) {
   document.getElementById('_ctx')?.remove();
-  // Remove BV and capture live snapshot so page stays visible behind the menu
-  ipcRenderer.send('panel:show:fast');
+  // Remove BV so context menu can render over the page area (BV is a native surface).
+  // panel:show:instant uses the cached snapshot — instant, no async capture freeze.
+  ipcRenderer.send('panel:show:instant');
   const m = document.createElement('div');
   m.id = '_ctx'; m.className = 'ctx';
-  m.style.cssText = 'top:-999px;left:-999px;visibility:hidden';
+  m.style.cssText = 'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none';
   m.innerHTML = `
     <div class="d-item" data-a="tab:pin">${tab.pinned?'Unpin':'Pin'} Tab</div>
     <div class="d-item" data-a="tab:dup">Duplicate Tab</div>
@@ -3534,16 +3865,20 @@ function showTabCtx(tab, cx, cy) {
     <div class="d-item" data-a="tab:close">Close Tab</div>`;
   document.body.appendChild(m);
   // Measure actual size then position to avoid clipping
-  const mh = m.offsetHeight, mw = m.offsetWidth;
-  let top = cy + 4;
-  if (top + mh > window.innerHeight - 6) top = cy - mh - 4;
-  let left = cx;
-  if (left + mw > window.innerWidth - 6) left = window.innerWidth - mw - 6;
-  m.style.cssText = `top:${Math.max(top,6)}px;left:${Math.max(left,6)}px`;
+  requestAnimationFrame(() => {
+    const mh = m.offsetHeight, mw = m.offsetWidth;
+    let top = cy + 4;
+    if (top + mh > window.innerHeight - 6) top = cy - mh - 4;
+    let left = cx;
+    if (left + mw > window.innerWidth - 6) left = window.innerWidth - mw - 6;
+    m.style.cssText = `position:fixed;top:${Math.max(top,6)}px;left:${Math.max(left,6)}px`;
+  });
   m.querySelectorAll('.d-item[data-a]').forEach(el => {
     el.addEventListener('click', () => { dispatch(el.dataset.a, tab.id); m.remove(); });
   });
-  const away = () => {
+  const away = (e) => {
+    // If click is inside the context menu, let the click handler fire first
+    if (m.contains(e.target)) return;
     m.remove();
     // Re-attach BV if no panel is open (dispatch already handles it via closeAllDrops)
     if (!document.querySelector('.panel.on')) ipcRenderer.send('panel:hide');
@@ -3768,6 +4103,17 @@ if (fwdBtn) fwdBtn.addEventListener('click', () => ipcRenderer.send('nav:forward
 const newTabBtn = $('btn-new-tab');
 if (newTabBtn) newTabBtn.addEventListener('click', () => ipcRenderer.send('tab:new'));
 
+/* Tab strip horizontal wheel scroll */
+const _tabStrip = $('tab-strip');
+if (_tabStrip) {
+  _tabStrip.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      _tabStrip.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+}
+
 /* Media panel renderer */
 function _renderMediaPanel(audioTabs) {
   const list = $('media-tabs-list');
@@ -3775,45 +4121,106 @@ function _renderMediaPanel(audioTabs) {
   if (!list) return;
   const hasAudio = audioTabs && audioTabs.length > 0;
   if (btn) {
+    const wasBtnVisible = btn.style.display !== 'none';
     btn.style.display = hasAudio ? '' : 'none';
     btn.classList.toggle('playing', hasAudio && audioTabs.some(t => t.isAudible && !t.muted));
+    if ((hasAudio && !wasBtnVisible) || (!hasAudio && wasBtnVisible)) _updateVseps();
   }
   if (!hasAudio) {
     list.innerHTML = '<div id="media-empty">No audio playing</div>';
     return;
   }
+
+  const volIconSVG = `<svg width="11" height="11" viewBox="0 0 12 11" fill="none"><path d="M1 3H3.2L6 1v9L3.2 8H1V3Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4c.6.5.9 1.3.9 2s-.3 1.5-.9 2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>`;
+  const switchSVG  = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M4.5 1H1v9h9V6M6.5 1H10v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
   list.innerHTML = audioTabs.map(t => {
-    const favEl = t.favicon ? `<img class="media-tab-fav" src="${esc(t.favicon)}" alt="" onerror="this.style.display='none'">` : '';
-    const muteTitle = t.muted ? 'Unmute' : 'Mute';
+    const favEl = t.favicon
+      ? `<img class="media-tab-fav" src="${esc(t.favicon)}" alt="" onerror="this.style.display='none'">`
+      : '';
+    const vol = typeof t.volume === 'number' ? Math.round(t.volume * 100) : 100;
+    const pauseSVG = t.paused
+      ? `<svg width="12" height="13" viewBox="0 0 12 13" fill="none"><path d="M1.5 1.5l9 5-9 5V1.5Z" fill="currentColor"/></svg>`
+      : `<svg width="11" height="13" viewBox="0 0 11 13" fill="none"><rect x="1" y="1" width="3.5" height="11" rx="1.3" fill="currentColor"/><rect x="6.5" y="1" width="3.5" height="11" rx="1.3" fill="currentColor"/></svg>`;
     const muteSVG = t.muted
-      ? `<svg width="12" height="11" viewBox="0 0 12 11" fill="none"><path d="M1 3H3.2L6 1v9L3.2 8H1V3Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="9" y1="3.5" x2="11" y2="5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="11" y1="3.5" x2="9" y2="5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`
-      : `<svg width="12" height="11" viewBox="0 0 12 11" fill="none"><path d="M1 3H3.2L6 1v9L3.2 8H1V3Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 4c.6.5.9 1.3.9 2s-.3 1.5-.9 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+      ? `<svg width="14" height="13" viewBox="0 0 14 13" fill="none"><path d="M1 4H3.5L7 1v11L3.5 9H1V4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="10.5" y1="4.5" x2="13" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="13" y1="4.5" x2="10.5" y2="7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`
+      : `<svg width="14" height="13" viewBox="0 0 14 13" fill="none"><path d="M1 4H3.5L7 1v11L3.5 9H1V4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9.5 4.8c.8.7 1.3 1.7 1.3 2.7s-.5 2-1.3 2.7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+
     return `<div class="media-tab-row">
-      <div class="media-tab-info">
+      <div class="media-tab-top">
         ${favEl}
         <span class="media-tab-title">${esc(t.title || 'Tab')}</span>
+        <button class="media-switch-btn" title="Switch to tab" data-act="switch" data-id="${t.id}">${switchSVG}</button>
       </div>
-      <div class="media-tab-controls">
-        <button class="media-ctrl" title="Back 10s" data-act="skip" data-id="${t.id}" data-secs="-10">
-          <svg width="13" height="11" viewBox="0 0 13 11" fill="none"><path d="M6 1L2 4.5 6 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 4.5h5.5A3.5 3.5 0 0 1 11 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><text x="6.5" y="10.5" font-size="4" fill="currentColor" text-anchor="middle" font-family="sans-serif">10</text></svg>
-        </button>
-        <button class="media-ctrl ${t.muted ? 'muted' : ''}" title="${muteTitle}" data-act="mute" data-id="${t.id}">${muteSVG}</button>
-        <button class="media-ctrl" title="Forward 10s" data-act="skip" data-id="${t.id}" data-secs="10">
-          <svg width="13" height="11" viewBox="0 0 13 11" fill="none"><path d="M7 1l4 3.5L7 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4.5H5.5A3.5 3.5 0 0 0 2 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><text x="6.5" y="10.5" font-size="4" fill="currentColor" text-anchor="middle" font-family="sans-serif">10</text></svg>
-        </button>
-        <button class="media-ctrl" title="Switch to tab" data-act="switch" data-id="${t.id}" style="font-size:10px;color:var(--t3)">↗</button>
+      <div class="media-center-row">
+        <button class="media-play-btn" title="${t.paused ? 'Play' : 'Pause'}" data-act="playpause" data-id="${t.id}">${pauseSVG}</button>
+      </div>
+      <div class="media-seek-row">
+        <button class="media-skip-btn" title="Back 10s" data-act="skip" data-secs="-10" data-id="${t.id}">-10</button>
+        <input type="range" class="media-seek-slider" min="0" max="1000" value="0" data-act="seek" data-id="${t.id}">
+        <button class="media-skip-btn" title="Forward 10s" data-act="skip" data-secs="10" data-id="${t.id}">+10</button>
+        <span class="media-time-lbl" data-time-id="${t.id}">--:--</span>
+      </div>
+      <div class="media-vol-row">
+        <span class="media-vol-icon">${volIconSVG}</span>
+        <input type="range" class="media-vol-slider" min="0" max="100" value="${vol}" data-act="volume" data-id="${t.id}">
+        <span class="media-vol-pct">${vol}%</span>
+        <button class="media-mute-btn ${t.muted ? 'muted' : ''}" title="${t.muted ? 'Unmute' : 'Mute'}" data-act="mute" data-id="${t.id}">${muteSVG}</button>
       </div>
     </div>`;
   }).join('');
 
-  list.querySelectorAll('[data-act]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = parseInt(btn.dataset.id);
-      if (btn.dataset.act === 'mute')   ipcRenderer.send('tab:mute', id);
-      if (btn.dataset.act === 'skip')   ipcRenderer.send('tab:skip', { id, secs: parseInt(btn.dataset.secs) });
-      if (btn.dataset.act === 'switch') ipcRenderer.send('tab:switch', id);
-    });
+  list.querySelectorAll('[data-act]').forEach(el => {
+    if (el.dataset.act === 'volume') {
+      el.addEventListener('input', () => {
+        const id  = parseInt(el.dataset.id);
+        const vol = parseInt(el.value) / 100;
+        const pct = el.closest('.media-vol-row')?.querySelector('.media-vol-pct');
+        if (pct) pct.textContent = el.value + '%';
+        ipcRenderer.send('tab:volume', { id, volume: vol });
+      });
+    } else if (el.dataset.act === 'seek') {
+      // While dragging, don't seek yet — seek on mouseup/touchend only
+      el.addEventListener('change', () => {
+        const id  = parseInt(el.dataset.id);
+        const pct = parseInt(el.value) / 1000;
+        ipcRenderer.send('tab:seek', { id, pct });
+      });
+    } else {
+      el.addEventListener('click', () => {
+        const id = parseInt(el.dataset.id);
+        if (el.dataset.act === 'mute')      ipcRenderer.send('tab:mute', id);
+        if (el.dataset.act === 'switch')    ipcRenderer.send('tab:switch', id);
+        if (el.dataset.act === 'playpause') ipcRenderer.send('tab:playpause', id);
+        if (el.dataset.act === 'skip')      ipcRenderer.send('tab:skip', { id, secs: parseInt(el.dataset.secs || '10') });
+      });
+    }
   });
+
+  // Poll media position every second while panel is open
+  clearInterval(list._seekPoll);
+  list._seekPoll = setInterval(async () => {
+    const panel = $('panel-media');
+    if (!panel?.classList.contains('on')) { clearInterval(list._seekPoll); return; }
+    for (const t of audioTabs) {
+      try {
+        const res = await ipcRenderer.invoke('tab:get-time', t.id);
+        if (!res || !isFinite(res.dur) || res.dur <= 0) continue;
+        const slider = list.querySelector(`.media-seek-slider[data-id="${t.id}"]`);
+        const lbl    = list.querySelector(`.media-time-lbl[data-time-id="${t.id}"]`);
+        if (slider && document.activeElement !== slider) {
+          slider.value = Math.round((res.ct / res.dur) * 1000);
+          // gradient fill
+          const pct = (res.ct / res.dur) * 100;
+          slider.style.background = `linear-gradient(to right, var(--acc) ${pct}%, var(--bg5) ${pct}%)`;
+        }
+        if (lbl) {
+          const fmt = s => { const m = Math.floor(s/60); return `${m}:${String(Math.floor(s%60)).padStart(2,'0')}`; };
+          lbl.textContent = `${fmt(res.ct)} / ${fmt(res.dur)}`;
+        }
+      } catch {}
+    }
+  }, 1000);
 }
 
 ipcRenderer.on('audio:update', (_, audioTabs) => {
@@ -3978,6 +4385,10 @@ function updateNewtabLayer(url) {
 })();
 
 /* Panel system */
+// Tracks which panel is currently open so the toggle logic is reliable even
+// when DOM class changes are delayed or happen out of order.
+let _openPanelId = null;
+
 const PANEL_MAP = {
   'btn-bm-panel': 'panel-bookmarks',
   'btn-hist':     'panel-history',
@@ -3993,45 +4404,73 @@ const PANEL_MAP = {
 
 function positionPanel(panel, btn) {
   if (!panel || !btn) return;
-  const r  = btn.getBoundingClientRect();
-  const pw = panel.offsetWidth || parseInt(panel.style.width) || 320;
-  const ph = parseInt(panel.style.maxHeight) || panel.offsetHeight || 500;
-  let left = r.left;
-  if (left + pw > window.innerWidth - 10) left = window.innerWidth - pw - 10;
-  let top  = r.bottom + 6;
-  if (top + ph > window.innerHeight - 10) top = r.top - Math.min(ph, window.innerHeight - 20) - 6;
-  const sbOff = document.body.classList.contains('has-sidebar') ? 70 : 6;
-  panel.style.top  = Math.max(top, 10) + 'px';
-  panel.style.left = Math.max(left, sbOff) + 'px';
+  const r   = btn.getBoundingClientRect();
+  // Read width/max-height from CSS, NOT from getBoundingClientRect.
+  // bounding rect is affected by the open animation's scale transform and returns
+  // a shrunken value (~94% of real width), causing the clamp to place the panel
+  // too far right so it overflows the screen edge.
+  const pw  = parseInt(panel.style.width) || parseInt(getComputedStyle(panel).width)  || 320;
+  const ph  = parseInt(panel.style.maxHeight) || parseInt(getComputedStyle(panel).maxHeight) || 500;
+  const margin = 8;
+  // Center the panel horizontally under the button
+  let left = r.left + r.width / 2 - pw / 2;
+  // Hard-clamp to viewport
+  left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
+  let top = r.bottom + 4;
+  const isAbove = (top + ph > window.innerHeight - 10);
+  if (isAbove) top = Math.max(10, r.top - Math.min(ph, window.innerHeight - 20) - 4);
+  panel.style.top  = top + 'px';
+  panel.style.left = left + 'px';
+  // Snap animation origin to the button's horizontal centre so the panel
+  // always grows outward from the button rather than from its own centre
+  const btnCenterX = r.left + r.width / 2;
+  const originX = Math.round(Math.max(5, Math.min(95, (btnCenterX - left) / pw * 100)));
+  panel.style.transformOrigin = `${originX}% ${isAbove ? 'bottom' : 'top'}`;
+  // Flag for CSS to pick the correct slide-in direction
+  if (isAbove) panel.dataset.above = '1'; else delete panel.dataset.above;
 }
 
 function openPanel(panelId, btnId) {
-  closeAllDrops();
   const panel = $(panelId), btn = $(btnId);
   if (!panel || !btn) return;
+  _openPanelId = panelId;
+  // Pre-position BEFORE adding .on to avoid a 2-frame flash at offset (0,0)
+  const _r  = btn.getBoundingClientRect();
+  // Read from inline style / getComputedStyle, never bounding rect (affected by animation)
+  const _pw = parseInt(panel.style.width) || parseInt(getComputedStyle(panel).width) || 320;
+  const _mg = 8;
+  let _left = _r.left + _r.width / 2 - _pw / 2;
+  _left = Math.max(_mg, Math.min(_left, window.innerWidth - _pw - _mg));
+  const _originX = Math.round(Math.max(5, Math.min(95, (_r.left + _r.width / 2 - _left) / _pw * 100)));
+  panel.style.left = _left + 'px';
+  panel.style.top  = (_r.bottom + 4) + 'px';
+  panel.style.transformOrigin = `${_originX}% top`;
   panel.classList.add('on');
   btn.classList.add('active-icon');
   const overlay = $('overlay');
-  if (overlay) overlay.classList.add('on');
-  ipcRenderer.send('panel:show:keepalive');
-  requestAnimationFrame(() => {
+  // panel-active re-enables pointer-events on newtab so the overlay can dismiss the panel
+  if (overlay) { overlay.classList.add('on'); overlay.classList.add('panel-active'); }
+  // Refine after the panel has fully rendered (for height-based flip)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!panel.classList.contains('on')) return;
     positionPanel(panel, btn);
-    // Snap panel flush to right window edge so BV clip and panel are perfectly
-    // adjacent — eliminates the dark strip that appears to the right of the panel.
-    const pw = panel.offsetWidth || parseInt(panel.style.width) || 300;
-    const clipX = Math.max(0, window.innerWidth - pw);
-    panel.style.left = clipX + 'px';
-    ipcRenderer.send('panel:clip', clipX);
-  });
+  }));
+  // Remove the BV and show a cached snapshot behind the panel.
+  // Videos/audio keep playing because Chromium background suspension is disabled
+  // globally via --disable-renderer-backgrounding + --disable-background-media-suspend.
+  ipcRenderer.send('panel:show:instant');
 }
 
 function closeAllDrops() {
+  _openPanelId = null; // clear tracked open panel before touching DOM
   document.querySelectorAll('.panel.on').forEach(p => p.classList.remove('on'));
   const menuDrop = $('menu-drop');
   if (menuDrop) menuDrop.classList.remove('on');
   document.querySelectorAll('.ib.active-icon').forEach(b => b.classList.remove('active-icon'));
   const overlay = $('overlay');
-  if (overlay) overlay.classList.remove('on');
+  if (overlay) { overlay.classList.remove('on'); overlay.classList.remove('panel-active'); }
+  const rail = $('panel-rail');
+  if (rail) rail.classList.remove('on');
   ipcRenderer.send('panel:hide');
 }
 
@@ -4040,9 +4479,21 @@ Object.entries(PANEL_MAP).forEach(([btnId, panelId]) => {
   if (!btn) return;
   btn.addEventListener('click', e => {
     e.stopPropagation();
+    e.preventDefault();
     const panel = $(panelId);
-    if (panel?.classList.contains('on')) closeAllDrops();
-    else openPanel(panelId, btnId);
+    // Two-signal check: active-icon on the button OR .on on the panel — whichever
+    // is the source of truth at this moment closes the panel. This is belt+suspenders
+    // against any async state mismatch.
+    const isOpen = btn.classList.contains('active-icon') || !!panel?.classList.contains('on');
+    if (isOpen) {
+      closeAllDrops();
+    } else {
+      // Close any OTHER panel that might be open, then open this one.
+      // We call closeAllDrops only when something is actually open, to avoid
+      // sending a redundant panel:hide IPC before panel:show:instant.
+      if (document.querySelector('.panel.on')) closeAllDrops();
+      openPanel(panelId, btnId);
+    }
   });
 });
 
@@ -4060,7 +4511,12 @@ function closeExtStore() {
   overlay.classList.remove('on');
   ipcRenderer.send('panel:hide');
 }
-$('btn-ext')?.addEventListener('click', e => { e.stopPropagation(); openExtStore(); });
+$('btn-ext')?.addEventListener('click', e => {
+  e.stopPropagation();
+  const ol = $('ext-store-overlay');
+  if (ol?.classList.contains('on')) closeExtStore();
+  else openExtStore();
+});
 $('ext-store-back')?.addEventListener('click', closeExtStore);
 
 /* ── Geo Location Panel ───────────────────────────────────────────────────── */
@@ -4220,13 +4676,15 @@ $('ext-store-back')?.addEventListener('click', closeExtStore);
   // Search
   if (geoSearch) geoSearch.addEventListener('input', function() { _renderList(this.value); });
 
-  // When panel-geo opens, show correct screen
-  const _panelGeoBtn = $('btn-geo');
-  if (_panelGeoBtn) {
-    _panelGeoBtn.addEventListener('click', () => {
-      // Show geo panel is handled by PANEL_MAP, but on open we need to init screen
-      setTimeout(() => _showScreen(), 0);
-    }, true); // capture so it fires before PANEL_MAP handler
+  // When panel-geo opens, initialise the correct inner screen (agree vs main).
+  // Use MutationObserver on the panel's class so we only fire on OPEN (class added),
+  // never on close — the old capture-phase listener fired on every click including
+  // close and could leave internal state dirty.
+  const _panelGeo = $('panel-geo');
+  if (_panelGeo) {
+    new MutationObserver(() => {
+      if (_panelGeo.classList.contains('on')) _showScreen();
+    }).observe(_panelGeo, { attributes: true, attributeFilter: ['class'] });
   }
 
   // Keep in sync with settings changes
@@ -4413,6 +4871,8 @@ function showRbConfirm(title, msg, okLabel) {
   $('notes-new-btn')?.addEventListener('click', newNote);
   $('notes-empty-new')?.addEventListener('click', newNote);
   $('notes-back-btn')?.addEventListener('click', () => { saveCurrentNote(); showList(); });
+  $('notes-close-panel-btn')?.addEventListener('click', () => closeAllDrops());
+  $('notes-close-edit-btn')?.addEventListener('click', () => { saveCurrentNote(); closeAllDrops(); });
   $('notes-delete-btn')?.addEventListener('click', async () => {
     const ok = await showRbConfirm('Delete note?', 'This note will be permanently removed.', 'Delete');
     if (ok) deleteCurrentNote();
@@ -4901,7 +5361,7 @@ function openSettingsPage() {
 function closeSettingsPage() {
   const settingsOverlay = $('settings-overlay');
   if (settingsOverlay) settingsOverlay.classList.remove('on');
-  ipcRenderer.send('panel:hide');
+  closeAllDrops();  // cleans up overlay, panels, and sends panel:hide
 }
 
 const btnMenu = $('btn-menu');
@@ -5813,14 +6273,148 @@ if (btnYtdlp) {
   const btnSkip = document.getElementById('setup-skip');
   let cur = 0;
 
+  /* ── Toolbar items ── */
+  const TB_ITEMS = [
+    { key:'tb-bm',      lbl:'Bookmarks', svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 2h8a1 1 0 0 1 1 1v10l-5-3-5 3V3a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
+    { key:'tb-bmPanel', lbl:'BM Panel',  svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 5h6M5 8h4M5 11h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+    { key:'tb-hist',    lbl:'History',   svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.5V8l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+    { key:'tb-dl',      lbl:'Downloads', svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v7M5.5 7.5 8 10l2.5-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
+    { key:'tb-shield',  lbl:'Privacy',   svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L2 4.5v5c0 3.5 2.5 5.5 6 6 3.5-.5 6-2.5 6-6v-5L8 2Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>' },
+    { key:'tb-poison',  lbl:'Poison',    svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 2h5M8 2v3M8 5c-3 0-5.5 2.5-5.5 5.5C2.5 13.5 5 15 8 15s5.5-1.5 5.5-4.5C13.5 7.5 11 5 8 5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.5" cy="10" r="1" fill="currentColor" opacity=".7"/><circle cx="9.5" cy="11.5" r="1" fill="currentColor" opacity=".7"/></svg>' },
+    { key:'tb-ytdlp',   lbl:'Video DL',  svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 6l4 2-4 2V6Z" fill="currentColor" opacity=".65"/></svg>' },
+    { key:'tb-snip',    lbl:'Snip',      svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 14h6M8 11v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+    { key:'tb-notes',   lbl:'Notes',     svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 5.5h6M5 8h6M5 10.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+    { key:'tb-calc',    lbl:'Calc',      svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 5h6M5 8h1.2M7.9 8h1.2M10.6 8h1M5 10.5h1.2M7.9 10.5h1.2M10.6 10.5h1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
+    { key:'tb-geo',     lbl:'Location',  svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6.5" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M8 2C5 2 3 4.3 3 6.5c0 4 5 8 5 8s5-4 5-8C13 4.3 11 2 8 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
+    { key:'tb-ext',     lbl:'Extensions',svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3h4M8 3v2.5M8 5.5c-2.5 0-4.5 2-4.5 4.5C3.5 12.5 5.5 14 8 14s4.5-1.5 4.5-4C12.5 7.5 10.5 5.5 8 5.5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+  ];
+
+  /* ── Extension items ── */
+  const EXT_ITEMS = [
+    { key:'remove-banners', name:'Remove Banners', desc:'Hides cookie popups & notices',      icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3.5" width="12" height="5" rx="1" stroke="currentColor" stroke-width="1.15"/><line x1="11.5" y1="1.5" x2="2.5" y2="12.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', def:true  },
+    { key:'video-speed',    name:'Video Speed',    desc:'Speed controls on any video',        icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5a6 6 0 1 1 10 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7 9.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="9.5" r="1.1" fill="currentColor"/></svg>', def:false },
+    { key:'dark-mode',      name:'Dark Mode',      desc:'Invert page to dark',                icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 8.5A5.5 5.5 0 0 1 5.5 3 5.5 5.5 0 1 0 11 8.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>', def:false },
+    { key:'focus-mode',     name:'Focus Mode',     desc:'Hide distracting page elements',     icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.8" stroke="currentColor" stroke-width="1.2"/><path d="M7 1v2.5M7 10.5V13M1 7h2.5M10.5 7H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>', def:false },
+    { key:'no-animations',  name:'No Animations',  desc:'Disable page animations instantly',  icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7.5c1-2.5 2-2.5 3 0 1 2.5 2 2.5 3 0 1-2.5 2-2.5 3 0" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" opacity=".6"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', def:false },
+    { key:'night-filter',   name:'Night Filter',   desc:'Warm red-tinted screen overlay',     icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7c1.8-3.2 3.8-4.5 6-4.5S11.2 3.8 13 7c-1.8 3.2-3.8 4.5-6 4.5S2.8 10.2 1 7Z" stroke="currentColor" stroke-width="1.15"/><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.1"/></svg>', def:false },
+  ];
+
+  /* ── State ── */
+  const _tbState  = {};
+  const _extState = {};
+  let   _accent   = (window.S && S.settings && S.settings.accentColor) || 'teal';
+  TB_ITEMS.forEach(it  => _tbState[it.key]  = true);
+  EXT_ITEMS.forEach(it => _extState[it.key] = it.def);
+
+  /* ── Render toolbar grid ── */
+  function renderTbSetup() {
+    const grid = document.getElementById('setup-tb-grid');
+    if (!grid || grid.dataset.rendered) return;
+    grid.dataset.rendered = '1';
+    const chkSvg = '<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(0,0,0,.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    TB_ITEMS.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'tb-setup-card' + (_tbState[it.key] ? ' on' : '');
+      card.dataset.key = it.key;
+      card.innerHTML = it.svg + '<div class="tb-setup-lbl">' + it.lbl + '</div>'
+        + '<div class="tb-setup-chk">' + chkSvg + '</div>';
+      card.addEventListener('click', () => {
+        _tbState[it.key] = !_tbState[it.key];
+        card.classList.toggle('on', _tbState[it.key]);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  /* ── Render extension grid ── */
+  function renderExtSetup() {
+    const grid = document.getElementById('setup-ext-grid');
+    if (!grid || grid.dataset.rendered) return;
+    grid.dataset.rendered = '1';
+    const chkSvg = '<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l2 2 3-3" stroke="rgba(0,0,0,.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    EXT_ITEMS.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'ext-setup-card' + (_extState[it.key] ? ' on' : '');
+      card.dataset.key = it.key;
+      card.innerHTML = '<div class="ext-setup-icon">' + it.icon + '</div>'
+        + '<div class="ext-setup-info"><div class="ext-setup-name">' + it.name + '</div>'
+        + '<div class="ext-setup-desc">' + it.desc + '</div></div>'
+        + '<div class="ext-setup-ck">' + chkSvg + '</div>';
+      card.addEventListener('click', () => {
+        _extState[it.key] = !_extState[it.key];
+        card.classList.toggle('on', _extState[it.key]);
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  /* ── Init theme step ── */
+  function initThemeStep() {
+    const btns = overlay.querySelectorAll('.theme-swatch-btn');
+    btns.forEach(btn => {
+      btn.classList.toggle('on', btn.dataset.accent === _accent);
+      if (!btn.dataset.swatchWired) {
+        btn.dataset.swatchWired = '1';
+        btn.addEventListener('click', () => {
+          _accent = btn.dataset.accent;
+          btns.forEach(b => b.classList.toggle('on', b === btn));
+          if (typeof applySettings === 'function') applySettings({ ...(S.settings || {}), accentColor: _accent });
+        });
+      }
+    });
+  }
+
+  /* ── Step navigation ── */
   function showStep(n) {
     steps.forEach((s, i) => s.classList.toggle('active', i === n));
     dots.forEach((d, i)  => d.classList.toggle('active',  i === n));
-    if (btnNext) btnNext.textContent = n >= steps.length - 1 ? 'Get Started' : 'Next →';
+    if (n === 1) renderTbSetup();
+    if (n === 2) renderExtSetup();
+    if (n === 3) initThemeStep();
+    if (btnNext) btnNext.textContent = n >= steps.length - 1 ? 'Start Browsing →' : 'Next →';
     cur = n;
   }
 
+  /* ── Dismiss ── */
   function dismiss() {
+    // Save toolbar preferences
+    const tbSettings = {};
+    TB_ITEMS.forEach(it => { tbSettings[it.key] = _tbState[it.key]; });
+    ipcRenderer.send('settings:set', { toolbar: tbSettings });
+
+    // Save extension preferences
+    const extSettings = {};
+    EXT_ITEMS.forEach(it => { extSettings[it.key] = _extState[it.key]; });
+    ipcRenderer.send('settings:set', { extensions: extSettings });
+
+    // Save accent colour
+    ipcRenderer.send('settings:set', { accentColor: _accent });
+
+    // Apply toolbar button visibility immediately
+    const _tbMap = {
+      'tb-bm':'btn-bm','tb-bmPanel':'btn-bm-panel','tb-hist':'btn-hist','tb-dl':'btn-dl',
+      'tb-shield':'btn-shield','tb-poison':'btn-poison','tb-ytdlp':'btn-ytdlp','tb-snip':'btn-snip',
+      'tb-notes':'btn-notes','tb-calc':'btn-calc','tb-geo':'btn-geo','tb-ext':'btn-ext',
+    };
+    for (const [cbId, btnId] of Object.entries(_tbMap)) {
+      const cb  = $(cbId);
+      const btn = $(btnId);
+      const vis = _tbState[cbId] !== false;
+      if (cb)  cb.checked = vis;
+      if (btn) btn.style.display = vis ? '' : 'none';
+    }
+    if (typeof _updateVseps === 'function') _updateVseps();
+
+    // Apply extension toggle states immediately
+    document.querySelectorAll('.ext-tog').forEach(tog => {
+      const on = !!_extState[tog.dataset.ext];
+      tog.checked = on;
+      const row    = tog.closest('.ext-row');
+      const status = row && row.querySelector('.ext-row-status');
+      if (row)    row.classList.toggle('active', on);
+      if (status) status.textContent = on ? '● On' : 'Off';
+    });
+
     localStorage.setItem('setup-complete', '1');
     overlay.classList.add('hiding');
     setTimeout(() => {
@@ -5836,11 +6430,9 @@ if (btnYtdlp) {
       else dismiss();
     });
   }
-  
   if (btnSkip) btnSkip.addEventListener('click', dismiss);
 
   ipcRenderer.send('panel:show:quick');
-
   overlay.classList.add('on');
   showStep(0);
 })();

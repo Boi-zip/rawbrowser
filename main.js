@@ -58,20 +58,56 @@ app.commandLine.appendSwitch('disable-web-notifications');
     return false;
   }
 
+  function _tryUserDataDir(base) {
+    // Modern Chrome/Edge stores WidevineCdm under User Data\WidevineCdm\<version>\
+    // e.g. %LOCALAPPDATA%\Google\Chrome\User Data\WidevineCdm\4.10.2557.0\
+    if (!fs.existsSync(base)) return false;
+    const versions = fs.readdirSync(base)
+      .filter(v => /^\d+\.\d+\.\d+\.\d+$/.test(v))
+      .sort((a, b) => {
+        const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+        for (let i = 0; i < 4; i++) { if (pa[i] !== pb[i]) return pb[i] - pa[i]; }
+        return 0;
+      });
+    for (const ver of versions) {
+      const cdmPath = path.join(base, ver, '_platform_specific', 'win_x64', 'widevinecdm.dll');
+      const manifest = path.join(base, ver, 'manifest.json');
+      if (fs.existsSync(cdmPath) && fs.existsSync(manifest)) {
+        try {
+          const mf = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+          app.commandLine.appendSwitch('widevine-cdm-path', cdmPath);
+          app.commandLine.appendSwitch('widevine-cdm-version', mf.version || ver);
+          return true;
+        } catch { return false; }
+      }
+    }
+    return false;
+  }
+
   try {
     if (process.platform === 'win32') {
       const local = process.env.LOCALAPPDATA || '';
       const prog  = process.env.PROGRAMFILES || 'C:\\Program Files';
       const prog86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
-      // Try Chrome first (user install), then Edge (built-in on Windows 10/11), then system Chrome
-      const candidates = [
-        path.join(local,  'Google', 'Chrome', 'Application'),
-        path.join(local,  'Microsoft', 'Edge', 'Application'),
-        path.join(prog,   'Google', 'Chrome', 'Application'),
-        path.join(prog86, 'Google', 'Chrome', 'Application'),
-        path.join(prog,   'Microsoft', 'Edge', 'Application'),
+      // Modern Chrome/Edge (v120+) keeps WidevineCdm in User Data, not Application
+      const userDataCandidates = [
+        path.join(local, 'Google', 'Chrome', 'User Data', 'WidevineCdm'),
+        path.join(local, 'Microsoft', 'Edge', 'User Data', 'WidevineCdm'),
+        path.join(prog,  'Google', 'Chrome', 'User Data', 'WidevineCdm'),
       ];
-      for (const c of candidates) { if (_tryDir(c)) break; }
+      let found = false;
+      for (const c of userDataCandidates) { if (_tryUserDataDir(c)) { found = true; break; } }
+      // Fallback: legacy Application\<ver>\WidevineCdm layout (older Chrome/Edge installs)
+      if (!found) {
+        const candidates = [
+          path.join(local,  'Google', 'Chrome', 'Application'),
+          path.join(local,  'Microsoft', 'Edge', 'Application'),
+          path.join(prog,   'Google', 'Chrome', 'Application'),
+          path.join(prog86, 'Google', 'Chrome', 'Application'),
+          path.join(prog,   'Microsoft', 'Edge', 'Application'),
+        ];
+        for (const c of candidates) { if (_tryDir(c)) break; }
+      }
     } else if (process.platform === 'darwin') {
       // macOS: try Chrome (arm64 + x64), then Brave
       const _tryMacCdm = (cdmPath, manifestPath) => {
@@ -136,8 +172,22 @@ app.commandLine.appendSwitch('disable-web-notifications');
 
 // Allow audio/video autoplay without user gesture (needed for Music Player)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+// Enable hardware-accelerated media key handling (required for Widevine DRM on Spotify/Netflix)
+app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService');
+// Prevent Chromium from EVER suspending background renderer processes or their media.
+// This is the definitive fix for videos/audio pausing when a BV is detached from the window.
+// JS-level overrides (visibility, blur, etc.) can race with native Chromium scheduler events;
+// these flags disable the scheduler behaviour entirely at the process level.
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-background-media-suspend');
 
-const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+// Enable platform EME (Widevine / PlayReady) on Windows — required for Spotify, Netflix, etc.
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedMediaFoundation');
+}
+
+const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
+const SPOOF_UA_HINTS = '"Chromium";v="134","Google Chrome";v="134","Not-A.Brand";v="99"';
 
 // ── YouTube stealth ad-skip content script ────────────────────────────────────
 // Stealth design:
@@ -148,11 +198,11 @@ const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (
 //  • CSS hides banner/in-feed/overlay ad units silently — no DOM removal
 //  • One-shot 900ms delayed check handles late-loading ads, not a recurring poll
 const YT_AD_SKIP = `(function(){
-  // Rotating key — prevents fingerprint detection via window property scan
+  // Rotating key — new random property name each injection, no stable fingerprint
   var _k='_rb'+Math.random().toString(36).slice(2,7);
-  if(window[_k]){try{window[_k].disconnect();}catch(e){}delete window[_k];}
+  if(window[_k]){try{window[_k].obs.disconnect();}catch(e){}if(window[_k].iv)clearInterval(window[_k].iv);delete window[_k];}
 
-  // One-time CSS injection to hide non-video ad units invisibly
+  // ── CSS: hide every known non-video ad surface ─────────────────────────────
   if(!document.getElementById('_rb_ac')){
     var _s=document.createElement('style');
     _s.id='_rb_ac';
@@ -160,44 +210,172 @@ const YT_AD_SKIP = `(function(){
       'ytd-promoted-sparkles-text-search-renderer,ytd-promoted-video-renderer,'+
       'ytd-display-ad-renderer,ytd-banner-promo-renderer,#masthead-ad,'+
       'ytd-ad-slot-renderer,ytd-in-feed-ad-layout-renderer,'+
-      'ytd-action-companion-ad-renderer,.ytd-merch-shelf-renderer,'+
-      '#player-ads>.ytd-watch-flexy,.ytp-ad-overlay-container,'+
+      'ytd-action-companion-ad-renderer,ytd-companion-slot-renderer,'+
+      'ytd-statement-banner-renderer,.ytd-merch-shelf-renderer,'+
+      '#player-ads>.ytd-watch-flexy,#frosted-glass-container,'+
+      '.ytp-ad-overlay-container,.ytp-ce-covering-ad,'+
+      '.ytp-ce-element,.ytp-ce-covering-overlay,'+
+      '.ytp-suggested-action,.ytp-ad-module,'+
       '[id^="google_ads_iframe"],[id^="aswift_"]{display:none!important}'+
-      '.ad-showing .ytp-pause-overlay{display:none!important}';
+      '.ad-showing .ytp-pause-overlay,'+
+      '.ad-interrupting .ytp-pause-overlay{display:none!important}'+
+      '.ytp-ad-text,.ytp-ad-preview-container,.ytp-ad-badge-container{display:none!important}'+
+      '.ytp-ad-message-container,.ytp-ad-image-overlay,.ytp-ad-overlay-ad-info-button-container{display:none!important}';
     (document.head||document.documentElement).appendChild(_s);
+  }
+
+  // Track whether we were in an ad on the previous check — used for reliable restore
+  var _wasInAd=false;
+  // Track user mute/rate state before ad so we restore to THEIR settings
+  var _userMuted=false;
+  var _userRate=1;
+  var _userVolume=1;
+  // Prevent rapid-fire restore thrashing
+  var _restoreTimer=null;
+  // Track consecutive black-screen frames to auto-recover
+  var _blackFrames=0;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function _inAd(player){
+    if(player&&(player.classList.contains('ad-showing')||
+                player.classList.contains('ad-interrupting')))return true;
+    if(document.querySelector('.ytp-ad-player-overlay-instream-info'))return true;
+    // Check for ad text container
+    var adText=document.querySelector('.ytp-ad-text');
+    if(adText&&adText.offsetParent!==null)return true;
+    // Check for ad skip button being present (strong signal)
+    var skipBtn=document.querySelector('.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button');
+    if(skipBtn&&skipBtn.offsetParent!==null)return true;
+    return false;
+  }
+
+  function _getVideo(){
+    return document.querySelector('#movie_player video.html5-main-video')||
+           document.querySelector('#movie_player video')||
+           document.querySelector('video');
+  }
+
+  // Black screen detection — if video is playing but no visible frames, reload
+  function _checkBlackScreen(video){
+    if(!video||video.paused||video.ended||!video.videoWidth)return;
+    try{
+      var c=document.createElement('canvas');
+      c.width=16;c.height=9;
+      var ctx=c.getContext('2d');
+      ctx.drawImage(video,0,0,16,9);
+      var d=ctx.getImageData(0,0,16,9).data;
+      var total=0;
+      for(var i=0;i<d.length;i+=4)total+=d[i]+d[i+1]+d[i+2];
+      // Nearly all black pixels
+      if(total<100){
+        _blackFrames++;
+        if(_blackFrames>6){
+          _blackFrames=0;
+          // Force reload the video source to recover
+          var player=document.querySelector('#movie_player');
+          if(player&&player.loadVideoByPlayerVars){
+            // SPA method
+          }
+          // Simplest recovery: skip forward by a tiny amount to force re-buffer
+          try{video.currentTime+=0.2;}catch(e){}
+        }
+      }else{
+        _blackFrames=0;
+      }
+    }catch(e){_blackFrames=0;}
   }
 
   function _act(){
     try{
-      var player=document.querySelector('#movie_player,.html5-video-player');
-      var video=document.querySelector('video.html5-main-video,video');
-      var inAd=player&&(player.classList.contains('ad-showing')||player.classList.contains('ad-interrupting'));
-
-      if(inAd&&video&&video.readyState>0){
-        // Mute + fast-forward: ad still "plays" so impression signals fire,
-        // but user experience is instant. Much stealthier than currentTime jump.
-        if(!video.muted)video.muted=true;
-        if(video.playbackRate<8)video.playbackRate=16;
-      } else if(video&&!inAd){
-        // Restore normal playback as soon as ad ends
-        if(video.playbackRate!==1)video.playbackRate=1;
-        if(video.muted)video.muted=false;
+      // 1. Click any visible skip button first — cleanest possible outcome
+      var skipBtns=document.querySelectorAll(
+        '.ytp-ad-skip-button-modern,.ytp-skip-ad-button,'+
+        '.ytp-ad-skip-button,.ytp-ad-skip-button-slot .ytp-button,'+
+        'button.ytp-ad-skip-button-modern,'+
+        '.ytp-ad-skip-button-container button,'+
+        '.ytp-ad-skip-button-modern .ytp-ad-button-icon'
+      );
+      for(var si=0;si<skipBtns.length;si++){
+        var skip=skipBtns[si];
+        if(skip&&skip.offsetParent!==null&&!skip.hidden&&skip.offsetWidth>0){
+          skip.click();
+          // After clicking skip, give YT a moment to transition
+          setTimeout(_act,300);
+          return;
+        }
       }
 
-      // Click skip button if it became visible
-      var skip=document.querySelector(
-        '.ytp-skip-ad-button:not([style*="display: none"]),.ytp-ad-skip-button-modern,.ytp-ad-skip-button-slot .ytp-button'
-      );
-      if(skip&&skip.offsetParent!==null){skip.click();}
+      var player=document.querySelector('#movie_player,.html5-video-player');
+      var video=_getVideo();
+      var inAd=_inAd(player);
 
-      // Dismiss overlay close buttons
+      if(inAd&&video&&video.readyState>0){
+        // Save user state BEFORE we modify anything (only on first ad detection)
+        if(!_wasInAd){
+          _userMuted=video.muted;
+          _userRate=video.playbackRate;
+          _userVolume=video.volume;
+        }
+        _wasInAd=true;
+
+        // 2. Mute immediately so user hears nothing
+        if(!video.muted)video.muted=true;
+
+        // 3. Speed up massively to burn through the ad
+        if(video.playbackRate<8)try{video.playbackRate=16;}catch(e){}
+
+        // 4. Seek to near-end for fastest skip
+        if(video.duration&&isFinite(video.duration)&&video.duration>0.3){
+          try{video.currentTime=Math.max(0,video.duration-0.1);}catch(e){}
+        }
+
+        // 5. Ensure video is playing (not paused by ad overlay)
+        if(video.paused&&video.readyState>0)try{video.play();}catch(e){}
+      } else if(_wasInAd&&!inAd){
+        // Ad just ended — restore user's playback state
+        _wasInAd=false;
+        if(_restoreTimer)clearTimeout(_restoreTimer);
+        _restoreTimer=setTimeout(function(){
+          var v=_getVideo();
+          if(v&&!_inAd(document.querySelector('#movie_player,.html5-video-player'))){
+            try{v.playbackRate=_userRate||1;}catch(e){}
+            try{v.muted=_userMuted;}catch(e){}
+            try{v.volume=_userVolume;}catch(e){}
+            // Ensure content is playing
+            if(v.paused&&v.readyState>0)try{v.play();}catch(e){}
+          }
+          _restoreTimer=null;
+        },300);
+      } else if(!inAd&&video&&!video.paused){
+        // Not in ad — check for black screen issue
+        _checkBlackScreen(video);
+      }
+
+      // 6. Dismiss overlay/companion close buttons
       document.querySelectorAll(
-        '.ytp-ad-overlay-close-button,.ytp-ad-overlay-slot-close-button,.ytp-suggested-action-badge-expanded-close-button'
+        '.ytp-ad-overlay-close-button,.ytp-ad-overlay-slot-close-button,'+
+        '.ytp-suggested-action-badge-expanded-close-button,'+
+        '.ytp-ad-overlay-close-container'
       ).forEach(function(el){try{el.click();}catch(e){}});
+
+      // 7. Dismiss "Sign in to confirm you're not a bot" / bot-check enforcement dialog
+      // YT shows ytd-enforcement-message-view-model inside a paper dialog when bot-like
+      // behavior is detected. We click the "Continue watching" button if present.
+      var botDlg=document.querySelector('ytd-enforcement-message-view-model,tp-yt-paper-dialog[id*="confirm"],.ytd-enforcement-message-view-model');
+      if(botDlg&&botDlg.offsetParent!==null){
+        // Try "Watch without signing in" or any dismiss/close button
+        var watchBtn=botDlg.querySelector('button[aria-label*="without"],button[aria-label*="Continue"],button[aria-label*="continue"],button[aria-label*="Watch"],.yt-spec-button-shape-next--filled');
+        if(!watchBtn){
+          // Fall back: the last button in the dialog is usually the "Continue" action
+          var btns=botDlg.querySelectorAll('button,.yt-spec-button-shape-next');
+          if(btns.length)watchBtn=btns[btns.length-1];
+        }
+        if(watchBtn){try{watchBtn.click();}catch(e){}}
+      }
     }catch(e){}
   }
 
-  // Observer — react only to ad-relevant mutations
+  // ── MutationObserver — reacts to class changes and new ad nodes ────────────
   var _obs=new MutationObserver(function(muts){
     for(var i=0;i<muts.length;i++){
       var t=muts[i].target;
@@ -205,31 +383,54 @@ const YT_AD_SKIP = `(function(){
         t.classList.contains('ad-showing')||
         t.classList.contains('ad-interrupting')||
         t.classList.contains('ytp-ad-player-overlay')
-      )){requestAnimationFrame(_act);return;}
+      )){_act();return;}
       if(muts[i].addedNodes&&muts[i].addedNodes.length){
-        requestAnimationFrame(_act);return;
+        for(var j=0;j<muts[i].addedNodes.length;j++){
+          var n=muts[i].addedNodes[j];
+          if(n.classList&&(n.classList.contains('ytp-ad-module')||
+             n.classList.contains('ytp-ad-overlay-container')||
+             n.classList.contains('ytp-ad-text'))){
+            _act();return;
+          }
+        }
+        _act();return;
       }
     }
   });
-  window[_k]=_obs;
+
+  // ── Polling fallback — catches ads the observer misses ─────────────────────
+  var _iv=setInterval(function(){
+    var p=document.querySelector('#movie_player,.html5-video-player');
+    if(_inAd(p))_act();
+    else if(_wasInAd)_act(); // trigger restore
+  },400);
+  window[_k]={obs:_obs,iv:_iv};
 
   function _attach(){
     var p=document.querySelector('#movie_player,.html5-video-player,ytd-player');
     if(p){
       _obs.observe(p,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     } else {
-      // Player not in DOM yet — wait shallowly at root level
       var _w=new MutationObserver(function(){
         var p2=document.querySelector('#movie_player,.html5-video-player,ytd-player');
-        if(p2){_w.disconnect();_obs.observe(p2,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});}
+        if(p2){
+          _w.disconnect();
+          _obs.observe(p2,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+        }
       });
-      _w.observe(document.documentElement,{childList:true,subtree:false});
+      _w.observe(document.documentElement,{childList:true,subtree:true});
     }
+    // Also observe the full page for late-loading player
+    _obs.observe(document.documentElement,{childList:true,subtree:false});
   }
+
   _attach();
-  requestAnimationFrame(_act);
-  // One-shot delayed check — catches ads that load after initial paint
-  setTimeout(function(){requestAnimationFrame(_act);},900);
+  _act();
+  setTimeout(_act,400);
+  setTimeout(_act,1000);
+  setTimeout(_act,2000);
+  setTimeout(_act,4000);
+  setTimeout(_act,7000);  // catch very late ad loads
 })();`;
 
 // ── YouTube ad-tracking URLs to block at network level ────────────────────────
@@ -245,7 +446,9 @@ const YT_AD_BLOCK_PATTERNS = [
   /static\.doubleclick\.net/i,
   /ad\.doubleclick\.net/i,
   /s0\.2mdn\.net/i,
-  /imasdk\.googleapis\.com/i,          // Google IMA SDK — video ad loader
+  // NOTE: imasdk.googleapis.com intentionally NOT blocked — blocking it causes
+  // YouTube's player to hang on a black screen because the ad framework can't
+  // initialize, which prevents content playback entirely.
   /googleadservices\.com/i,
   /googlesyndication\.com/i,
   /youtube\.com\/pagead\/paralleladview/i,
@@ -327,37 +530,32 @@ const EXT_SCRIPTS = {
   'dark-mode':
     `(function(){
       if(document.getElementById('_rawDark'))return;
-      /* 1. Force color-scheme:dark so CSS media queries inside sites activate */
+      /* 1. color-scheme:dark so native form inputs render dark */
       var s=document.createElement('style');s.id='_rawDark';
       s.textContent=':root{color-scheme:dark!important;}'+
         '::selection{background:rgba(0,180,160,.5)!important;}';
       document.head.appendChild(s);
-      /* 2. Patch matchMedia so prefers-color-scheme:dark returns true */
-      try{
-        var _omm=window.matchMedia.bind(window);
-        window.matchMedia=function(q){
-          if(q&&q.indexOf('prefers-color-scheme')!==-1){
-            var dark=q.indexOf('dark')!==-1;
-            return{matches:dark,media:q,onchange:null,
-              addListener:function(){},removeListener:function(){},
-              addEventListener:function(){},removeEventListener:function(){},
-              dispatchEvent:function(){return false;}};
-          }
-          return _omm(q);
-        };
-      }catch(e){}
-      /* 3. After page paints, check if it's still light — only then invert */
+      /* 2. If page is light, apply CSS invert so it looks dark.
+         No matchMedia patching — that causes sites with built-in dark mode
+         (Google, GitHub, etc.) to activate their native theme, making the
+         background dark so the luminance check never triggers the invert,
+         leaving a broken half-dark state. Pure CSS invert is more reliable. */
       function _applyInvert(){
         if(document.getElementById('_rawDarkInv'))return;
         var el=document.body||document.documentElement;
         var bg=getComputedStyle(el).backgroundColor;
         var m=bg.match(/\\d+/g);
         var lum=m?(+m[0]*299+(+m[1])*587+(+m[2])*114)/1000:255;
-        if(lum>140){
+        if(lum>100){
           var si=document.createElement('style');si.id='_rawDarkInv';
-          si.textContent='html{filter:invert(1) hue-rotate(180deg)!important;}'+
-            'img,video,canvas,picture,svg,embed,object,iframe'+
-            '{filter:invert(1) hue-rotate(180deg)!important;}';
+          /* Apply to body (not html) — avoids Electron compositor hit-test issues
+             that can block pointer-events on interactive page elements. */
+          si.textContent='body{filter:invert(1) hue-rotate(180deg)!important;}'+
+            /* Re-invert media so images/video stay natural-looking.
+               iframe excluded — applying filter to iframes causes compositor
+               layer conflicts that prevent mouse events reaching embedded content. */
+            'img,video,canvas,picture,embed,object,'+
+            '[style*="background-image"]{filter:invert(1) hue-rotate(180deg)!important;}';
           document.head.appendChild(si);
         }
       }
@@ -467,7 +665,7 @@ function initStorage() {
 }
 
 // ── Runtime ───────────────────────────────────────────────────────────────────
-const CHROME_H   = 76;   // must match --chrome-h in index.html CSS
+let   CHROME_H   = 82;   // matches --chrome-h; updated dynamically for compact mode (72)
 const SIDEBAR_W  = 64;   // sidebar strip width
 let   sidebarOn  = false;
 let   nextId     = 0;
@@ -477,6 +675,7 @@ let   win      = null;
 let   totalBlocked = 0;
 let   panelOpen    = false;
 let   panelClipX   = 0;       // >0 = BV clipped to leave room for open panel
+let   _panelSeq    = 0;        // increments on every panel:show:* to cancel stale async chains
 
 // ── IPC shortcut ──────────────────────────────────────────────────────────────
 function send(ch, ...a) {
@@ -496,7 +695,7 @@ function tabData(t) {
 function _getAudioTabs() {
   return [...tabMap.values()]
     .filter(t => t.isAudible || t.muted)
-    .map(t => ({ id: t.id, title: t.title, favicon: t.favicon, isAudible: t.isAudible, muted: t.muted }));
+    .map(t => ({ id: t.id, title: t.title, favicon: t.favicon, isAudible: t.isAudible, muted: t.muted, volume: t.volume ?? 1, paused: t.paused ?? false }));
 }
 
 function navData(t) {
@@ -596,6 +795,7 @@ function createTab(url, activate = true) {
       preload:          path.join(__dirname, 'preload.js'),
       webSecurity: true,
       allowRunningInsecureContent: false,
+      experimentalFeatures: true,
     },
   });
 
@@ -607,6 +807,11 @@ function createTab(url, activate = true) {
   tabMap.set(id, tab);
 
   const wc = bv.webContents;
+  // Prevent Chromium from throttling/pausing the renderer when it's not
+  // composited into the window (e.g. while a toolbar panel is open with BV removed).
+  // Without this, video/audio can pause at the media pipeline level regardless of
+  // any JS-level visibility overrides.
+  wc.setBackgroundThrottling(false);
   if (settings.spoofUserAgent) wc.setUserAgent(SPOOF_UA);
 
   wc.setWindowOpenHandler(({ url: u }) => {
@@ -909,8 +1114,30 @@ function setupSession(ses) {
 
   ses.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, cb) => {
     const h = { ...details.requestHeaders };
+
+    // For whitelisted domains (Spotify, TikTok, etc.) — only spoof UA, leave all
+    // other headers intact. DRM license servers validate Referer/Origin headers;
+    // stripping them breaks Widevine license acquisition.
+    try {
+      const host = new URL(details.url).hostname.toLowerCase().replace(/^www\./, '');
+      if (BUILTIN_WHITELIST.some(d => host === d || host.endsWith('.' + d))) {
+        if (settings.spoofUserAgent) {
+          h['User-Agent'] = SPOOF_UA;
+          h['Sec-CH-UA'] = SPOOF_UA_HINTS;
+          h['Sec-CH-UA-Mobile'] = '?0';
+          h['Sec-CH-UA-Platform'] = '"Windows"';
+        }
+        return cb({ requestHeaders: h });
+      }
+    } catch {}
+
     if (settings.doNotTrack)    { h['DNT'] = '1'; h['Sec-GPC'] = '1'; }
-    if (settings.spoofUserAgent) { h['User-Agent'] = SPOOF_UA; }
+    if (settings.spoofUserAgent) {
+      h['User-Agent'] = SPOOF_UA;
+      h['Sec-CH-UA'] = SPOOF_UA_HINTS;
+      h['Sec-CH-UA-Mobile'] = '?0';
+      h['Sec-CH-UA-Platform'] = '"Windows"';
+    }
 
     // Strip cross-origin Referer to origin-only — prevents full URLs containing
     // tokens, session IDs, or personal data from leaking to third-party servers.
@@ -936,11 +1163,22 @@ function setupSession(ses) {
   ses.setUserAgent(SPOOF_UA);
 
   // Deny tracking-risk permissions; allow safe ones
-  const _deniedPerms = new Set(['geolocation', 'notifications', 'sensors', 'background-sync', 'payment-handler', 'idle-detection', 'periodic-background-sync', 'nfc', 'bluetooth']);
+  const _deniedPerms = new Set(['geolocation', 'notifications', 'sensors', 'background-sync', 'payment-handler', 'idle-detection', 'periodic-background-sync', 'nfc', 'bluetooth', 'camera', 'microphone', 'midi']);
   ses.setPermissionRequestHandler((_, permission, callback) => {
     // When geo spoofing is enabled, allow geolocation — our JS serves fake coords
     if (permission === 'geolocation' && settings.geoEnabled) { callback(true); return; }
     callback(!_deniedPerms.has(permission));
+  });
+  ses.setPermissionCheckHandler((_, permission) => {
+    if (permission === 'geolocation' && settings.geoEnabled) return true;
+    return !_deniedPerms.has(permission);
+  });
+  // Block navigation to dangerous schemes
+  ses.on('will-navigate', (event, url) => {
+    if (/^(javascript|vbscript|file):/i.test(url)) event.preventDefault();
+  });
+  ses.on('will-redirect', (event, url) => {
+    if (/^(javascript|vbscript|file):/i.test(url)) event.preventDefault();
   });
 
   ses.on('will-download', (_, item) => {
@@ -978,6 +1216,7 @@ function setupSession(ses) {
 // ── App ready ─────────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   initStorage();   // app.getPath() now works
+  CHROME_H = settings.compactMode ? 72 : 82;  // sync with CSS --chrome-h on startup
 
   win = new BrowserWindow({
     width: 1280, height: 820,
@@ -1002,11 +1241,24 @@ app.whenReady().then(() => {
     createTab('newtab', true);
     // Auto-check yt-dlp after UI is stable
     setTimeout(() => ytdlpCheckUpdate(), 3500);
+    // Keep the cached page snapshot fresh (used by panel popups to show current page state).
+    // Refreshes every 5 s while a real page is active and no panel is open.
+    setInterval(() => {
+      const tab = tabMap.get(activeId);
+      if (!tab?.bv || panelOpen || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+      tab.bv.webContents.capturePage().then(img => {
+        tab.snapshot = img.toDataURL();
+      }).catch(() => {});
+    }, 5000);
   });
 
   win.on('resize', () => {
-    const tab = tabMap.get(activeId);
-    if (tab?.bv && !panelOpen && tab.url !== 'newtab') setBounds(tab.bv);
+    if (panelOpen) return;
+    for (const t of tabMap.values()) {
+      if (t.bv && t.url !== 'newtab' && !t.bv.webContents.isDestroyed()) {
+        try { setBounds(t.bv); } catch {}
+      }
+    }
   });
 
   win.on('maximize',   () => send('win:state', 'maximized'));
@@ -1064,7 +1316,9 @@ ipcMain.on('tab:pin',  (_, id) => {
   const t = tabMap.get(id);
   if (!t) return;
   t.pinned = !t.pinned;
+  // Send full tab list so renderer can reorder pinned tabs to the left
   send('tab:update', tabData(t));
+  send('tabs:reorder', [...tabMap.values()].map(tabData));
 });
 ipcMain.on('tab:mute', (_, id) => {
   const t = tabMap.get(id);
@@ -1082,6 +1336,43 @@ ipcMain.on('tab:skip', (_, { id, secs }) => {
   t.bv.webContents.executeJavaScript(
     `(function(){const v=document.querySelector('video');if(v)v.currentTime=Math.max(0,v.currentTime+${s});})()`,
   ).catch(() => {});
+});
+ipcMain.on('tab:playpause', (_, id) => {
+  const t = tabMap.get(id);
+  if (!t?.bv) return;
+  t.bv.webContents.executeJavaScript(
+    `(function(){const v=document.querySelector('video')||document.querySelector('audio');if(!v)return false;if(v.paused){v.play().catch(function(){});}else{v.pause();}return v.paused;})()`,
+  ).then(paused => {
+    t.paused = !!paused;
+    send('audio:update', _getAudioTabs());
+  }).catch(() => {});
+});
+ipcMain.on('tab:volume', (_, { id, volume }) => {
+  const t = tabMap.get(id);
+  if (!t?.bv) return;
+  const vol = Math.max(0, Math.min(1, volume));
+  t.volume = vol;
+  t.bv.webContents.executeJavaScript(
+    `(function(){document.querySelectorAll('video,audio').forEach(function(m){m.volume=${vol};});})()`,
+  ).catch(() => {});
+  send('audio:update', _getAudioTabs());
+});
+ipcMain.on('tab:seek', (_, { id, pct }) => {
+  const t = tabMap.get(id);
+  if (!t?.bv) return;
+  const p = Math.max(0, Math.min(1, pct));
+  t.bv.webContents.executeJavaScript(
+    `(function(){const v=document.querySelector('video')||document.querySelector('audio');if(v&&isFinite(v.duration)&&v.duration>0)v.currentTime=v.duration*${p};})()`,
+  ).catch(() => {});
+});
+ipcMain.handle('tab:get-time', async (_, id) => {
+  const t = tabMap.get(id);
+  if (!t?.bv || t.bv.webContents.isDestroyed()) return null;
+  try {
+    return await t.bv.webContents.executeJavaScript(
+      `(function(){const v=document.querySelector('video')||document.querySelector('audio');return v?{ct:v.currentTime,dur:v.duration}:null;})()`,
+    );
+  } catch { return null; }
 });
 
 // ── IPC: Navigation ───────────────────────────────────────────────────────────
@@ -1150,20 +1441,37 @@ ipcMain.on('nav:home',        (_, id) => {
 const PANEL_KEEP_ALIVE_JS = `(function(){
   if (window._rbPanelOpen) return;
   window._rbPanelOpen = true;
-  // Override visibility so browsers/players don't pause on BV detach
-  Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
+  // Override visibility API — players read these to decide whether to pause
+  Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
   Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
-  // Swallow visibilitychange before it reaches any pause handlers
+  // Override hasFocus — YouTube and others call this directly
+  window._rbOrigHasFocus = document.hasFocus.bind(document);
+  document.hasFocus = function() { return true; };
+  // Block ALL events that signal the page is going to the background:
+  //   visibilitychange  — Page Visibility API
+  //   blur              — window loses focus (triggers pause on many players)
+  //   pagehide          — fired on BV detach in some Chromium versions
+  //   freeze            — Page Lifecycle API freeze event
   window._rbVCBlock = function(e) { e.stopImmediatePropagation(); };
   document.addEventListener('visibilitychange', window._rbVCBlock, true);
+  window.addEventListener('blur',     window._rbVCBlock, true);
+  window.addEventListener('pagehide', window._rbVCBlock, true);
+  window.addEventListener('freeze',   window._rbVCBlock, true);
 })()`;
 const PANEL_RESTORE_ALIVE_JS = `(function(){
   if (!window._rbPanelOpen) return;
   window._rbPanelOpen = false;
   try { delete document.hidden; } catch {}
   try { delete document.visibilityState; } catch {}
+  if (window._rbOrigHasFocus) {
+    document.hasFocus = window._rbOrigHasFocus;
+    delete window._rbOrigHasFocus;
+  }
   if (window._rbVCBlock) {
     document.removeEventListener('visibilitychange', window._rbVCBlock, true);
+    window.removeEventListener('blur',     window._rbVCBlock, true);
+    window.removeEventListener('pagehide', window._rbVCBlock, true);
+    window.removeEventListener('freeze',   window._rbVCBlock, true);
     delete window._rbVCBlock;
   }
 })()`;
@@ -1241,18 +1549,16 @@ ipcMain.on('panel:show', () => {
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
   const wc = tab.bv.webContents;
-  // 1. Cleanly pause any playing media BEFORE capture so the screenshot shows a
-  //    stable frame (prevents YouTube "grey-out" caused by mid-frame BV detach).
-  const pauseJs = `(function(){try{document.querySelectorAll('video,audio').forEach(function(m){m._rbP=m.paused;if(!m.paused)m.pause();})}catch(e){}})()`;
-  wc.executeJavaScript(pauseJs).catch(() => {})
+  // Inject keep-alive FIRST so media doesn't pause when BV is detached
+  wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {})
     .then(() => {
       if (!panelOpen) return Promise.reject('closed');
-      return wc.capturePage(); // 2. Capture WHILE BV still attached — never black
+      return wc.capturePage(); // Capture WHILE BV still attached — never black
     })
     .then(img => {
       if (!panelOpen) return;
-      try { win.removeBrowserView(tab.bv); } catch {} // 3. Remove BV
-      send('panel:snapshot', img.toDataURL());         // 4. Send live screenshot
+      try { win.removeBrowserView(tab.bv); } catch {} // Remove BV
+      send('panel:snapshot', img.toDataURL());         // Send live screenshot
     })
     .catch(() => {
       // Fallback: just remove BV, no screenshot
@@ -1262,6 +1568,7 @@ ipcMain.on('panel:show', () => {
 });
 ipcMain.on('panel:show:quick', () => {
   panelOpen = true;
+  ++_panelSeq;
   const tab = tabMap.get(activeId);
   if (tab?.bv) {
     try {
@@ -1269,35 +1576,55 @@ ipcMain.on('panel:show:quick', () => {
     } catch {}
   }
 });
-// Inject keep-alive JS into BV but do NOT remove it — panel will appear in clipped area
+// Inject keep-alive JS into BV but do NOT remove it — panel will appear in clipped area.
+// Also send a full-window snapshot so the black area exposed by BV clipping is covered.
+// The live BV sits on top of the snapshot on the left; the static snapshot shows on the right.
 ipcMain.on('panel:show:keepalive', async () => {
   panelOpen = true;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
-  await tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  const bv = tab.bv;
+  // Inject keep-alive so videos/audio are never paused when BV is clipped
+  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  // Send snapshot to fill the window background (covers black area right of clip edge).
+  // Use cached snapshot if available (instant); otherwise live-capture as fallback.
+  if (tab.snapshot) {
+    send('panel:snapshot', tab.snapshot);
+  } else {
+    bv.webContents.capturePage()
+      .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
+      .catch(() => {});
+  }
 });
 // Resize BV to leave right-side room for the open panel (so panel HTML shows above BV)
 ipcMain.on('panel:clip', (_, x) => {
+  panelOpen  = true;                     // prevent tab-switch from resetting bounds
   panelClipX = Math.max(0, x || 0);
   const tab = tabMap.get(activeId);
-  if (tab?.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) setBounds(tab.bv);
+  if (tab?.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
+    try { win.addBrowserView(tab.bv); } catch {} // ensure BV is attached (idempotent)
+    setBounds(tab.bv);                  // resize BV to leave panel area uncovered
+  }
 });
 ipcMain.on('panel:show:fast', () => {
   panelOpen = true;
+  const seq = ++_panelSeq;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
   const bv = tab.bv;
-  // Capture FIRST while BV compositor still has its rendered frame,
-  // then inject keep-alive JS (so videos/animations continue), then remove BV.
-  bv.webContents.capturePage()
-    .then(async img => {
-      if (!panelOpen) return;
-      await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  // Inject keep-alive FIRST, then capture, then remove BV — prevents media pausing
+  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {})
+    .then(() => {
+      if (!panelOpen || _panelSeq !== seq) return Promise.reject('stale');
+      return bv.webContents.capturePage();
+    })
+    .then(img => {
+      if (!panelOpen || _panelSeq !== seq) return;
       try { win.removeBrowserView(bv); } catch {}
       send('panel:snapshot', img.toDataURL());
     })
-    .catch(() => {
-      if (!panelOpen) return;
+    .catch(err => {
+      if (err === 'stale' || !panelOpen || _panelSeq !== seq) return;
       try { win.removeBrowserView(bv); } catch {}
     });
 });
@@ -1311,70 +1638,99 @@ ipcMain.on('panel:show:nowait', async () => {
   try { win.removeBrowserView(tab.bv); } catch {}
 });
 ipcMain.on('panel:show:instant', async () => {
-  // Instant open WITH website visible — uses cached snapshot if available, else live capture
+  // Instant open WITH website visible.
+  // Order matters for both zero-flicker AND video keep-alive:
+  //   1. Send snapshot first so the renderer paints it instantly (no black flash)
+  //   2. await keep-alive so the JS is GUARANTEED to run inside the BV before detach
+  //      (if we remove BV before the JS runs, visibilitychange fires as hidden=true
+  //       and videos pause before the override is in place)
+  //   3. Remove BV — by now keep-alive has overridden hidden/visibilityState
   panelOpen = true;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
   const bv = tab.bv;
   if (tab.snapshot) {
-    // Cached snapshot — inject keep-alive, remove BV, show cached image instantly
+    // Step 1: snapshot renders immediately in the renderer
+    send('panel:snapshot', tab.snapshot);
+    // Step 2: keep-alive runs in the BV (~10-20 ms, imperceptible)
     await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+    // Step 3: safe to detach — visibility is already overridden
     if (!panelOpen) return;
     try { win.removeBrowserView(bv); } catch {}
-    send('panel:snapshot', tab.snapshot);
   } else {
-    // No cache — live capture (first-open fallback)
-    bv.webContents.capturePage()
-      .then(async img => {
-        if (!panelOpen) return;
-        await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-        try { win.removeBrowserView(bv); } catch {}
-        send('panel:snapshot', img.toDataURL());
-      })
-      .catch(() => {
-        if (!panelOpen) return;
-        try { win.removeBrowserView(bv); } catch {}
-      });
+    // No cache yet — live capture fallback (first open after launch)
+    try {
+      const img = await bv.webContents.capturePage();
+      if (!panelOpen) return;
+      await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+      if (!panelOpen) return;
+      try { win.removeBrowserView(bv); } catch {}
+      send('panel:snapshot', img.toDataURL());
+    } catch {
+      if (!panelOpen) return;
+      try { win.removeBrowserView(bv); } catch {}
+    }
   }
 });
 ipcMain.on('panel:hide', () => {
   panelOpen = false;
+  _panelSeq = 0;    // invalidate any pending async panel:show:fast chains
   panelClipX = 0;   // always restore full BV width
   const tab = tabMap.get(activeId);
   if (tab?.bv && tab.url !== 'newtab') {
     // Re-add BV if it was removed (snapshot mode), then restore full-width bounds
     try { win.addBrowserView(tab.bv); } catch {}
     try { setBounds(tab.bv); } catch {}
+    // Restore visibility and resume any media that was playing
     tab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
+    // Ensure media resumes playing if it was interrupted by BV detach
+    tab.bv.webContents.executeJavaScript(`(function(){
+      try{document.querySelectorAll('video,audio').forEach(function(m){
+        if(m.paused&&m.readyState>0&&m.currentTime>0&&!m.ended){
+          m.play().catch(function(){});
+        }
+      });}catch(e){}
+    })()`).catch(() => {});
   }
   send('panel:snapshot:clear');
 });
 ipcMain.on('sidebar:toggle', (_, show) => {
   sidebarOn = !!show;
-  const tab = tabMap.get(activeId);
-  if (tab?.bv && !panelOpen && tab.url !== 'newtab') setBounds(tab.bv);
+  // Update bounds for all tabs so sidebar offset is applied immediately
+  if (!panelOpen) {
+    for (const t of tabMap.values()) {
+      if (t.bv && t.url !== 'newtab' && !t.bv.webContents.isDestroyed()) {
+        try { setBounds(t.bv); } catch {}
+      }
+    }
+  }
 });
 
 // ── IPC: Snip tool ────────────────────────────────────────────────────────────
 ipcMain.on('snip:start', () => {
   panelOpen = true;
+  const seq = ++_panelSeq;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') { send('snip:ready', null); return; }
   tab.bv.webContents.capturePage().then(img => {
+    if (!panelOpen || _panelSeq !== seq) return;  // stale — cancel or new panel won the race
     try { win.removeBrowserView(tab.bv); } catch {}
     send('snip:ready', img.toDataURL());
   }).catch(() => {
+    if (!panelOpen || _panelSeq !== seq) return;
     try { win.removeBrowserView(tab.bv); } catch {}
     send('snip:ready', null);
   });
 });
 ipcMain.on('snip:cancel', () => {
   panelOpen = false;
+  _panelSeq = 0;
   const tab = tabMap.get(activeId);
   if (tab?.bv && tab.url !== 'newtab') try { win.addBrowserView(tab.bv); setBounds(tab.bv); } catch {}
 });
 ipcMain.on('snip:save', async (_, dataURL) => {
   panelOpen = false;
+  _panelSeq = 0;
   const tab = tabMap.get(activeId);
   if (tab?.bv && tab.url !== 'newtab') try { win.addBrowserView(tab.bv); setBounds(tab.bv); } catch {}
   try {
@@ -1428,6 +1784,17 @@ ipcMain.on('settings:set', (_, patch) => {
   settings = { ...settings, ...patch };
   save(F.settings, settings);
   send('settings:set', settings);
+
+  // Update chrome height for compact mode — keeps BrowserView flush with nav bar
+  if ('compactMode' in patch) {
+    CHROME_H = settings.compactMode ? 72 : 82;
+    // Update bounds for ALL tabs so any tab switched to immediately has correct layout
+    for (const t of tabMap.values()) {
+      if (t.bv && t.url !== 'newtab' && !t.bv.webContents.isDestroyed()) {
+        try { setBounds(t.bv); } catch {}
+      }
+    }
+  }
 
   if ('spoofUserAgent' in patch && settings.spoofUserAgent) {
     const ua = SPOOF_UA;

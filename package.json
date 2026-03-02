@@ -1,6 +1,6 @@
 {
   "name": "raw-browser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Raw — privacy-first browser. Built-in ad blocking, tracker blocking, fingerprint resistance.",
   "main": "main.js",
   "scripts": {

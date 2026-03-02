@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
 
 // Apply privacy protections before any page script runs
 (function hardenPrivacy() {
@@ -134,10 +134,10 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
       };
     }
 
-    // Block permissions API
+    // Stub permissions API — return 'denied' rather than throwing (broken sites reject on error)
     if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query = function() {
-        return Promise.reject(new Error('Permission denied'));
+      navigator.permissions.query = function(desc) {
+        return Promise.resolve({ state: 'denied', onchange: null });
       };
     }
 
@@ -180,8 +180,8 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
       try {
         const _uaBrands = [
           { brand: 'Not A(Brand', version: '99' },
-          { brand: 'Google Chrome', version: '131' },
-          { brand: 'Chromium', version: '131' },
+          { brand: 'Google Chrome', version: '134' },
+          { brand: 'Chromium', version: '134' },
         ];
         Object.defineProperty(navigator, 'userAgentData', {
           get: () => ({
@@ -191,10 +191,10 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
             getHighEntropyValues: () => Promise.resolve({
               architecture: 'x86', bitness: '64',
               brands: _uaBrands,
-              fullVersionList: [{ brand: 'Google Chrome', version: '131.0.6778.86' }],
+              fullVersionList: [{ brand: 'Google Chrome', version: '134.0.6998.89' }],
               mobile: false, model: '',
               platform: 'Windows', platformVersion: '10.0.0',
-              uaFullVersion: '131.0.6778.86',
+              uaFullVersion: '134.0.6998.89',
             }),
             toJSON: () => ({ brands: _uaBrands, mobile: false, platform: 'Windows' }),
           }),
