@@ -57,6 +57,126 @@ input, select, textarea, button { color-scheme: dark; }
 body.accent-orange { --acc: #ff8c00; --acc2: #e07800; --acc-g: rgba(255,140,0,.12); --acc-f: rgba(255,140,0,.06); --acc-raw: 255,140,0; }
 body.accent-green  { --acc: #22c55e; --acc2: #16a34a; --acc-g: rgba(34,197,94,.12);  --acc-f: rgba(34,197,94,.06);  --acc-raw: 34,197,94; }
 body.accent-white  { --acc: rgba(255,255,255,.85); --acc2: rgba(255,255,255,.6); --acc-g: rgba(255,255,255,.08); --acc-f: rgba(255,255,255,.04); --acc-raw: 255,255,255; }
+
+/* Light theme — warm off-white, easy on the eyes */
+body.theme-light {
+  /* macOS/iOS-inspired palette — grey base + white elevation.
+     Softened slightly from the original for less eye-glare. */
+  --bg0:  #d4d4d6;   /* body / window background */
+  --bg1:  #dadade;   /* chrome / nav bar */
+  --bg2:  #f3f3f5;   /* elevated surfaces: cards, panels */
+  --bg3:  #e6e6e8;   /* input fills, hover trays */
+  --bg4:  #c8c8ca;   /* active / pressed */
+  --bg5:  #b2b2b5;   /* disabled */
+  --bg6:  #909098;   /* very subtle fills */
+  --ln:   rgba(0,0,0,.08);
+  --ln2:  rgba(0,0,0,.13);
+  --ln3:  rgba(0,0,0,.20);
+  /* Readable text hierarchy — not pure black, easier on eyes */
+  --t0:   #1c1c1e;
+  --t1:   #3a3a3c;
+  --t2:   #636366;
+  --t3:   #8e8e93;
+  --t4:   #c7c7cc;
+  color-scheme: light;
+  --acc:    #007a75;
+  --acc2:   #005f5b;
+  --acc-g:  rgba(0,122,117,.10);
+  --acc-f:  rgba(0,122,117,.055);
+  --acc-raw: 0,122,117;
+}
+/* Inputs and selects: light system styling */
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea { color-scheme: light !important; background: var(--bg3); color: var(--t0); border-color: var(--ln2); }
+body.theme-light { color: var(--t0); }
+/* Toolbar icon buttons must stay visually flat/transparent — only override form controls */
+body.theme-light .set-select,
+body.theme-light .set-input-text { background: var(--bg3) !important; color: var(--t0) !important; }
+/* White accent is invisible on light — override to a readable dark slate */
+body.theme-light.accent-white {
+  --acc:    #3a3a3a;
+  --acc2:   #222222;
+  --acc-g:  rgba(58,58,58,.10);
+  --acc-f:  rgba(58,58,58,.05);
+  --acc-raw: 58,58,58;
+}
+/* Chrome area */
+body.theme-light #chrome     { background: var(--bg1); border-bottom: 1px solid var(--ln2); }
+body.theme-light #tab-strip  { background: var(--bg1); }
+body.theme-light .tab        { background: transparent; color: var(--t2); }
+body.theme-light .tab.active { background: var(--bg2); color: var(--t0); border-color: var(--ln2); }
+body.theme-light .tab:hover:not(.active) { background: var(--bg4); }
+/* Toolbar icon buttons */
+body.theme-light .ib { color: var(--t2); }
+body.theme-light .ib:hover, body.theme-light .ib.active-icon { color: var(--t0); background: var(--bg4); }
+/* Sidebar */
+body.theme-light #sidebar      { background: var(--bg1); border-right: 1px solid var(--ln2); }
+body.theme-light .sb-site-ico  { background: var(--bg4); }
+body.theme-light #sidebar-add  { border-color: var(--ln3); color: var(--t3); }
+body.theme-light #sidebar-divider { background: var(--ln2); }
+/* Panels */
+body.theme-light .panel { background: var(--bg2); border-color: var(--ln2); box-shadow: 0 8px 32px rgba(0,0,0,.14); }
+body.theme-light .panel-head { border-bottom-color: var(--ln); }
+body.theme-light .panel-title { color: var(--t0); }
+body.theme-light .panel-item  { color: var(--t1); }
+body.theme-light .panel-item:hover { background: var(--bg3); }
+body.theme-light .panel-section { color: var(--t3); }
+body.theme-light .pi-u, body.theme-light .pi-time { color: var(--t3); }
+body.theme-light .panel-empty { color: var(--t3); }
+body.theme-light .panel-search input { background: var(--bg3); color: var(--t0); border-color: var(--ln2); }
+/* Context menu */
+body.theme-light .ctx  { background: var(--bg2); border: 1px solid var(--ln2); box-shadow: 0 6px 24px rgba(0,0,0,.14); }
+body.theme-light .d-item { color: var(--t0); }
+body.theme-light .d-item:hover { background: var(--acc); color: #fff; }
+body.theme-light .d-sep { background: var(--ln); }
+/* Overlay dismiss strip */
+body.theme-light #overlay { background: rgba(0,0,0,.02); }
+/* Dropdown / menu */
+body.theme-light #menu-drop { background: var(--bg2); border-color: var(--ln2); box-shadow: 0 6px 24px rgba(0,0,0,.14); }
+body.theme-light .menu-item { color: var(--t1); }
+body.theme-light .menu-item:hover { background: var(--bg3); color: var(--t0); }
+/* Omnibox suggestion list */
+body.theme-light .os-item { color: var(--t1); }
+body.theme-light .os-item:hover, body.theme-light .os-item.sel { background: var(--bg3); color: var(--t0); }
+body.theme-light .os-item-badge { background: var(--bg4); color: var(--t3); }
+/* Newtab search bar — light mode needs a visible outlined input */
+body.theme-light .nt-search {
+  background: rgba(255,255,255,.72) !important;
+  border: 1.5px solid rgba(0,0,0,.2) !important;
+  color: var(--t0) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
+body.theme-light .nt-search::placeholder { color: var(--t3) !important; }
+body.theme-light .nt-search:focus {
+  background: rgba(255,255,255,.92) !important;
+  border-color: var(--acc) !important;
+  box-shadow: 0 0 0 3px var(--acc-g), 0 1px 4px rgba(0,0,0,.07) !important;
+}
+body.theme-light .nt-s-icon { color: var(--t3) !important; }
+body.theme-light .nt-search:focus ~ div + .nt-s-icon,
+body.theme-light .nt-search-inner:focus-within .nt-s-icon { color: var(--acc) !important; }
+body.theme-light .nt-hint { color: var(--t3) !important; }
+body.theme-light .nt-clock { color: var(--t3) !important; }
+/* Newtab suggestions dropdown — fix dark background in light mode */
+body.theme-light .nt-sugg-drop {
+  background: var(--bg2) !important;
+  border-color: var(--ln2) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.14) !important;
+}
+body.theme-light .nt-search-inner.sugg-open .nt-search {
+  border-bottom-color: transparent !important;
+}
+body.theme-light .nt-search-inner.sugg-open .nt-sugg-drop {
+  border-top-color: var(--acc) !important;
+}
+body.theme-light .nt-sugg-item { color: var(--t1) !important; }
+body.theme-light .nt-sugg-item:hover,
+body.theme-light .nt-sugg-item.sel { background: var(--bg3) !important; color: var(--t0) !important; }
+body.theme-light .nt-sugg-item svg,
+body.theme-light .nt-sugg-ico { color: var(--t3) !important; }
+body.theme-light .nt-sugg-url { color: var(--t3) !important; }
+body.theme-light .nt-sugg-div { background: var(--ln2) !important; }
 body.compact { --chrome-h: 72px; --tab-h: 30px; --nav-h: 42px; }
 body.hide-favicons .tab-fav, body.hide-favicons .tab-fav-ph { display: none !important; }
 
@@ -263,8 +383,8 @@ body.platform-darwin #mac-spacer { display: block; }
   align-items: center;
   gap: 0;
   flex-shrink: 0;
-  align-self: flex-start;
-  padding: 4px 4px 0 0;
+  align-self: center;
+  padding: 0;
   -webkit-app-region: no-drag;
 }
 body.platform-win32 #win-controls,
@@ -712,6 +832,29 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
 }
 #page-snapshot img { width: 100%; height: 100%; display: block; object-fit: fill; }
 
+/* Light mode omnibox — white background so it stands out from the grey nav bar */
+body.theme-light #omnibox {
+  background: #ffffff;
+  color: #0d0d0d;
+  border-color: rgba(0,0,0,.18);
+}
+body.theme-light #omnibox::placeholder { color: #888888; }
+body.theme-light #omnibox:focus {
+  background: #ffffff;
+  border-color: rgba(0,122,117,.45);
+  box-shadow: 0 0 0 2.5px rgba(0,122,117,.12);
+}
+body.theme-light #omni-sugg {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.12);
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+}
+/* Nav row background in light mode */
+body.theme-light #nav-row {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--ln2);
+}
+
 /* Find bar */
 #find-bar {
   position: absolute; bottom: 0; right: 0;
@@ -1009,6 +1152,230 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
   letter-spacing: .02em;
 }
 #btn-snip.active-icon { color: var(--acc) !important; }
+#btn-reader.active-icon { color: var(--acc) !important; }
+#btn-passwords.active-icon { color: var(--acc) !important; }
+
+/* PASSWORD MANAGER PANEL */
+#panel-passwords { width: 295px; }
+.pw-screen { padding: 0; }
+.pw-lock-icon { display: flex; justify-content: center; padding: 24px 0 12px; color: var(--t2); }
+.pw-lock-title { text-align: center; font-size: 14px; font-weight: 600; color: var(--t0); margin-bottom: 4px; }
+.pw-lock-sub { text-align: center; font-size: 11.5px; color: var(--t3); margin-bottom: 16px; }
+.pw-master-input {
+  display: block; width: calc(100% - 32px); margin: 0 auto 8px;
+  background: var(--bg3); border: 1px solid var(--ln); border-radius: 8px;
+  padding: 8px 12px; color: var(--t0); font-family: var(--f); font-size: 13px; outline: none;
+}
+.pw-master-input:focus { border-color: rgba(0,212,200,.4); }
+.pw-lock-err { text-align: center; font-size: 11.5px; color: #e05b5b; min-height: 18px; margin-bottom: 6px; }
+.pw-unlock-btn {
+  display: block; width: calc(100% - 32px); margin: 0 auto 16px;
+  background: var(--acc); color: #000; border: none; border-radius: 8px;
+  padding: 7px 0; font-weight: 600; font-size: 13px; cursor: pointer;
+  font-family: var(--f); transition: opacity .15s;
+}
+.pw-unlock-btn:hover { opacity: .85; }
+.pw-setup-hint { text-align: center; font-size: 11px; color: var(--t3); padding: 0 16px 14px; }
+.pw-search-wrap { padding: 8px 10px 5px; }
+.pw-search {
+  width: 100%; background: var(--bg3); border: 1px solid var(--ln);
+  border-radius: 7px; padding: 5px 10px; color: var(--t0);
+  font-family: var(--f); font-size: 12px; outline: none;
+}
+.pw-search:focus { border-color: rgba(0,212,200,.3); }
+.pw-search::placeholder { color: var(--t3); }
+.pw-list { max-height: 280px; overflow-y: auto; padding: 2px 0 6px; }
+.pw-list::-webkit-scrollbar { width: 3px; }
+.pw-list::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 2px; }
+.pw-entry { display: flex; align-items: center; gap: 9px; padding: 7px 12px; cursor: pointer; transition: background .1s; }
+.pw-entry:hover { background: var(--bg3); }
+.pw-entry-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: rgba(0,212,200,.12); color: var(--acc);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.pw-entry-info { flex: 1; min-width: 0; }
+.pw-entry-domain { font-size: 12.5px; font-weight: 500; color: var(--t0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-entry-user { font-size: 11px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-entry-copy {
+  background: none; border: none; cursor: pointer;
+  color: var(--t3); padding: 3px; border-radius: 5px; transition: color .1s, background .1s;
+}
+.pw-entry-copy:hover { color: var(--acc); background: var(--bg3); }
+.pw-empty { text-align: center; font-size: 12px; color: var(--t3); padding: 24px 20px; line-height: 1.6; }
+.pw-edit-form { padding: 14px 14px 10px; }
+.pw-lbl { display: block; font-size: 11px; font-weight: 600; color: var(--t3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.pw-fi {
+  display: block; width: 100%; background: var(--bg3); border: 1px solid var(--ln);
+  border-radius: 7px; padding: 7px 10px; color: var(--t0); font-family: var(--f);
+  font-size: 12.5px; margin-bottom: 10px; outline: none; box-sizing: border-box;
+}
+.pw-fi:focus { border-color: rgba(0,212,200,.35); }
+.pw-pw-wrap { position: relative; margin-bottom: 10px; }
+.pw-pw-wrap .pw-fi { margin-bottom: 0; padding-right: 72px; }
+.pw-f-show, .pw-gen-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--t3);
+  padding: 4px; border-radius: 4px; transition: color .1s;
+}
+.pw-f-show { right: 32px; }
+.pw-f-show:hover { color: var(--acc); }
+.pw-gen-btn { right: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .03em; }
+.pw-gen-btn:hover { color: var(--acc); }
+.pw-edit-btns { display: flex; gap: 6px; margin-top: 4px; }
+.pw-save-btn {
+  flex: 1; background: var(--acc); color: #000; border: none; border-radius: 7px;
+  padding: 6px 0; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: var(--f); transition: opacity .15s;
+}
+.pw-save-btn:hover { opacity: .85; }
+.pw-cancel-btn {
+  background: var(--bg3); border: 1px solid var(--ln); color: var(--t2);
+  border-radius: 7px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; font-family: var(--f);
+}
+.pw-cancel-btn:hover { background: var(--bg4); }
+.pw-delete-btn {
+  background: rgba(224,91,91,.1); border: 1px solid rgba(224,91,91,.25); color: #e05b5b;
+  border-radius: 7px; padding: 6px 10px; font-size: 12.5px; cursor: pointer; font-family: var(--f);
+}
+.pw-delete-btn:hover { background: rgba(224,91,91,.2); }
+.pw-head-actions { display: flex; gap: 5px; align-items: center; }
+
+/* AUTOFILL TOAST */
+.af-toast {
+  position: fixed; top: 38px; right: 50px; z-index: 200000;
+  background: var(--bg2); border: 1px solid var(--ln2);
+  border-radius: 10px; box-shadow: 0 6px 30px rgba(0,0,0,.7);
+  min-width: 220px; max-width: 280px;
+  transform: translateY(-8px); opacity: 0; pointer-events: none;
+  transition: transform .2s, opacity .2s;
+}
+.af-toast.af-show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.af-toast-hdr { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 4px; }
+.af-toast-title { font-size: 11px; font-weight: 600; color: var(--t2); letter-spacing: .03em; text-transform: uppercase; }
+.af-dismiss { font-size: 11px; color: var(--t3); background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.af-dismiss:hover { color: var(--t0); background: var(--bg3); }
+.af-list { padding: 4px 6px 8px; display: flex; flex-direction: column; gap: 3px; }
+.af-item { display: flex; flex-direction: column; gap: 1px; text-align: left; padding: 7px 10px; border-radius: 7px; background: transparent; border: none; cursor: pointer; transition: background .1s; width: 100%; }
+.af-item:hover { background: var(--bg3); }
+.af-user { font-size: 12.5px; color: var(--t0); font-weight: 500; }
+.af-dom  { font-size: 10.5px; color: var(--t3); }
+
+/* INCOGNITO FAB */
+#incognito-fab {
+  position: fixed; bottom: 18px; right: 18px; z-index: 99998;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--bg3); border: 1px solid var(--ln2);
+  color: var(--t2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,.6);
+  transition: color .2s, background .2s, border-color .2s, box-shadow .2s;
+  padding: 0;
+}
+#incognito-fab:hover { color: var(--t0); background: var(--bg4); }
+#incognito-fab.incognito-on {
+  background: rgba(138,43,226,.12);
+  border-color: rgba(138,43,226,.45);
+  color: #a855f7;
+  box-shadow: 0 2px 18px rgba(138,43,226,.4);
+}
+#incognito-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #a855f7 25%, #a855f7 75%, transparent 100%);
+  z-index: 99997; opacity: 0; transition: opacity .35s; pointer-events: none;
+}
+#incognito-bar.incognito-on { opacity: 1; }
+#incognito-badge {
+  position: fixed; bottom: 64px; right: 10px; z-index: 99996;
+  background: rgba(138,43,226,.15); border: 1px solid rgba(138,43,226,.4);
+  color: #a855f7; border-radius: 8px; padding: 3px 8px;
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; white-space: nowrap;
+  opacity: 0; transform: translateY(4px);
+  transition: opacity .25s, transform .25s; pointer-events: none;
+}
+#incognito-badge.incognito-on { opacity: 1; transform: translateY(0); }
+
+/* IGNORE INTRO OVERLAY */
+#ignite-intro {
+  position: fixed; inset: 0; z-index: 2000000;
+  background: #06040f;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .5s;
+}
+#ignite-intro.show { opacity: 1; pointer-events: auto; }
+.ig-step { display: flex; flex-direction: column; align-items: center; max-width: 540px; width: 100%; padding: 24px 32px; }
+.ig-intro-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(168,85,247,.7); margin-bottom: 14px; }
+.ig-intro-h1 { font-size: 46px; font-weight: 800; color: #fff; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 8px; text-align: center; }
+.ig-intro-h1 span { background: linear-gradient(135deg,#a855f7,#6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.ig-intro-sub { font-size: 15px; color: rgba(200,180,255,.55); margin-bottom: 36px; text-align: center; }
+/* Monitor animation */
+.ig-scene { position: relative; width: 220px; height: 150px; margin-bottom: 32px; }
+.ig-monitor {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 170px; height: 110px; border: 2.5px solid rgba(168,85,247,.4);
+  border-radius: 8px; overflow: hidden; background: #0d0a1a;
+}
+.ig-monitor-content { padding: 10px 12px; }
+.ig-mc-line { height: 7px; border-radius: 3px; margin-bottom: 7px; background: rgba(168,85,247,.18); animation: ig-lines 2.4s infinite; }
+.ig-mc-line:nth-child(1) { width: 75%; animation-delay: 0s; }
+.ig-mc-line:nth-child(2) { width: 55%; animation-delay: .15s; }
+.ig-mc-line:nth-child(3) { width: 85%; animation-delay: .3s; }
+.ig-mc-line:nth-child(4) { width: 40%; animation-delay: .45s; }
+@keyframes ig-lines { 0%,100%{opacity:.18} 50%{opacity:.45} }
+.ig-monitor-stand {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  width: 2px; height: 20px; background: rgba(168,85,247,.3);
+}
+.ig-monitor-base {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  width: 38px; height: 6px; border-radius: 3px; background: rgba(168,85,247,.2);
+}
+/* Shield overlay that slides in */
+.ig-shield-overlay {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%) translateY(-110%);
+  width: 170px; height: 110px; border-radius: 8px;
+  background: linear-gradient(135deg,rgba(88,28,135,.97),rgba(49,17,95,.99));
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px;
+  animation: ig-shield-slide 2.8s ease-in-out 1.2s forwards;
+  border: 1px solid rgba(168,85,247,.5);
+}
+@keyframes ig-shield-slide {
+  0%   { transform: translateX(-50%) translateY(-110%); opacity: 0; }
+  20%  { opacity: 1; }
+  40%  { transform: translateX(-50%) translateY(0%); }
+  100% { transform: translateX(-50%) translateY(0%); opacity: 1; }
+}
+.ig-shield-lock { color: #a855f7; animation: ig-lock-pop .4s ease 3.6s both; }
+@keyframes ig-lock-pop { 0%{transform:scale(.5);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+.ig-shield-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: rgba(200,180,255,.7); text-transform: uppercase; opacity: 0; animation: ig-lock-pop .4s ease 3.8s both; }
+/* Person */
+.ig-person { position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%); }
+/* Info step */
+.ig-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 24px; }
+.ig-info-card {
+  background: rgba(88,28,135,.12); border: 1px solid rgba(168,85,247,.18);
+  border-radius: 12px; padding: 14px 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.ig-info-icon { color: #a855f7; }
+.ig-info-title { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.88); }
+.ig-info-desc { font-size: 11px; color: rgba(200,180,255,.45); line-height: 1.5; }
+.ig-warn-box {
+  background: rgba(255,160,40,.06); border: 1px solid rgba(255,160,40,.22);
+  border-radius: 10px; padding: 11px 14px; font-size: 11.5px; color: rgba(255,190,100,.65);
+  line-height: 1.55; width: 100%; margin-bottom: 24px;
+}
+.ig-cta-btn {
+  background: linear-gradient(135deg,#7c3aed,#a855f7); color: #fff; border: none;
+  border-radius: 12px; padding: 13px 32px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: var(--f); transition: opacity .15s, transform .1s;
+  letter-spacing: -.01em;
+}
+.ig-cta-btn:hover { opacity: .9; transform: translateY(-1px); }
+.ig-back-link { margin-top: 14px; font-size: 12px; color: rgba(168,85,247,.5); cursor: pointer; background: none; border: none; font-family: var(--f); }
+.ig-back-link:hover { color: rgba(168,85,247,.8); }
+.ig-dots { display: flex; gap: 6px; margin-bottom: 32px; }
+.ig-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(168,85,247,.25); transition: background .3s; }
+.ig-dot.on { background: #a855f7; }
 
 /* PANEL DROPDOWNS */
 .panel {
@@ -1407,6 +1774,17 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .set-btn-sm.acc { color: var(--acc); border-color: rgba(0,212,200,.25); }
 .set-btn-sm.acc:hover { background: var(--acc-f); border-color: rgba(0,212,200,.45); }
 
+/* Theme picker buttons */
+.theme-picker { display: flex; gap: 8px; }
+.theme-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+  font-family: var(--f); cursor: pointer; border: 1.5px solid var(--ln2);
+  background: var(--bg3); color: var(--t1); transition: border-color .14s, background .14s;
+}
+.theme-btn svg { flex-shrink: 0; }
+.theme-btn:hover { border-color: rgba(var(--acc-raw),.3); background: var(--bg4); }
+.theme-btn.on { border-color: rgba(var(--acc-raw),.55); background: rgba(var(--acc-raw),.1); color: var(--acc); }
 /* Accent swatches */
 .accent-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
 .accent-swatch {
@@ -1921,14 +2299,13 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 }
 #setup-card-inner {
   position: relative; z-index: 1;
-  padding: 18px 26px 18px;
-  max-height: 85vh; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+  padding: 14px 24px 14px;
+  max-height: 82vh; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
 }
 
 .setup-step {
   display: none; flex-direction: column;
-  align-items: center; text-align: center; gap: 6px;
-  min-height: 160px;
+  align-items: center; text-align: center; gap: 4px;
 }
 .setup-step.active {
   display: flex;
@@ -2081,12 +2458,13 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 @keyframes pillFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
 .setup-pill-icon{color:var(--acc);flex-shrink:0;display:flex;width:22px;height:22px;align-items:center;justify-content:center;}
 /* Setup: browser import step */
-.setup-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%;max-width:440px;margin-top:10px;}
-.setup-import-detecting,.setup-import-none{grid-column:1/-1;text-align:center;font-size:12px;color:var(--t4);padding:16px 0;}
-.setup-import-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.07);border-radius:12px;transition:border-color .15s,background .15s;cursor:default;}
-.setup-import-card:hover:not(.sic-not-found){border-color:rgba(var(--acc-raw),.3);background:rgba(var(--acc-raw),.04);}
-.sic-not-found{opacity:.38;}
-.sic-not-installed{font-size:9.5px;color:var(--t4);margin-top:1px;}
+.setup-import-grid{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:420px;margin-top:12px;max-height:260px;overflow-y:auto;padding-right:2px;}
+.setup-import-grid::-webkit-scrollbar{width:4px;}
+.setup-import-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px;}
+.setup-import-detecting,.setup-import-none{text-align:center;font-size:12px;color:var(--t3);padding:20px 0;}
+.setup-import-card{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.035);border:1.5px solid rgba(255,255,255,.08);border-radius:12px;transition:border-color .15s,background .15s;cursor:default;}
+.setup-import-card:hover{border-color:rgba(var(--acc-raw),.32);background:rgba(var(--acc-raw),.05);}
+.sic-detected{font-size:9.5px;color:var(--t3);margin-top:1px;}
 .sic-logo{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:rgba(255,255,255,.08) center/20px no-repeat;}
 .sic-logo-chrome{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='12' fill='%234285f4'/%3E%3Ccircle cx='24' cy='24' r='5' fill='white'/%3E%3Cpath d='M24 12h18.9c-2.5-7-9-12-16.9-12A19.9 19.9 0 0 0 4 18z' fill='%23ea4335'/%3E%3Cpath d='M7.1 30L-2.4 13.5A20 20 0 0 0 24 44l9.5-16.5A10 10 0 0 1 24 34a10 10 0 0 1-8.7-5z' fill='%2334a853'/%3E%3Cpath d='M42.9 30A20 20 0 0 0 44 24a20 20 0 0 0-1.1-6h-18.8a10 10 0 0 1 3.4 13.5z' fill='%23fbbc05'/%3E%3C/svg%3E");}
 .sic-logo-edge{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M8 28c0 8.8 7.2 16 16 16s16-7.2 16-16H8z' fill='%230078d4'/%3E%3Cpath d='M4 22c0-11 9-20 20-20 7 0 13.2 3.6 16.8 9H20c-6.6 0-12 5.4-12 12v3H4v-4z' fill='%2305a6f0'/%3E%3C/svg%3E");}
@@ -2112,6 +2490,8 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .sic-btn{padding:3px 9px;font-size:10px;font-weight:700;border:1px solid rgba(var(--acc-raw),.3);border-radius:6px;background:rgba(var(--acc-raw),.07);color:var(--acc);cursor:pointer;font-family:var(--f);transition:background .12s;white-space:nowrap;flex-shrink:0;}
 .sic-btn:hover:not(:disabled){background:rgba(var(--acc-raw),.18);}
 .sic-btn:disabled{opacity:.4;cursor:default;}
+.sic-btn.importing{background:linear-gradient(90deg,rgba(var(--acc-raw),.05) 0%,var(--acc) 45%,var(--acc2) 55%,rgba(var(--acc-raw),.05) 100%);background-size:250% 100%;animation:importWaterWave 1.4s ease infinite;color:#000;border-color:var(--acc);opacity:1!important;pointer-events:none;}
+@keyframes importWaterWave{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 .sic-btn.done-import{background:rgba(76,217,100,.12);border-color:rgba(76,217,100,.3);color:#4cd964;}
 .setup-import-header{font-size:10.5px;color:var(--t4);margin-top:6px;margin-bottom:2px;width:100%;max-width:440px;text-align:left;}
 .setup-import-status{font-size:11px;color:var(--acc);margin-top:7px;min-height:15px;opacity:.9;}
@@ -2400,6 +2780,13 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <line x1="4.7" y1="9.4" x2="12.5" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
           </svg>
         </button>
+        <button class="ib" id="btn-passwords" title="Password Manager">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <rect x="2" y="5.5" width="9" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.15"/>
+            <path d="M4.5 5.5V4a2 2 0 1 1 4 0v1.5" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/>
+            <circle cx="6.5" cy="8.5" r="1" fill="currentColor" opacity=".65"/>
+          </svg>
+        </button>
         <button class="ib" id="btn-notes" title="Notes">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
             <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.2"/>
@@ -2502,10 +2889,9 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
                  autocomplete="off" spellcheck="false">
           <div id="nt-sugg" class="nt-sugg-drop"></div>
         </div>
-        <p class="nt-hint" id="nt-hint">↵ search &nbsp;·&nbsp; all traffic protected</p>
       </div>
       <div class="nt-clock" id="nt-clock"></div>
-      <div class="nt-privacy">☠ Raw Browser — No tracking</div>
+
     </div>
 
     <div id="find-bar">
@@ -2522,11 +2908,6 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
       </button>
     </div>
   </div>
-</div>
-
-<!-- MAIN MENU DROP -->
-<div class="drop" id="menu-drop">
-  <style>#menu-drop{display:none!important}</style>
 </div>
 
 <!-- GEO LOCATION PANEL -->
@@ -2758,6 +3139,79 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
     <div id="notes-footer">
       <span id="notes-chars">0 chars</span>
       <span id="notes-saved-ind" style="font-size:10.5px;color:var(--acc);opacity:0;transition:opacity .4s">Saved</span>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MANAGER PANEL -->
+<div class="panel" id="panel-passwords">
+  <div class="panel-head">
+    <span class="panel-title">Passwords</span>
+    <div class="pw-head-actions">
+      <button id="pw-add-btn" title="Add entry" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <line x1="6.5" y1="2" x2="6.5" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="2" y1="6.5" x2="11" y2="6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="pw-lock-btn" title="Lock vault" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <rect x="2" y="5.5" width="9" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M4.5 5.5V4a2 2 0 1 1 4 0v1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <!-- LOCK SCREEN -->
+  <div id="pw-lock-screen" class="pw-screen">
+    <div class="pw-lock-icon">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+        <rect x="5" y="15" width="24" height="15" rx="3" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M11 15V11.5a6 6 0 1 1 12 0V15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="17" cy="22" r="2.2" fill="currentColor" opacity=".5"/>
+        <line x1="17" y1="24" x2="17" y2="27" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+      </svg>
+    </div>
+    <div id="pw-lock-title" class="pw-lock-title">Unlock Vault</div>
+    <div class="pw-lock-sub">Enter your master password</div>
+    <input id="pw-master-input" class="pw-master-input" type="password" placeholder="Master password…" autocomplete="off" spellcheck="false"/>
+    <div id="pw-lock-err" class="pw-lock-err"></div>
+    <button id="pw-unlock-btn" class="pw-unlock-btn">Unlock</button>
+    <div id="pw-setup-hint" class="pw-setup-hint" style="display:none">First use — this password encrypts your vault. Don’t forget it.</div>
+  </div>
+  <!-- VAULT VIEW -->
+  <div id="pw-vault-screen" class="pw-screen" style="display:none">
+    <div class="pw-search-wrap">
+      <input id="pw-search" class="pw-search" type="text" placeholder="Search…" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div id="pw-list" class="pw-list"></div>
+    <div id="pw-empty" class="pw-empty" style="display:none">No saved passwords yet.<br>Click <b>+</b> above to add one.</div>
+  </div>
+  <!-- EDIT VIEW -->
+  <div id="pw-edit-screen" class="pw-screen" style="display:none">
+    <div class="pw-edit-form">
+      <label class="pw-lbl">Site / Domain</label>
+      <input id="pw-f-domain" class="pw-fi" type="text" placeholder="example.com" autocomplete="off"/>
+      <label class="pw-lbl">Username / Email</label>
+      <input id="pw-f-user" class="pw-fi" type="text" placeholder="you@example.com" autocomplete="off"/>
+      <label class="pw-lbl">Password</label>
+      <div class="pw-pw-wrap">
+        <input id="pw-f-pass" class="pw-fi" type="password" placeholder="Password" autocomplete="off"/>
+        <button id="pw-f-show" class="pw-f-show" title="Show/hide">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M1 6.5C2.5 3.5 4.5 2 6.5 2S10.5 3.5 12 6.5c-1.5 3-3.5 4.5-5.5 4.5S2.5 9.5 1 6.5Z" stroke="currentColor" stroke-width="1.1"/>
+            <circle cx="6.5" cy="6.5" r="1.7" stroke="currentColor" stroke-width="1.1"/>
+          </svg>
+        </button>
+        <button id="pw-gen-btn" class="pw-gen-btn" title="Generate strong password">GEN</button>
+      </div>
+      <label class="pw-lbl">Note <span style="opacity:.45;font-weight:400">(optional)</span></label>
+      <input id="pw-f-note" class="pw-fi" type="text" placeholder="Any note…" autocomplete="off"/>
+      <div class="pw-edit-btns">
+        <button id="pw-save-btn" class="pw-save-btn">Save</button>
+        <button id="pw-cancel-edit-btn" class="pw-cancel-btn">Cancel</button>
+        <button id="pw-delete-btn" class="pw-delete-btn" style="display:none">Delete</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3172,6 +3626,23 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="set-section-title">Appearance</div>
 
           <div class="set-card">
+            <div class="set-card-title">Theme</div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Browser Theme</span><small>Choose between dark and light mode</small></div>
+              <div class="theme-picker">
+                <button class="theme-btn on" data-theme="dark">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9.5 7.5A4.5 4.5 0 0 1 5 3a4.5 4.5 0 1 0 4.5 4.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                  Dark
+                </button>
+                <button class="theme-btn" data-theme="light">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 1v1.5M6.5 10.5V12M1 6.5h1.5M10.5 6.5H12M2.8 2.8l1 1M9.2 9.2l1 1M9.2 2.8l-1 1M3.8 9.2l-1 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                  Light
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-card">
             <div class="set-card-title">Accent Color</div>
             <div class="set-r" style="flex-direction:column;align-items:flex-start;gap:10px">
               <div class="accent-swatches" id="accent-swatches">
@@ -3427,6 +3898,10 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <label class="tog"><input type="checkbox" id="tb-snip" checked><span class="tog-tr"></span></label>
             </div>
             <div class="set-r">
+              <div class="set-r-lbl"><span>Password Manager</span><small>Encrypted local vault with autofill</small></div>
+              <label class="tog"><input type="checkbox" id="tb-passwords" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
               <div class="set-r-lbl"><span>Notes</span><small>Quick notes panel that saves locally</small></div>
               <label class="tog"><input type="checkbox" id="tb-notes" checked><span class="tog-tr"></span></label>
             </div>
@@ -3441,6 +3916,10 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <div class="set-r">
               <div class="set-r-lbl"><span>Add-Ons</span><small>Manage per-site content enhancements</small></div>
               <label class="tog"><input type="checkbox" id="tb-ext" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Incognito Button</span><small>Show the private mode launcher in the corner</small></div>
+              <label class="tog"><input type="checkbox" id="tb-ig-fab" checked><span class="tog-tr"></span></label>
             </div>
           </div>
         </div>
@@ -3837,8 +4316,8 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
-  // Discard stale snapshot if all panels are already closed
-  if (!document.querySelector('.panel.on')) return;
+  // Discard stale snapshot if all panels are closed AND no tab ctx menu is open
+  if (!document.querySelector('.panel.on') && !document.getElementById('_ctx')) return;
   // Reuse existing <img> so the browser doesn't thrash the DOM on every live-refresh frame
   let img = snap.querySelector('img');
   if (!img) { img = document.createElement('img'); snap.appendChild(img); }
@@ -4027,12 +4506,14 @@ function renderTabs() {
 
 function showTabCtx(tab, cx, cy) {
   document.getElementById('_ctx')?.remove();
-  // Only remove the BV when the active tab is a real website (has a BV).
-  // If we're on the newtab homepage, the context menu renders fine in the HTML
-  // layer and sending panel:show:instant would needlessly hide the newtab layer.
+  // Park the BV so the context menu is fully interactive — BrowserViews render
+  // above all BrowserWindow DOM regardless of z-index, so without parking the
+  // bottom portion of the menu (which drops below the chrome bar) would be
+  // covered and unclickable. A fresh snapshot is always available because we
+  // take one immediately at did-stop-loading, so there's no visible black flash.
   const activeTab = S.tabs.find(t => t.id === S.activeId);
   if (activeTab && activeTab.url !== 'newtab') {
-    ipcRenderer.send('panel:show:sync');
+    ipcRenderer.send('panel:show:instant');
   }
   const m = document.createElement('div');
   m.id = '_ctx'; m.className = 'ctx';
@@ -4053,7 +4534,13 @@ function showTabCtx(tab, cx, cy) {
     m.style.cssText = `position:fixed;top:${Math.max(top,6)}px;left:${Math.max(left,6)}px`;
   });
   m.querySelectorAll('.d-item[data-a]').forEach(el => {
-    el.addEventListener('click', () => { dispatch(el.dataset.a, tab.id); m.remove(); });
+    el.addEventListener('click', () => {
+      dispatch(el.dataset.a, tab.id);
+      m.remove();
+      document.removeEventListener('mousedown', away);
+      // Restore BV that was parked for the snapshot
+      if (!document.querySelector('.panel.on')) ipcRenderer.send('panel:hide');
+    });
   });
   const away = (e) => {
     // If click is inside the context menu, let the click handler fire first
@@ -4576,6 +5063,7 @@ const PANEL_MAP = {
   'btn-poison':   'panel-poison',
   'btn-ytdlp':    'panel-ytdlp',
   'btn-notes':    'panel-notes',
+  'btn-passwords':'panel-passwords',
   'btn-calc':     'panel-calc',
   'btn-geo':      'panel-geo',
   'btn-media':    'panel-media',
@@ -4634,9 +5122,10 @@ function openPanel(panelId, btnId) {
     if (!panel.classList.contains('on')) return;
     positionPanel(panel, btn);
   }));
-  // Remove the BV and show a cached snapshot behind the panel.
-  // Videos/audio keep playing because Chromium background suspension is disabled
-  // globally via --disable-renderer-backgrounding + --disable-background-media-suspend.
+  // Park the BV as a 2×2px square hidden behind the nav bar.
+  // The BV stays ATTACHED (compositor frame sink stays live → video never suspends).
+  // The snapshot element covers the full content area so the user sees their
+  // website frozen behind the panel — no squish, no black area.
   ipcRenderer.send('panel:show:instant');
 }
 
@@ -4649,7 +5138,7 @@ function closeAllDrops() {
   const overlay = $('overlay');
   if (overlay) { overlay.classList.remove('on'); overlay.classList.remove('panel-active'); }
   const rail = $('panel-rail');
-  if (rail) rail.classList.remove('on');
+  if (rail) { rail.classList.remove('on'); rail.style.width = ''; }
   ipcRenderer.send('panel:hide');
 }
 
@@ -5252,9 +5741,11 @@ function _updateVseps() {
     'tb-bm':      'btn-bm',      'tb-bmPanel': 'btn-bm-panel',
     'tb-hist':    'btn-hist',    'tb-dl':       'btn-dl',
     'tb-shield':  'btn-shield',  'tb-poison':   'btn-poison',
-    'tb-ytdlp':   'btn-ytdlp',  'tb-snip':  'btn-snip',
-    'tb-notes':   'btn-notes',  'tb-calc':  'btn-calc',
-    'tb-geo':     'btn-geo',    'tb-ext':   'btn-ext',
+    'tb-ytdlp':   'btn-ytdlp',  'tb-snip':    'btn-snip',
+    'tb-passwords': 'btn-passwords',
+    'tb-notes':   'btn-notes',    'tb-calc':      'btn-calc',
+    'tb-geo':     'btn-geo',      'tb-ext':       'btn-ext',
+    'tb-ig-fab':  'incognito-fab',
   };
   for (const [cbId, btnId] of Object.entries(_tbMap)) {
     const cb = $(cbId);
@@ -5262,6 +5753,11 @@ function _updateVseps() {
     cb.addEventListener('change', () => {
       const btn = $(btnId);
       if (btn) btn.style.display = cb.checked ? '' : 'none';
+      if (cbId === 'tb-ig-fab') {
+        const barEl = $('incognito-bar'); const badgeEl = $('incognito-badge');
+        if (barEl)   barEl.style.display   = cb.checked ? '' : 'none';
+        if (badgeEl) badgeEl.style.display = cb.checked ? '' : 'none';
+      }
       const tb = { ...(S.settings?.toolbar || {}) };
       tb[cbId] = cb.checked;
       ipcRenderer.send('settings:set', { toolbar: tb });
@@ -5297,6 +5793,9 @@ function sidebarAdd() {
   const t = S.tabs?.find(t => t.id === S.activeId);
   if (urlInp)  urlInp.value  = (t && t.url !== 'newtab') ? t.url  : '';
   if (nameInp) nameInp.value = (t && t.url !== 'newtab') ? (t.title || '') : '';
+  // Park the BV below the window so the modal overlay captures mouse events
+  // (BrowserViews always render above BrowserWindow DOM and eat clicks otherwise)
+  ipcRenderer.send('sidebar:modal:open');
   modal.classList.add('on');
   setTimeout(() => urlInp?.select(), 40);
 }
@@ -5314,10 +5813,12 @@ function sidebarAddSubmit() {
     ipcRenderer.send('settings:set', { ...S.settings, sidebarSites: sites });
   }
   $('sb-add-modal')?.classList.remove('on');
+  ipcRenderer.send('sidebar:modal:close');
 }
 
 function sidebarAddCancel() {
   $('sb-add-modal')?.classList.remove('on');
+  ipcRenderer.send('sidebar:modal:close');
 }
 
 function sidebarRm(i, e) {
@@ -5631,6 +6132,11 @@ function applySettings(s) {
   if (s.accentColor && accentMap[s.accentColor]) document.body.classList.add(accentMap[s.accentColor]);
   document.querySelectorAll('.accent-swatch').forEach(sw => sw.classList.toggle('on', sw.dataset.accent === (s.accentColor || 'teal')));
 
+  // Theme (dark / light)
+  const theme = s.theme || 'dark';
+  document.body.classList.toggle('theme-light', theme === 'light');
+  document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('on', btn.dataset.theme === theme));
+
   // Swap newtab logo to match accent colour
   const _logoImg = $('nt-logo-img');
   if (_logoImg) {
@@ -5691,9 +6197,11 @@ function applySettings(s) {
     'tb-bm':      'btn-bm',      'tb-bmPanel': 'btn-bm-panel',
     'tb-hist':    'btn-hist',    'tb-dl':       'btn-dl',
     'tb-shield':  'btn-shield',  'tb-poison':   'btn-poison',
-    'tb-ytdlp':   'btn-ytdlp',  'tb-snip':  'btn-snip',
-    'tb-notes':   'btn-notes',  'tb-calc':  'btn-calc',
-    'tb-geo':     'btn-geo',    'tb-ext':   'btn-ext',
+    'tb-ytdlp':   'btn-ytdlp',  'tb-snip':    'btn-snip',
+    'tb-passwords': 'btn-passwords',
+    'tb-notes':   'btn-notes',    'tb-calc':      'btn-calc',
+    'tb-geo':     'btn-geo',      'tb-ext':       'btn-ext',
+    'tb-ig-fab':  'incognito-fab',
   };
   const tb = s.toolbar || {};
   for (const [cbId, btnId] of Object.entries(_tbMap)) {
@@ -5703,6 +6211,11 @@ function applySettings(s) {
     if (cb)  cb.checked = vis;
     if (btn) btn.style.display = vis ? '' : 'none';
   }
+  // Also sync bar/badge visibility with FAB
+  { const igVis = tb['tb-ig-fab'] !== false;
+    const barEl = $('incognito-bar'); const badgeEl = $('incognito-badge');
+    if (barEl)   barEl.style.display   = igVis ? '' : 'none';
+    if (badgeEl) badgeEl.style.display = igVis ? '' : 'none'; }
   _updateVseps();
   // Restore extension toggles
   const exts = s.extensions || {};
@@ -5823,6 +6336,10 @@ if (selTranslateLang) selTranslateLang.addEventListener('change', function(){ ip
 
 document.querySelectorAll('.accent-swatch').forEach(sw => sw.addEventListener('click', function() {
   ipcRenderer.send('settings:set', { accentColor: this.dataset.accent });
+}));
+
+document.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', function() {
+  ipcRenderer.send('settings:set', { theme: this.dataset.theme });
 }));
 
 const setBgColor = $('set-bg-color');
@@ -6193,6 +6710,298 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
   if (btn) btn.addEventListener('click', startSnip);
 })();
 
+/* Password Manager ─────────────────────────────────────────────────────────── */
+(function() {
+  const SALT_KEY  = 'rb-vault-salt';
+  const VAULT_KEY = 'rb-vault-v1';
+  const SENTINEL  = 'rb-vault-ok';
+  let _key     = null;
+  let _entries = [];
+  let _editId  = null;
+  let _autofillPending = null;
+
+  // ── Crypto ───────────────────────────────────────────────────────────────────
+  function b64(buf)   { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+  function unb64(s)   { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+  function rnd(n)     { return crypto.getRandomValues(new Uint8Array(n)); }
+
+  async function deriveKey(password, salt) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt','decrypt']
+    );
+  }
+
+  async function aeEncrypt(key, txt) {
+    const iv = rnd(12);
+    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(txt));
+    return b64(iv) + '.' + b64(ct);
+  }
+
+  async function aeDecrypt(key, str) {
+    const [a, b] = str.split('.');
+    const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv: unb64(a) }, key, unb64(b));
+    return new TextDecoder().decode(pt);
+  }
+
+  function getSalt() {
+    const s = localStorage.getItem(SALT_KEY);
+    if (s) return unb64(s);
+    const salt = rnd(32);
+    localStorage.setItem(SALT_KEY, b64(salt));
+    return salt;
+  }
+  function isSetup() { return !!localStorage.getItem(VAULT_KEY); }
+
+  async function _saveVault() {
+    const sentinel = await aeEncrypt(_key, SENTINEL);
+    const data     = await aeEncrypt(_key, JSON.stringify(_entries));
+    localStorage.setItem(VAULT_KEY, JSON.stringify({ sentinel, data }));
+  }
+
+  async function _loadVault(key) {
+    const { sentinel, data } = JSON.parse(localStorage.getItem(VAULT_KEY));
+    if (await aeDecrypt(key, sentinel) !== SENTINEL) throw new Error('bad');
+    return JSON.parse(await aeDecrypt(key, data));
+  }
+
+  // ── UI helpers ───────────────────────────────────────────────────────────────
+  function _esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function _showScreen(name) {
+    ['lock','vault','edit'].forEach(n => {
+      const el = document.getElementById('pw-' + n + '-screen');
+      if (el) el.style.display = n === name ? '' : 'none';
+    });
+    const isVault = name === 'vault';
+    const addBtn  = document.getElementById('pw-add-btn');
+    const lockBtn = document.getElementById('pw-lock-btn');
+    if (addBtn)  addBtn.style.display  = isVault ? '' : 'none';
+    if (lockBtn) lockBtn.style.display = isVault ? '' : 'none';
+  }
+
+  function _renderList(q) {
+    const list  = document.getElementById('pw-list');
+    const empty = document.getElementById('pw-empty');
+    if (!list) return;
+    const query = (q || '').toLowerCase();
+    const vis   = query
+      ? _entries.filter(e => e.domain.toLowerCase().includes(query) || e.username.toLowerCase().includes(query))
+      : _entries;
+    list.innerHTML = '';
+    if (!vis.length) { if (empty) empty.style.display = ''; return; }
+    if (empty) empty.style.display = 'none';
+    vis.forEach(function(e) {
+      const row = document.createElement('div');
+      row.className = 'pw-entry';
+      row.innerHTML =
+        '<div class="pw-entry-icon">' + _esc(e.domain.charAt(0).toUpperCase()) + '</div>' +
+        '<div class="pw-entry-info">' +
+          '<div class="pw-entry-domain">' + _esc(e.domain) + '</div>' +
+          '<div class="pw-entry-user">'   + _esc(e.username) + '</div>' +
+        '</div>' +
+        '<button class="pw-entry-copy" title="Copy password">' +
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none">' +
+            '<rect x="4" y="4" width="7" height="7" rx="1.2" stroke="currentColor" stroke-width="1.1"/>' +
+            '<path d="M8 4V2.5A1.5 1.5 0 0 0 6.5 1h-4A1.5 1.5 0 0 0 1 2.5v4A1.5 1.5 0 0 0 2.5 8H4" stroke="currentColor" stroke-width="1.05"/>' +
+          '</svg>' +
+        '</button>';
+      row.querySelector('.pw-entry-copy').addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        navigator.clipboard.writeText(e.password).then(function() {
+          ipcRenderer.send('toast','Password copied','teal');
+        });
+      });
+      row.addEventListener('click', function() { _openEdit(e.id); });
+      list.appendChild(row);
+    });
+  }
+
+  function _openEdit(id) {
+    _editId = id || null;
+    const e = id ? _entries.find(function(x){ return x.id === id; }) : null;
+    document.getElementById('pw-f-domain').value = e ? e.domain   : (_autofillPending || '');
+    document.getElementById('pw-f-user'  ).value = e ? e.username : '';
+    document.getElementById('pw-f-pass'  ).value = e ? e.password : '';
+    document.getElementById('pw-f-note'  ).value = e ? (e.note || '') : '';
+    document.getElementById('pw-f-pass'  ).type  = 'password';
+    document.getElementById('pw-delete-btn').style.display = id ? '' : 'none';
+    _showScreen('edit');
+    setTimeout(function(){ document.getElementById('pw-f-domain').focus(); }, 50);
+  }
+
+  async function _saveEdit() {
+    const domain   = (document.getElementById('pw-f-domain').value || '').trim();
+    const username = (document.getElementById('pw-f-user'  ).value || '').trim();
+    const password = document.getElementById('pw-f-pass'  ).value;
+    const note     = (document.getElementById('pw-f-note'  ).value || '').trim();
+    if (!domain || !username || !password) {
+      ipcRenderer.send('toast','Fill in domain, username and password','err');
+      return;
+    }
+    if (_editId) {
+      const idx = _entries.findIndex(function(e){ return e.id === _editId; });
+      if (idx !== -1) _entries[idx] = Object.assign({}, _entries[idx], { domain, username, password, note, updated: Date.now() });
+    } else {
+      _entries.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), domain, username, password, note, updated: Date.now() });
+    }
+    await _saveVault();
+    _showScreen('vault');
+    _renderList(document.getElementById('pw-search').value);
+    ipcRenderer.send('toast','Saved','teal');
+  }
+
+  async function _deleteEntry() {
+    if (!_editId) return;
+    _entries = _entries.filter(function(e){ return e.id !== _editId; });
+    await _saveVault();
+    _editId = null;
+    _showScreen('vault');
+    _renderList(document.getElementById('pw-search').value);
+    ipcRenderer.send('toast','Deleted','teal');
+  }
+
+  async function _unlock() {
+    const mp    = document.getElementById('pw-master-input').value;
+    const errEl = document.getElementById('pw-lock-err');
+    errEl.textContent = '';
+    if (!mp) return;
+    try {
+      const salt = getSalt();
+      const key  = await deriveKey(mp, salt);
+      if (!isSetup()) {
+        _key = key; _entries = [];
+        await _saveVault();
+      } else {
+        _entries = await _loadVault(key);
+        _key = key;
+      }
+      _showScreen('vault');
+      _renderList();
+    } catch(err) {
+      errEl.textContent = 'Wrong master password.';
+      document.getElementById('pw-master-input').value = '';
+      document.getElementById('pw-master-input').focus();
+    }
+  }
+
+  function _genPwd(len) {
+    const a = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*';
+    let s = ''; const r = rnd(len || 18);
+    for (var i = 0; i < r.length; i++) s += a[r[i] % a.length];
+    return s;
+  }
+
+  function _onPanelOpen() {
+    if (_key) {
+      _showScreen('vault');
+      _renderList(document.getElementById('pw-search') ? document.getElementById('pw-search').value : '');
+    } else {
+      const setup = !isSetup();
+      document.getElementById('pw-lock-title').textContent   = setup ? 'Create Vault' : 'Unlock Vault';
+      document.getElementById('pw-unlock-btn').textContent   = setup ? 'Create'       : 'Unlock';
+      document.getElementById('pw-setup-hint').style.display = setup ? '' : 'none';
+      document.getElementById('pw-lock-err').textContent     = '';
+      _showScreen('lock');
+      setTimeout(function(){ document.getElementById('pw-master-input').focus(); }, 80);
+    }
+  }
+
+  // ── Autofill ─────────────────────────────────────────────────────────────────
+  function _normDomain(d) {
+    return (d || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  }
+
+  ipcRenderer.on('autofill:query', function(_, data) {
+    if (!_key) return;
+    const nd = _normDomain(data.domain);
+    const matches = _entries.filter(function(e) {
+      const ed = _normDomain(e.domain);
+      return ed === nd || nd.endsWith('.' + ed) || ed.endsWith('.' + nd);
+    });
+    if (!matches.length) return;
+    const toast = document.getElementById('autofill-toast');
+    const list  = document.getElementById('autofill-list');
+    if (!toast || !list) return;
+    list.innerHTML = '';
+    matches.forEach(function(m) {
+      const btn = document.createElement('button');
+      btn.className = 'af-item';
+      btn.innerHTML = '<span class="af-user">' + _esc(m.username) + '</span>' +
+                      '<span class="af-dom">' + _esc(m.domain) + '</span>';
+      btn.addEventListener('click', function() {
+        ipcRenderer.send('autofill:fill', { username: m.username, password: m.password });
+        toast.classList.remove('af-show');
+        ipcRenderer.send('toast','Autofilled','teal');
+      });
+      list.appendChild(btn);
+    });
+    toast.classList.add('af-show');
+    clearTimeout(toast._afTimer);
+    toast._afTimer = setTimeout(function(){ toast.classList.remove('af-show'); }, 7000);
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  function _init() {
+    const btn = document.getElementById('btn-passwords');
+    if (btn) {
+      btn.addEventListener('click', function() {
+        const p = document.getElementById('panel-passwords');
+        if (p && p.classList.contains('on')) {
+          if (typeof closeAllDrops === 'function') closeAllDrops();
+        } else {
+          if (typeof openPanel === 'function') openPanel('panel-passwords', 'btn-passwords');
+          _onPanelOpen();
+        }
+      });
+    }
+    const mi = document.getElementById('pw-master-input');
+    if (mi) mi.addEventListener('keydown', function(e){ if (e.key === 'Enter') _unlock(); });
+    const ub = document.getElementById('pw-unlock-btn');
+    if (ub) ub.addEventListener('click', _unlock);
+    const ab = document.getElementById('pw-add-btn');
+    if (ab) ab.addEventListener('click', function(){ _openEdit(null); });
+    const lb = document.getElementById('pw-lock-btn');
+    if (lb) lb.addEventListener('click', function() {
+      _key = null; _entries = [];
+      _showScreen('lock');
+      document.getElementById('pw-master-input').value = '';
+      document.getElementById('pw-lock-err').textContent = '';
+    });
+    const sr = document.getElementById('pw-search');
+    if (sr) sr.addEventListener('input', function(){ _renderList(sr.value); });
+    const sb = document.getElementById('pw-save-btn');
+    if (sb) sb.addEventListener('click', _saveEdit);
+    const cbb = document.getElementById('pw-cancel-edit-btn');
+    if (cbb) cbb.addEventListener('click', function() {
+      _showScreen('vault');
+      _renderList(document.getElementById('pw-search') ? document.getElementById('pw-search').value : '');
+    });
+    const db = document.getElementById('pw-delete-btn');
+    if (db) db.addEventListener('click', _deleteEntry);
+    const sh = document.getElementById('pw-f-show');
+    if (sh) sh.addEventListener('click', function() {
+      const f = document.getElementById('pw-f-pass');
+      f.type = f.type === 'password' ? 'text' : 'password';
+    });
+    const gb = document.getElementById('pw-gen-btn');
+    if (gb) gb.addEventListener('click', function() {
+      const f = document.getElementById('pw-f-pass');
+      f.value = _genPwd(18);
+      f.type  = 'text';
+    });
+    const dm = document.getElementById('autofill-dismiss');
+    const at = document.getElementById('autofill-toast');
+    if (dm && at) dm.addEventListener('click', function(){ at.classList.remove('af-show'); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
+  else _init();
+})();
+
 /* Sidebar popup keyboard wiring */
 (function() {
   const sbModal = $('sb-add-modal');
@@ -6221,14 +7030,17 @@ function _confirm(msg, { title = 'Confirm', ok = 'OK', safe = false } = {}) {
       okBtn?.removeEventListener('click', onOk);
       cancelBtn?.removeEventListener('click', onCancel);
       modal.removeEventListener('click', onBg);
+      document.removeEventListener('keydown', onKey);
       resolve(v);
     }
     function onOk() { done(true); }
     function onCancel() { done(false); }
     function onBg(e) { if (e.target === modal) done(false); }
+    function onKey(e) { if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); }
     okBtn?.addEventListener('click', onOk);
     cancelBtn?.addEventListener('click', onCancel);
     modal.addEventListener('click', onBg);
+    document.addEventListener('keydown', onKey);
   });
 }
 
@@ -6489,6 +7301,7 @@ if (btnYtdlp) {
     { key:'tb-poison',  lbl:'Poison',    svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 2h5M8 2v3M8 5c-3 0-5.5 2.5-5.5 5.5C2.5 13.5 5 15 8 15s5.5-1.5 5.5-4.5C13.5 7.5 11 5 8 5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.5" cy="10" r="1" fill="currentColor" opacity=".7"/><circle cx="9.5" cy="11.5" r="1" fill="currentColor" opacity=".7"/></svg>' },
     { key:'tb-ytdlp',   lbl:'Video DL',  svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 6l4 2-4 2V6Z" fill="currentColor" opacity=".65"/></svg>' },
     { key:'tb-snip',    lbl:'Snip',      svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 14h6M8 11v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
+    { key:'tb-passwords',lbl:'Passwords', svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 7V5.5a2.5 2.5 0 1 1 5 0V7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8.5" cy="10.5" r="1.1" fill="currentColor" opacity=".6"/></svg>' },
     { key:'tb-notes',   lbl:'Notes',     svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 5.5h6M5 8h6M5 10.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' },
     { key:'tb-calc',    lbl:'Calc',      svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="1.5" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 5h6M5 8h1.2M7.9 8h1.2M10.6 8h1M5 10.5h1.2M7.9 10.5h1.2M10.6 10.5h1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' },
     { key:'tb-geo',     lbl:'Location',  svg:'<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6.5" r="2.2" stroke="currentColor" stroke-width="1.2"/><path d="M8 2C5 2 3 4.3 3 6.5c0 4 5 8 5 8s5-4 5-8C13 4.3 11 2 8 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>' },
@@ -6519,35 +7332,45 @@ if (btnYtdlp) {
     grid.dataset.rendered = '1';
     let browsers = [];
     try { browsers = await ipcRenderer.invoke('setup:detect-browsers'); } catch {}
-    if (!browsers.length) {
-      grid.innerHTML = '<div class="setup-import-none">Could not detect browsers on this device.</div>';
+    const found = browsers.filter(b => b.found);
+    if (!found.length) {
+      grid.innerHTML = '<div class="setup-import-none">No supported browsers detected on this device.</div>';
       return;
     }
-    if (browsers.length === 1) grid.style.gridTemplateColumns = '1fr';
     grid.innerHTML = '';
-    browsers.forEach(b => {
+    found.forEach(b => {
       const card = document.createElement('div');
-      card.className = 'setup-import-card' + (b.found ? '' : ' sic-not-found');
+      card.className = 'setup-import-card';
       card.innerHTML =
+        '<div class="sic-logo sic-logo-' + b.id + '"></div>' +
         '<div class="sic-info"><div class="sic-name">' + b.name + '</div>' +
-        (b.found ? '' : '<div class="sic-not-installed">Not installed</div>') +
+        '<div class="sic-detected">Detected on this device</div>' +
         '</div>' +
-        '<button class="sic-btn"' + (b.found ? '' : ' disabled') + '>Import</button>';
+        '<button class="sic-btn">Import</button>';
       const btn = card.querySelector('.sic-btn');
-      if (!b.found) { btn.title = b.name + ' was not detected on this device.'; }
       btn.addEventListener('click', async () => {
-        btn.textContent = '…'; btn.disabled = true;
+        btn.textContent = 'Importing…';
+        btn.classList.add('importing');
+        btn.disabled = true;
+        const st = $('setup-import-status');
+        if (st) { st.textContent = 'Importing from ' + b.name + '…'; st.style.opacity = '1'; st.style.color = 'var(--acc)'; }
         try {
           const res = await ipcRenderer.invoke('browser:import-bookmarks', b.id);
-          if (res.error) { btn.textContent = 'Error'; btn.title = res.error; btn.disabled = false; }
-          else {
+          btn.classList.remove('importing');
+          if (res.error) {
+            btn.textContent = 'Error'; btn.title = res.error; btn.disabled = false;
+            if (st) { st.textContent = 'Could not import: ' + res.error; st.style.color = 'var(--red)'; }
+          } else {
             ipcRenderer.send('bookmarks:bulk-add', res.bookmarks);
-            btn.textContent = '✓ Done';
+            btn.textContent = '\u2713 Done';
             btn.classList.add('done-import');
-            const st = $('setup-import-status');
-            if (st) st.textContent = res.count + ' bookmarks imported from ' + b.name + '.';
+            if (st) { st.textContent = res.count + ' bookmarks imported from ' + b.name + '.'; st.style.color = 'var(--acc)'; }
           }
-        } catch (e) { btn.textContent = 'Error'; btn.title = e.message; btn.disabled = false; }
+        } catch (e) {
+          btn.classList.remove('importing');
+          btn.textContent = 'Error'; btn.title = e.message; btn.disabled = false;
+          if (st) { st.textContent = 'Could not import: ' + e.message; st.style.color = 'var(--red)'; }
+        }
       });
       grid.appendChild(card);
     });
@@ -6669,7 +7492,7 @@ if (btnYtdlp) {
     const _tbMap = {
       'tb-bm':'btn-bm','tb-bmPanel':'btn-bm-panel','tb-hist':'btn-hist','tb-dl':'btn-dl',
       'tb-shield':'btn-shield','tb-poison':'btn-poison','tb-ytdlp':'btn-ytdlp','tb-snip':'btn-snip',
-      'tb-notes':'btn-notes','tb-calc':'btn-calc','tb-geo':'btn-geo','tb-ext':'btn-ext',
+      'tb-passwords':'btn-passwords','tb-notes':'btn-notes','tb-calc':'btn-calc','tb-geo':'btn-geo','tb-ext':'btn-ext',
     };
     for (const [cbId, btnId] of Object.entries(_tbMap)) {
       const cb  = $(cbId);
@@ -6711,7 +7534,79 @@ if (btnYtdlp) {
   overlay.classList.add('on');
   showStep(0);
 })();
+
+/* Incognito FAB + Intro: wired in end-of-body <script> after DOM is ready */
 </script>
+
+<!-- INCOGNITO INTRO OVERLAY -->
+<div id="ignite-intro">
+  <!-- Step 1: Welcome + animation -->
+  <div class="ig-step" id="ig-intro-s1">
+    <div class="ig-intro-eyebrow">RAW Browser</div>
+    <div class="ig-intro-h1">Welcome to<br><span>Ignore</span></div>
+    <div class="ig-intro-sub">A private window that leaves no trace.</div>
+    <div class="ig-scene">
+      <div class="ig-monitor">
+        <div class="ig-monitor-content">
+          <div class="ig-mc-line"></div>
+          <div class="ig-mc-line"></div>
+          <div class="ig-mc-line"></div>
+          <div class="ig-mc-line"></div>
+        </div>
+        <div class="ig-shield-overlay">
+          <svg class="ig-shield-lock" width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect x="5" y="15" width="22" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M10 15V11a6 6 0 0 1 12 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="16" cy="22" r="2.2" fill="currentColor" opacity=".7"/>
+          </svg>
+          <div class="ig-shield-label">Protected</div>
+        </div>
+      </div>
+      <div class="ig-monitor-stand"></div>
+      <div class="ig-monitor-base"></div>
+      <!-- Person silhouette -->
+      <svg class="ig-person" width="28" height="40" viewBox="0 0 28 40" fill="none">
+        <circle cx="14" cy="7" r="5.5" stroke="rgba(168,85,247,.35)" stroke-width="1.5"/>
+        <path d="M4 38c0-8 4-14 10-14s10 6 10 14" stroke="rgba(168,85,247,.35)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="ig-dots"><div class="ig-dot on"></div><div class="ig-dot"></div></div>
+    <button class="ig-cta-btn" id="ig-ready-btn">I&apos;m Ready &rarr;</button>
+  </div>
+  <!-- Step 2: Info -->
+  <div class="ig-step" id="ig-intro-s2" style="display:none">
+    <div class="ig-intro-eyebrow">How it works</div>
+    <div class="ig-intro-h1" style="font-size:34px;margin-bottom:20px">What <span>Ignore</span> does</div>
+    <div class="ig-info-grid">
+      <div class="ig-info-card">
+        <svg class="ig-info-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9c1.5-3 3.5-4.5 6-4.5S13.5 6 15 9c-1.5 3-3.5 4.5-6 4.5S4.5 12 3 9Z" stroke="currentColor" stroke-width="1.2"/><circle cx="9" cy="9" r="2" fill="currentColor" opacity=".5"/><line x1="2" y1="16" x2="16" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <div class="ig-info-title">No History</div>
+        <div class="ig-info-desc">Pages you visit are never recorded in history.</div>
+      </div>
+      <div class="ig-info-card">
+        <svg class="ig-info-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M9 6v4l2.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="2" y1="16" x2="16" y2="2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <div class="ig-info-title">No Cookies</div>
+        <div class="ig-info-desc">All cookies and session data vanish when you close.</div>
+      </div>
+      <div class="ig-info-card">
+        <svg class="ig-info-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3" y="8" width="12" height="8" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 8V6a3.5 3.5 0 1 1 7 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <div class="ig-info-title">Isolated Session</div>
+        <div class="ig-info-desc">Completely separate from your main browser session.</div>
+      </div>
+      <div class="ig-info-card">
+        <svg class="ig-info-icon" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L3 5v5c0 4 2.5 6 6 7 3.5-1 6-3 6-7V5L9 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        <div class="ig-info-title">Fully Blocked</div>
+        <div class="ig-info-desc">All ads and trackers blocked, same as normal mode.</div>
+      </div>
+    </div>
+    <div class="ig-warn-box">
+      &nearr;&nbsp; <strong>Heads up:</strong> Ignore doesn&apos;t hide you from your ISP or network admin. Use a VPN for full network privacy.
+    </div>
+    <div class="ig-dots"><div class="ig-dot"></div><div class="ig-dot on"></div></div>
+    <button class="ig-cta-btn" id="ig-launch-btn">Launch Private Window &rarr;</button>
+    <button class="ig-back-link" id="ig-back-btn">&larr; Back</button>
+  </div>
+</div>
 
 <!-- CUSTOM CONFIRM DIALOG -->
 <div id="rb-confirm" role="dialog" aria-modal="true">
@@ -6730,6 +7625,100 @@ if (btnYtdlp) {
     </div>
   </div>
 </div>
+<!-- AUTOFILL TOAST -->
+<div id="autofill-toast" class="af-toast">
+  <div class="af-toast-hdr">
+    <span class="af-toast-title">Autofill</span>
+    <button id="autofill-dismiss" class="af-dismiss">&#x2715;</button>
+  </div>
+  <div id="autofill-list" class="af-list"></div>
+</div>
+
+<!-- INCOGNITO FAB -->
+<div id="incognito-bar"></div>
+<div id="incognito-badge">IGNORE</div>
+<button id="incognito-fab" title="Open Ignore — Private Window">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <!-- Hat crown -->
+    <path d="M4.5 8V6a3.5 3.5 0 0 1 7 0v2" fill="currentColor" opacity=".9"/>
+    <!-- Hat brim -->
+    <rect x="2" y="8" width="12" height="1.8" rx=".9" fill="currentColor"/>
+    <!-- Glasses left -->
+    <circle cx="5.5" cy="12.5" r="1.9" stroke="currentColor" stroke-width="1.25"/>
+    <!-- Glasses right -->
+    <circle cx="10.5" cy="12.5" r="1.9" stroke="currentColor" stroke-width="1.25"/>
+    <!-- Bridge -->
+    <path d="M7.4 12.5h1.2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<script>
+/* Incognito FAB ── runs after DOM is fully parsed ────────────────────────── */
+(function() {
+  const fab   = document.getElementById('incognito-fab');
+  const bar   = document.getElementById('incognito-bar');
+  const badge = document.getElementById('incognito-badge');
+  if (!fab) return;
+
+  const SVG_DEFAULT = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4.5 8V6a3.5 3.5 0 0 1 7 0v2" fill="currentColor" opacity=".9"/><rect x="2" y="8" width="12" height="1.8" rx=".9" fill="currentColor"/><circle cx="5.5" cy="12.5" r="1.9" stroke="currentColor" stroke-width="1.25"/><circle cx="10.5" cy="12.5" r="1.9" stroke="currentColor" stroke-width="1.25"/><path d="M7.4 12.5h1.2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>`;
+
+  fab.innerHTML = SVG_DEFAULT;
+
+  function _update(on) {
+    fab.classList.toggle('incognito-on', on);
+    if (bar)   bar.classList.toggle('incognito-on', on);
+    if (badge) badge.classList.toggle('incognito-on', on);
+    fab.title = on ? 'Ignore is open — click to focus' : 'Open Ignore — Private Window';
+  }
+
+  fab.addEventListener('click', () => {
+    if (localStorage.getItem('rb-ignite-seen')) {
+      ipcRenderer.send('incognito:open');
+    } else {
+      const overlay = document.getElementById('ignite-intro');
+      if (overlay) overlay.classList.add('show');
+    }
+  });
+
+  ipcRenderer.on('incognito:state', (_, on) => _update(on));
+})();
+
+/* Ignore intro wiring ────────────────────────────────────────────────────── */
+(function() {
+  const overlay   = document.getElementById('ignite-intro');
+  const s1        = document.getElementById('ig-intro-s1');
+  const s2        = document.getElementById('ig-intro-s2');
+  const readyBtn  = document.getElementById('ig-ready-btn');
+  const launchBtn = document.getElementById('ig-launch-btn');
+  const backBtn   = document.getElementById('ig-back-btn');
+  if (!overlay || !readyBtn || !launchBtn) return;
+
+  function showStep(n) {
+    if (s1) s1.style.display = n === 1 ? 'flex' : 'none';
+    if (s2) s2.style.display = n === 2 ? 'flex' : 'none';
+  }
+  showStep(1);
+
+  readyBtn.addEventListener('click', () => {
+    overlay.style.transition = 'opacity .25s';
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.opacity = '1'; showStep(2); }, 250);
+  });
+
+  backBtn && backBtn.addEventListener('click', () => {
+    overlay.style.transition = 'opacity .2s';
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.opacity = '1'; showStep(1); }, 200);
+  });
+
+  launchBtn.addEventListener('click', () => {
+    localStorage.setItem('rb-ignite-seen', '1');
+    overlay.classList.remove('show');
+    overlay.style.opacity = '';
+    ipcRenderer.send('incognito:open');
+  });
+})();
+</script>
 
 </body>
 </html>

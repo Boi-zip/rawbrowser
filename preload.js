@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
+const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 
 // Apply privacy protections before any page script runs
 (function hardenPrivacy() {
@@ -11,11 +11,21 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 
     // Sites that need full browser capabilities — skip heavy fingerprinting
     const _bypass = [
+      // Google — all sign-in, auth, and service domains MUST be here or Google
+      // detects the empty plugins/permissions fingerprint and blocks login.
+      'google.com', 'googleapis.com', 'googleusercontent.com',
+      'gstatic.com', 'gmail.com', 'accounts.google.com',
+      // Media / streaming sites that need all Chrome APIs
       'tiktok.com', 'tiktokv.com', 'tiktokcdn.com', 'musical.ly',
       'spotify.com', 'open.spotify.com', 'scdn.co', 'spotifycdn.com',
       'soundcloud.com',
       'netflix.com', 'hulu.com', 'disneyplus.com', 'primevideo.com',
       'youtube.com', 'youtu.be',
+      // Microsoft / Apple sign-in flows
+      'microsoft.com', 'live.com', 'microsoftonline.com',
+      'apple.com', 'appleid.apple.com',
+      // Facebook / Instagram sign-in
+      'facebook.com', 'instagram.com', 'fbcdn.net',
     ];
     const _isBypass = _bypass.some(h => _hn === h || _hn.endsWith('.' + h));
 
@@ -51,11 +61,49 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
         Object.defineProperty(navigator, 'language',   { get: () => 'en-US', configurable: true });
         Object.defineProperty(navigator, 'languages',  { get: () => ['en-US', 'en'], configurable: true });
         Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8, configurable: true });
+        // Chrome 136 has a built-in PDF viewer — Electron doesn't, so we must spoof this
+        try { Object.defineProperty(navigator, 'pdfViewerEnabled', { get: () => true, configurable: true }); } catch {}
+        // Override userAgentData — CRITICAL: without this Electron exposes its own
+        // brands list (containing "Electron") even when the UA string says Chrome.
+        // Google and other sign-in providers read navigator.userAgentData.brands
+        // directly to detect non-Chrome browsers.
+        if ('userAgentData' in navigator) {
+          try {
+            const _bypassBrands = [
+              { brand: 'Not A(Brand', version: '99' },
+              { brand: 'Google Chrome', version: '136' },
+              { brand: 'Chromium', version: '136' },
+            ];
+            Object.defineProperty(navigator, 'userAgentData', {
+              get: () => ({
+                brands: _bypassBrands,
+                mobile: false,
+                platform: 'Windows',
+                getHighEntropyValues: () => Promise.resolve({
+                  architecture: 'x86', bitness: '64',
+                  brands: _bypassBrands,
+                  fullVersionList: [
+                    { brand: 'Google Chrome', version: '136.0.7103.116' },
+                    { brand: 'Chromium',      version: '136.0.7103.116' },
+                    { brand: 'Not A(Brand',   version: '99.0.0.0' },
+                  ],
+                  mobile: false, model: '',
+                  platform: 'Windows', platformVersion: '10.0.0',
+                  uaFullVersion: '136.0.7103.116',
+                }),
+                toJSON: () => ({ brands: _bypassBrands, mobile: false, platform: 'Windows' }),
+              }),
+              configurable: true,
+            });
+          } catch {}
+        }
         if (!window.chrome) window.chrome = {};
         window.chrome.app = { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' }, RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }, getDetails: () => null, getIsInstalled: () => false, installState: (cb) => cb('not_installed'), runningState: () => 'cannot_run' };
         window.chrome.runtime = { id: undefined, connect: () => ({ postMessage(){}, onMessage:{ addListener(){} }, disconnect(){} }), sendMessage: () => {}, onMessage: { addListener(){} }, onConnect: { addListener(){} } };
         window.chrome.csi = () => ({ startE: Date.now(), onloadT: Date.now(), pageT: 1000, tran: 15 });
         window.chrome.loadTimes = () => ({ requestTime: Date.now()/1000, startLoadTime: Date.now()/1000, commitLoadTime: Date.now()/1000, finishDocumentLoadTime: Date.now()/1000, finishLoadTime: Date.now()/1000, firstPaintTime: Date.now()/1000, firstPaintAfterLoadTime: 0, navigationType: 'Other', wasFetchedViaSpdy: false, wasNpnNegotiated: false, npnNegotiatedProtocol: 'unknown', wasAlternateProtocolAvailable: false, connectionInfo: 'http/1.1' });
+        // chrome.storage is accessed by extensions and sign-in helpers
+        if (!window.chrome.storage) window.chrome.storage = { local: { get: (_k, cb) => cb && cb({}), set: (_d, cb) => cb && cb() }, sync: { get: (_k, cb) => cb && cb({}), set: (_d, cb) => cb && cb() }, onChanged: { addListener: () => {} } };
       } catch {}
       return; // Don't apply full fingerprint hardening to these sites
     }
@@ -180,8 +228,8 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
       try {
         const _uaBrands = [
           { brand: 'Not A(Brand', version: '99' },
-          { brand: 'Google Chrome', version: '134' },
-          { brand: 'Chromium', version: '134' },
+          { brand: 'Google Chrome', version: '136' },
+          { brand: 'Chromium', version: '136' },
         ];
         Object.defineProperty(navigator, 'userAgentData', {
           get: () => ({
@@ -191,10 +239,10 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
             getHighEntropyValues: () => Promise.resolve({
               architecture: 'x86', bitness: '64',
               brands: _uaBrands,
-              fullVersionList: [{ brand: 'Google Chrome', version: '134.0.6998.89' }],
+              fullVersionList: [{ brand: 'Google Chrome', version: '136.0.7103.116' }, { brand: 'Chromium', version: '136.0.7103.116' }, { brand: 'Not A(Brand', version: '99.0.0.0' }],
               mobile: false, model: '',
               platform: 'Windows', platformVersion: '10.0.0',
-              uaFullVersion: '134.0.6998.89',
+              uaFullVersion: '136.0.7103.116',
             }),
             toJSON: () => ({ brands: _uaBrands, mobile: false, platform: 'Windows' }),
           }),
@@ -242,6 +290,115 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
   } catch (e) {
     console.debug('[Raw] Preload error:', e.message);
   }
+})();
+
+// ── Media keep-alive guard — injected into the main world before any page script ──
+// Uses a <script> element so it runs in the page's JS world (not the isolated
+// preload world), meaning our IntersectionObserver and pause overrides are
+// installed before YouTube / TikTok / etc. create their observer instances.
+// window._rbPanelOpen is set by PANEL_KEEP_ALIVE_JS (main process) when a
+// toolbar panel opens, and cleared by PANEL_RESTORE_ALIVE_JS when it closes.
+(function injectMediaGuard() {
+  try {
+    const script = document.createElement('script');
+    script.textContent = `(function(){
+  if (window._rbGuardInstalled) return;
+  window._rbGuardInstalled = true;
+  window._rbPanelOpen = false;
+
+  // Wrap IntersectionObserver: while _rbPanelOpen, report every entry as
+  // fully visible so YouTube/TikTok players never call .pause() on scroll-out.
+  if (window.IntersectionObserver) {
+    var _OrigIO = window.IntersectionObserver;
+    window.IntersectionObserver = function(cb, opts) {
+      return new _OrigIO(function(entries, obs) {
+        if (window._rbPanelOpen) {
+          entries = entries.map(function(e) {
+            return { boundingClientRect:e.boundingClientRect, intersectionRatio:1,
+              intersectionRect:e.boundingClientRect, isIntersecting:true,
+              rootBounds:e.rootBounds, target:e.target, time:e.time };
+          });
+        }
+        return cb(entries, obs);
+      }, opts);
+    };
+    try { window.IntersectionObserver.prototype = _OrigIO.prototype; } catch(e){}
+  }
+
+  // Wrap HTMLVideoElement.pause: drop automatic pauses while panel is open.
+  var _origPause = HTMLVideoElement.prototype.pause;
+  HTMLVideoElement.prototype.pause = function() {
+    if (window._rbPanelOpen) return;
+    return _origPause.call(this);
+  };
+
+  // Swallow AbortErrors from play() calls that race with blocked pauses.
+  var _origPlay = HTMLVideoElement.prototype.play;
+  HTMLVideoElement.prototype.play = function() {
+    var p = _origPlay.call(this);
+    if (p && p.catch) p.catch(function(){});
+    return p;
+  };
+})()`;
+    // Insert before <head> so it runs before any other scripts
+    (document.head || document.documentElement).prepend(script);
+    script.remove(); // clean up the element after execution
+  } catch (e) {}
+})();
+
+// ── Autofill detection ────────────────────────────────────────────────────────
+// Watches for login forms and requests credential autofill from the vault.
+(function() {
+  let _afTimer = null;
+
+  function _hasPasswordInput() {
+    return !!document.querySelector('input[type="password"]');
+  }
+
+  function _tryQuery() {
+    clearTimeout(_afTimer);
+    _afTimer = setTimeout(function() {
+      if (_hasPasswordInput()) {
+        ipcRenderer.send('autofill:query', { domain: window.location.hostname });
+      }
+    }, 800);
+  }
+
+  // On initial page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _tryQuery, { once: true });
+  } else {
+    _tryQuery();
+  }
+
+  // Watch for SPA-style dynamic form injection
+  if (window.MutationObserver) {
+    var _mo = new MutationObserver(function(_mutations) {
+      if (_hasPasswordInput()) _tryQuery();
+    });
+    _mo.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  // Fill fields when renderer sends back credentials
+  ipcRenderer.on('autofill:fill', function(_e, data) {
+    try {
+      var pwInputs  = Array.from(document.querySelectorAll('input[type="password"]'));
+      var userInputs = Array.from(document.querySelectorAll(
+        'input[type="text"], input[type="email"], input[name*="user"], input[name*="login"], input[id*="user"], input[id*="email"]'
+      ));
+
+      // Use native setter so React/Vue/Angular re-render
+      var nativeInputSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      var fire = function(el, val) {
+        nativeInputSetter.call(el, val);
+        el.dispatchEvent(new Event('input',  { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
+      if (userInputs.length && data.username) fire(userInputs[0], data.username);
+      if (pwInputs.length   && data.password) fire(pwInputs[0],   data.password);
+    } catch(e) {}
+  });
 })();
 
 // Expose minimal API to page context

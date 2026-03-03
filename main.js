@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const {
   app, BrowserWindow, BrowserView,
@@ -171,6 +171,10 @@ app.commandLine.appendSwitch('disable-web-notifications');
   } catch { /* Widevine unavailable — silently continue */ }
 })();
 
+// Remove the "navigator.webdriver" automation signal that Google and other sites
+// use to detect headless/automated browsers. Must be set before the process starts.
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+
 // Allow audio/video autoplay without user gesture (needed for Music Player)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Enable hardware-accelerated media key handling (required for Widevine DRM on Spotify/Netflix)
@@ -227,8 +231,8 @@ app.on('open-url', (event, url) => {
   else _pendingExtUrl = url;
 });
 
-const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
-const SPOOF_UA_HINTS = '"Chromium";v="134","Google Chrome";v="134","Not-A.Brand";v="99"';
+const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+const SPOOF_UA_HINTS = '"Not A(Brand";v="99", "Google Chrome";v="136", "Chromium";v="136"';
 
 // ── YouTube stealth ad-skip content script ────────────────────────────────────
 // Stealth design:
@@ -352,9 +356,10 @@ const YT_AD_SKIP = `(function(){
 
       if(inAd&&video&&video.readyState>0){
         // Save user state BEFORE we modify anything (only on first ad detection)
+        // Guard: if playbackRate > 2 we already set it to ad-speed — don't save that
         if(!_wasInAd){
           _userMuted=video.muted;
-          _userRate=video.playbackRate;
+          _userRate=(video.playbackRate>2)?1:video.playbackRate;
           _userVolume=video.volume;
         }
         _wasInAd=true;
@@ -378,11 +383,11 @@ const YT_AD_SKIP = `(function(){
         if(_restoreTimer)clearTimeout(_restoreTimer);
         _restoreTimer=setTimeout(function(){
           var v=_getVideo();
-          if(v&&!_inAd(document.querySelector('#movie_player,.html5-video-player'))){
+          // Restore unconditionally — if still in ad the next _act cycle re-applies ad speed
+          if(v){
             try{v.playbackRate=_userRate||1;}catch(e){}
             try{v.muted=_userMuted;}catch(e){}
             try{v.volume=_userVolume;}catch(e){}
-            // Ensure content is playing
             if(v.paused&&v.readyState>0)try{v.play();}catch(e){}
           }
           _restoreTimer=null;
@@ -625,7 +630,7 @@ const EXT_SCRIPTS = {
   'font-boost':
     `(function(){if(document.getElementById('_rawFont'))return;var s=document.createElement('style');s.id='_rawFont';s.textContent='body,p,li,td,th,article,section,main{font-size:108%!important;line-height:1.75!important;}';document.head.appendChild(s);})()`,
   'reader-mode':
-    `(function(){if(document.getElementById('_rawReader'))return;var s=document.createElement('style');s.id='_rawReader';s.textContent='body{max-width:720px!important;margin:32px auto!important;padding:0 24px!important;font-size:18px!important;line-height:1.85!important;background:#0c0c0c!important;color:#d8d8d8!important;}h1,h2,h3{color:#fff!important;}a{color:#00d4c8!important;}img{max-width:100%!important;height:auto!important;border-radius:6px;}nav,header,footer,aside,[class*="sidebar"],[id*="sidebar"],[class*="nav"],[id*="nav"],[class*="header"],[class*="footer"],[class*="related"],[class*="recommend"],[class*="ad-"],[id*="-ad"]{display:none!important;}';document.head.appendChild(s);})()`,
+    `(function(){if(document.getElementById('_rawReader'))return;var s=document.createElement('style');s.id='_rawReader';s.textContent='body,article,main,section{max-width:740px!important;margin:0 auto!important;padding:32px 28px!important;font-size:18px!important;line-height:1.9!important;background:#111!important;color:#d8d8d8!important;font-family:Georgia,serif!important;}h1,h2,h3,h4,h5,h6{color:#f0f0f0!important;line-height:1.3!important;margin:1.4em 0 .5em!important;}a{color:#00d4c8!important;}p,li{color:#d0d0d0!important;}img,video,picture,figure,iframe,canvas,svg[width][height],embed,object,.image,[class*="image"],[class*="photo"],[class*="media"],[class*="gallery"][class*="caption"]{display:none!important;}nav,header,footer,aside,[role="banner"],[role="navigation"],[role="complementary"],[class*="sidebar"],[id*="sidebar"],[class*="nav"],[id*="nav"],[class*="header"],[id*="header"],[class*="footer"],[id*="footer"],[class*="related"],[class*="recommend"],[class*="ad-"],[id*="-ad"],[class*="ad_"],[class*="advert"],[class*="banner"],[class*="popup"],[class*="modal"],[class*="cookie"],[class*="toolbar"],[class*="social"],[class*="share"]{display:none!important;}';document.head.appendChild(s);})()`,
   'image-zoom':
     `(function(){if(window._rawImgZoom)return;window._rawImgZoom=true;var ov=document.createElement('div');ov.id='_rawImgZoomOv';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:2147483647;display:none;align-items:center;justify-content:center;cursor:zoom-out;backdrop-filter:blur(6px)';var im=document.createElement('img');im.style.cssText='max-width:92vw;max-height:92vh;border-radius:6px;box-shadow:0 4px 60px rgba(0,0,0,.9)';ov.appendChild(im);document.documentElement.appendChild(ov);ov.addEventListener('click',function(){ov.style.display='none';});document.addEventListener('click',function(e){if(e.target.tagName==='IMG'&&e.target.naturalWidth>200){im.src=e.target.src;ov.style.display='flex';}});})()`,
   'word-count':
@@ -770,9 +775,15 @@ function setBounds(bv) {
 // panel:hide calls setBounds() to restore it to the correct position.
 function _parkBV(bv) {
   if (!bv || bv.webContents.isDestroyed()) return;
-  const [w, h] = win.getContentSize();
+  const [w] = win.getContentSize();
   try { win.addBrowserView(bv); } catch {} // ensure attached (idempotent)
-  bv.setBounds({ x: -(w + 200), y: 0, width: w, height: h });
+  // CRITICAL: Park with bounds INSIDE the window, not outside.
+  // When bounds are fully outside (e.g. x:-(w+200)), Chromium's compositor
+  // marks the RenderWidget surface as non-rendering and suspends media at
+  // the native level — no JS override can prevent that. Parking as a 1px
+  // strip hidden behind the chrome bar keeps the compositor surface active
+  // so video/audio never pauses regardless of what the page JS does.
+  bv.setBounds({ x: 0, y: CHROME_H - 1, width: w, height: 1 });
 }
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
@@ -783,12 +794,14 @@ function normalizeUrl(raw) {
 }
 
 function resolveUrl(raw) {
-  if (!raw || raw === 'newtab')                   return 'newtab';
-  if (/^(https?|ftp|file):\/\//i.test(raw))       return raw;
-  if (/^(about:|view-source:)/i.test(raw))         return raw;
-  if (/^localhost(:\d+)?(\/.*)?$/.test(raw))       return 'http://' + raw;
-  if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(raw))     return 'https://' + raw;
+  if (!raw || raw === 'newtab') return 'newtab';
   const engine = settings.searchEngine || 'https://duckduckgo.com/?q=';
+  // Security: never navigate to dangerous schemes — treat as search queries
+  if (/^(javascript|vbscript|data|file):/i.test(raw)) return engine + encodeURIComponent(raw);
+  if (/^(https?|ftp):\/\//i.test(raw))   return raw;
+  if (/^(about:|view-source:)/i.test(raw)) return raw;
+  if (/^localhost(:\d+)?(\/.*)?$/.test(raw)) return 'http://' + raw;
+  if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(raw)) return 'https://' + raw;
   return engine + encodeURIComponent(raw);
 }
 
@@ -815,14 +828,27 @@ function addHistory(url, title) {
 function activateTab(id) {
   const tab = tabMap.get(id);
   if (!tab || !win) return;
-  
+
+  // If a panel was open, close it now — switching tabs must always restore the UI
+  if (panelOpen) {
+    panelOpen  = false;
+    panelClipX = 0;
+    // Restore the outgoing tab's BV dimensions in case it was parked at 2×2
+    const oldTab = tabMap.get(activeId);
+    if (oldTab?.bv && !oldTab.bv.webContents.isDestroyed()) {
+      oldTab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
+    }
+    // Tell the renderer to close any open panel / overlay
+    send('panels:closeAll');
+  }
+
   // Remove all BrowserViews first
   for (const t of tabMap.values()) {
     if (t.bv) try { win.removeBrowserView(t.bv); } catch {}
   }
   
   // Only attach BrowserView for real pages — newtab is handled by HTML newtab-layer
-  if (tab.bv && !panelOpen && tab.url !== 'newtab') {
+  if (tab.bv && tab.url !== 'newtab') {
     win.addBrowserView(tab.bv);
     setBounds(tab.bv);
   }
@@ -955,7 +981,10 @@ function createTab(url, activate = true) {
 
   wc.on('did-start-loading', () => {
     tab.loading = true;
-    tab.snapshot = null;
+    // Keep the old snapshot alive — don't null it here. If a panel or context
+    // menu opens while the next page is loading, the old screenshot is shown
+    // rather than a blank black area.
+    // tab.snapshot is cleared in did-stop-loading once the new page is ready.
     // Do NOT clear favicon here — SPA navigations (TikTok, YouTube) fire did-start-loading
     // but page-favicon-updated won't re-fire if the favicon link tag hasn't changed.
     // Favicon is cleared in did-navigate (cross-origin only) instead.
@@ -977,6 +1006,20 @@ function createTab(url, activate = true) {
     if (tab.url && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
       wc.executeJavaScript(VIDEO_PIP_INJECT).catch(() => {});
     }
+    // Suppress double-scrollbar: some sites set overflow on both <html> and <body>,
+    // causing Chromium to render two native scrollbars. Hiding the html-level one
+    // via user-origin CSS fixes those sites without breaking normal page scrolling.
+    wc.insertCSS(
+      'html::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }' +
+      'html { scrollbar-width: none !important; }',
+      { cssOrigin: 'user' }
+    ).catch(() => {});
+    // Inject persistent media guard so IntersectionObserver/pause protection is
+    // in place BEFORE any panel opens (fixes async race with _parkBV).
+    if (tab.url && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
+      wc.executeJavaScript(PERSISTENT_MEDIA_GUARD_JS).catch(() => {});
+    }
+
     // Re-apply enabled extensions on every page load
     const exts = settings.extensions || {};
     for (const [extId, enabled] of Object.entries(exts)) {
@@ -989,15 +1032,19 @@ function createTab(url, activate = true) {
       const gr = GEO_REGIONS[settings.geoRegion];
       wc.executeJavaScript(buildGeoScript(gr.lat, gr.lon)).catch(() => {});
     }
-    // Background snapshot — taken 1.2s after load for instant panel opens
+    // Background snapshot — taken immediately + refreshed at 1.5s for SPAs.
+    // Keeping a fresh screenshot means panels/context-menus can show the
+    // website instantly without a blank flash.
     if (id === activeId && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
-      setTimeout(() => {
-        if (activeId === id && !panelOpen && tab?.bv && !tab.bv.webContents.isDestroyed()) {
+      const _doSnap = () => {
+        if (!panelOpen && tab?.bv && !tab.bv.webContents.isDestroyed()) {
           tab.bv.webContents.capturePage().then(img => {
             tab.snapshot = img.toDataURL();
           }).catch(() => {});
         }
-      }, 1200);
+      };
+      _doSnap(); // immediate capture right after load
+      setTimeout(() => { if (activeId === id) _doSnap(); }, 1500); // re-capture for SPA updates
     }
   });
 
@@ -1082,7 +1129,11 @@ function createTab(url, activate = true) {
     tab.url     = newUrl;
     tab.blocked = 0;
     send('tab:update', tabData(tab));
-    if (id === activeId) send('nav:state', navData(tab));
+    if (id === activeId) {
+      send('nav:state', navData(tab));
+      // Close any open panel/overlay so the user can interact with the new page
+      send('panels:closeAll');
+    }
   });
 
   wc.on('did-navigate-in-page', (_, u) => {
@@ -1178,6 +1229,10 @@ function setupSession(ses) {
           h['Sec-CH-UA'] = SPOOF_UA_HINTS;
           h['Sec-CH-UA-Mobile'] = '?0';
           h['Sec-CH-UA-Platform'] = '"Windows"';
+          h['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
+          h['Sec-CH-UA-Arch'] = '"x86"';
+          h['Sec-CH-UA-Bitness'] = '"64"';
+          h['Sec-CH-UA-Full-Version-List'] = '"Not A(Brand";v="99.0.0.0", "Google Chrome";v="136.0.7103.116", "Chromium";v="136.0.7103.116"';
         }
         return cb({ requestHeaders: h });
       }
@@ -1189,6 +1244,10 @@ function setupSession(ses) {
       h['Sec-CH-UA'] = SPOOF_UA_HINTS;
       h['Sec-CH-UA-Mobile'] = '?0';
       h['Sec-CH-UA-Platform'] = '"Windows"';
+      h['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
+      h['Sec-CH-UA-Arch'] = '"x86"';
+      h['Sec-CH-UA-Bitness'] = '"64"';
+      h['Sec-CH-UA-Full-Version-List'] = '"Not A(Brand";v="99.0.0.0", "Google Chrome";v="136.0.7103.116", "Chromium";v="136.0.7103.116"';
     }
 
     // Strip cross-origin Referer to origin-only — prevents full URLs containing
@@ -1269,6 +1328,8 @@ function setupSession(ses) {
 app.whenReady().then(() => {
   initStorage();   // app.getPath() now works
   CHROME_H = settings.compactMode ? 72 : 82;  // sync with CSS --chrome-h on startup
+  // Register as default browser in Windows Default Apps (writes Registry Capabilities)
+  if (process.platform === 'win32') _registerWindowsDefaultBrowser();
 
   win = new BrowserWindow({
     width: 1280, height: 820,
@@ -1289,6 +1350,7 @@ app.whenReady().then(() => {
 
   win.once('ready-to-show', () => {
     setupSession(session.fromPartition('persist:main'));
+    setupSession(session.fromPartition('incognito')); // set up blocking/UA for private tabs
     win.show();
     createTab('newtab', true);
     // Open URL passed on command line (RAW launched as default browser / open-with handler)
@@ -1364,7 +1426,13 @@ ipcMain.on('win:maximize', () => win?.isMaximized() ? win.unmaximize() : win?.ma
 ipcMain.on('win:close',    () => win?.close());
 
 // ── IPC: Tabs ─────────────────────────────────────────────────────────────────
-ipcMain.on('tab:new',       (_, url) => createTab(url || 'newtab'));
+ipcMain.on('tab:new', (_, url) => {
+  // Strip dangerous schemes before creating tab — protects against crafted IPC calls
+  const safe = (url && /^(javascript|vbscript|data|file):/i.test(url))
+    ? (settings.searchEngine || 'https://duckduckgo.com/?q=') + encodeURIComponent(url)
+    : (url || 'newtab');
+  createTab(safe);
+});
 ipcMain.on('tab:switch',    (_, id)  => activateTab(id));
 ipcMain.on('tab:close',     (_, id)  => closeTab(id));
 ipcMain.on('tab:duplicate', (_, id)  => { const t = tabMap.get(id); if (t) createTab(t.url); });
@@ -1461,6 +1529,12 @@ function attachBvForNav(t, url) {
 ipcMain.on('nav:go', (_, { id, tabUrl }) => {
   const t = tabMap.get(id);
   if (!t) return;
+  // Close any open panel before navigating — overlay must not block the new page
+  if (panelOpen) {
+    panelOpen  = false;
+    panelClipX = 0;
+    send('panels:closeAll');
+  }
   const url = stripTracking(resolveUrl(tabUrl));
   if (url === 'newtab') {
     // Return to newtab: detach BV, update tab state
@@ -1473,10 +1547,22 @@ ipcMain.on('nav:go', (_, { id, tabUrl }) => {
     t.bv.webContents.loadURL(url);
   }
 });
-ipcMain.on('nav:back',        (_, id) => { const t = tabMap.get(id); ensureBvAttached(t); t?.bv.webContents.goBack(); });
-ipcMain.on('nav:forward',     (_, id) => { const t = tabMap.get(id); ensureBvAttached(t); t?.bv.webContents.goForward(); });
-ipcMain.on('nav:reload',      (_, id) => { const t = tabMap.get(id); if (t?.url === 'newtab') return; ensureBvAttached(t); t?.bv.webContents.reload(); });
-ipcMain.on('nav:reload:hard', (_, id) => { const t = tabMap.get(id); if (t?.url === 'newtab') return; ensureBvAttached(t); t?.bv.webContents.reloadIgnoringCache(); });
+ipcMain.on('nav:back', (_, id) => {
+  if (panelOpen) { panelOpen = false; panelClipX = 0; send('panels:closeAll'); }
+  const t = tabMap.get(id); ensureBvAttached(t); t?.bv.webContents.goBack();
+});
+ipcMain.on('nav:forward', (_, id) => {
+  if (panelOpen) { panelOpen = false; panelClipX = 0; send('panels:closeAll'); }
+  const t = tabMap.get(id); ensureBvAttached(t); t?.bv.webContents.goForward();
+});
+ipcMain.on('nav:reload', (_, id) => {
+  if (panelOpen) { panelOpen = false; panelClipX = 0; send('panels:closeAll'); }
+  const t = tabMap.get(id); if (t?.url === 'newtab') return; ensureBvAttached(t); t?.bv.webContents.reload();
+});
+ipcMain.on('nav:reload:hard', (_, id) => {
+  if (panelOpen) { panelOpen = false; panelClipX = 0; send('panels:closeAll'); }
+  const t = tabMap.get(id); if (t?.url === 'newtab') return; ensureBvAttached(t); t?.bv.webContents.reloadIgnoringCache();
+});
 ipcMain.on('nav:stop',        (_, id) => tabMap.get(id)?.bv.webContents.stop());
 ipcMain.on('nav:home',        (_, id) => {
   const t = tabMap.get(id);
@@ -1493,36 +1579,130 @@ ipcMain.on('nav:home',        (_, id) => {
   }
 });
 
+// ── Persistent media guard — injected once at page load ───────────────────────
+// Wraps IntersectionObserver callbacks and HTMLVideoElement.pause so they check
+// window._rbPanelOpen at *call time*. Because this runs at page load, the guards
+// are in place before any panel ever opens — fixing the async timing race where
+// _parkBV moved the BV offscreen before executeJavaScript could install overrides.
+const PERSISTENT_MEDIA_GUARD_JS = `(function(){
+  if (window._rbGuardInstalled) return;
+  window._rbGuardInstalled = true;
+  window._rbPanelOpen = window._rbPanelOpen || false;
+
+  // Wrap IntersectionObserver: while panel is open, report every entry as fully
+  // visible (ratio=1). YouTube's player calls .pause() inside its IO callback
+  // when ratio drops to 0 — this prevents that entirely.
+  if (window.IntersectionObserver) {
+    var _OrigIO = window.IntersectionObserver;
+    window.IntersectionObserver = function(cb, opts) {
+      return new _OrigIO(function(entries, obs) {
+        if (window._rbPanelOpen) {
+          entries = entries.map(function(e) {
+            return {
+              boundingClientRect: e.boundingClientRect,
+              intersectionRatio:  1,
+              intersectionRect:   e.boundingClientRect,
+              isIntersecting:     true,
+              rootBounds:         e.rootBounds,
+              target:             e.target,
+              time:               e.time
+            };
+          });
+        }
+        return cb(entries, obs);
+      }, opts);
+    };
+    try { window.IntersectionObserver.prototype = _OrigIO.prototype; } catch(e) {}
+  }
+
+  // Wrap HTMLVideoElement.pause: silently drop automatic pauses while panel open.
+  // Covers TikTok scroll-pause, YouTube miniplayer pause, etc.
+  var _origPause = HTMLVideoElement.prototype.pause;
+  HTMLVideoElement.prototype.pause = function() {
+    if (window._rbPanelOpen) return;
+    return _origPause.call(this);
+  };
+
+  // Suppress AbortError from interrupted play() calls that race with blocked pauses.
+  var _origPlay = HTMLVideoElement.prototype.play;
+  HTMLVideoElement.prototype.play = function() {
+    var p = _origPlay.call(this);
+    if (p && p.catch) p.catch(function() {});
+    return p;
+  };
+
+  // Block resize events while panel is open.
+  // TikTok/YouTube/etc. re-read innerWidth/innerHeight on resize and rebuild their
+  // virtual scroll lists — if the BV is parked at 2×2 they see a 2px viewport and
+  // mark every video as off-screen. Blocking the event prevents that re-layout.
+  window.addEventListener('resize', function(e) {
+    if (window._rbPanelOpen) { e.stopImmediatePropagation(); }
+  }, true);
+})()`;
+
 // ── Panel keep-alive: prevent videos/animations from pausing while BV is detached ──
+// NOTE: PERSISTENT_MEDIA_GUARD_JS (injected at page load) handles IO/pause interception.
+// This only needs to set the flag and suppress visibility/focus events.
 const PANEL_KEEP_ALIVE_JS = `(function(){
-  if (window._rbPanelOpen) return;
   window._rbPanelOpen = true;
+
+  // Snapshot the REAL viewport dimensions right now (before BV is moved).
+  // We'll override innerWidth/innerHeight to return these while the panel is open,
+  // so TikTok/YouTube virtual scrollers never see the 2×2 park size.
+  window._rbSavedW = window.innerWidth;
+  window._rbSavedH = window.innerHeight;
+  try {
+    Object.defineProperty(window, 'innerWidth',  { get: function(){ return window._rbSavedW; }, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { get: function(){ return window._rbSavedH; }, configurable: true });
+  } catch(e) {}
+
   // Override visibility API — players read these to decide whether to pause
   Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
   Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+
   // Override hasFocus — YouTube and others call this directly
-  window._rbOrigHasFocus = document.hasFocus.bind(document);
-  document.hasFocus = function() { return true; };
-  // Block ALL events that signal the page is going to the background:
-  //   visibilitychange  — Page Visibility API
-  //   blur              — window loses focus (triggers pause on many players)
-  //   pagehide          — fired on BV detach in some Chromium versions
-  //   freeze            — Page Lifecycle API freeze event
-  window._rbVCBlock = function(e) { e.stopImmediatePropagation(); };
-  document.addEventListener('visibilitychange', window._rbVCBlock, true);
-  window.addEventListener('blur',     window._rbVCBlock, true);
-  window.addEventListener('pagehide', window._rbVCBlock, true);
-  window.addEventListener('freeze',   window._rbVCBlock, true);
+  if (!window._rbOrigHasFocus) {
+    window._rbOrigHasFocus = document.hasFocus.bind(document);
+    document.hasFocus = function() { return true; };
+  }
+
+  // Block events that signal the page is going to the background
+  if (!window._rbVCBlock) {
+    window._rbVCBlock = function(e) { e.stopImmediatePropagation(); };
+    document.addEventListener('visibilitychange', window._rbVCBlock, true);
+    window.addEventListener('blur',     window._rbVCBlock, true);
+    window.addEventListener('pagehide', window._rbVCBlock, true);
+    window.addEventListener('freeze',   window._rbVCBlock, true);
+  }
 })()`;
 const PANEL_RESTORE_ALIVE_JS = `(function(){
-  if (!window._rbPanelOpen) return;
   window._rbPanelOpen = false;
+
+  // Restore innerWidth/innerHeight overrides — delete property so the browser's
+  // native getter takes over again, then fire a real resize so virtual scrollers
+  // (TikTok, YouTube, etc.) rebuild their layout with the actual dimensions.
+  try { delete window.innerWidth;  } catch {}
+  try { delete window.innerHeight; } catch {}
+  delete window._rbSavedW; delete window._rbSavedH;
+  // Defer resize by one task so that if a new panel opens immediately (which
+  // sets _rbPanelOpen=true via PANEL_KEEP_ALIVE_JS queued right after this),
+  // the resize guard is already up and blocks the re-layout — preventing the
+  // brief _rbPanelOpen=false window from pausing videos during panel switches.
+  setTimeout(function() {
+    try { if (!window._rbPanelOpen) window.dispatchEvent(new Event('resize')); } catch {}
+  }, 0);
+
+  // Restore visibility API
   try { delete document.hidden; } catch {}
   try { delete document.visibilityState; } catch {}
+
+  // Restore hasFocus
   if (window._rbOrigHasFocus) {
     document.hasFocus = window._rbOrigHasFocus;
     delete window._rbOrigHasFocus;
   }
+
+  // Remove event blockers
   if (window._rbVCBlock) {
     document.removeEventListener('visibilitychange', window._rbVCBlock, true);
     window.removeEventListener('blur',     window._rbVCBlock, true);
@@ -1600,107 +1780,102 @@ function buildGeoScript(lat, lon) {
 }
 
 // ── IPC: Panels — detach/reattach BrowserView so HTML panels are visible ──────
-ipcMain.on('panel:show', () => {
-  panelOpen = true;
-  const tab = tabMap.get(activeId);
+// ── Shared panel-open helper ─────────────────────────────────────────────────
+// WHY SLIDE-BELOW INSTEAD OF REMOVE:
+//   removeBrowserView() detaches the RenderWidget from the GPU compositor’s
+//   frame sink — a C++ operation that suspends the video decoder before any
+//   JS can run. No JS flag or CLI switch prevents this.
+//
+//   Instead: slide the BV below the bottom edge of the window (y ≥ winH)
+//   while keeping it ATTACHED. The compositor frame sink stays live, video
+//   keeps playing, and the window’s full visible area is free for the
+//   BrowserWindow HTML panels to render into. The snapshot element
+//   (position:absolute; inset:0) covers the entire content area so the
+//   user never sees the half-visible BV strip that the old resize caused.
+async function _openPanel(tab) {
   if (!tab?.bv || tab.url === 'newtab') return;
   const bv = tab.bv;
   const wc = bv.webContents;
-  wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  _parkBV(bv); // park immediately — no removal, video stays live
-  // Async capture for background snapshot
-  wc.capturePage()
-    .then(img => { if (panelOpen) send('panel:snapshot', img.toDataURL()); })
-    .catch(() => {});
+  if (wc.isDestroyed()) return;
+
+  // Step 1: Inject keep-alive JS FIRST — sets _rbPanelOpen=true immediately
+  // so IntersectionObserver / pause guards are up before any resize can fire.
+  // This MUST happen before capturePage() (which is async and leaves a window
+  // where PANEL_RESTORE_ALIVE_JS from the previous panel:hide could fire resize
+  // with _rbPanelOpen=false, causing videos to pause).
+  await wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  if (!panelOpen) return;
+
+  // Step 2: Capture snapshot at full bounds (guard is now up — safe).
+  if (!tab.snapshot) {
+    try {
+      const img = await wc.capturePage();
+      tab.snapshot = img.toDataURL();
+    } catch {}
+  }
+  if (!panelOpen) return;
+
+  // Step 3: Park BV as a 2×2px square at the top-left corner of the window.
+  // This corner is fully covered by the nav bar (--chrome-h = 82px), so the
+  // user never sees it. Crucially, 2×2 pixels ARE within the OS window paint
+  // region — the GPU compositor keeps the RenderWidget frame sink alive, so
+  // video/audio never suspends. Contrast with y=winH (off-screen): Windows
+  // does not paint off-screen pixels, which triggers WasHidden() and freezes
+  // media at the native level before any JS override can act.
+  try { win.addBrowserView(bv); } catch {}
+  bv.setBounds({ x: 0, y: 0, width: 2, height: 2 });
+
+  // Step 4: Show full-area snapshot — inset:0 covers entire content area.
+  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
+
+  // Step 5: Refresh cache silently while panel is open.
+  setTimeout(() => {
+    if (panelOpen && !wc.isDestroyed()) {
+      wc.capturePage().then(img => { tab.snapshot = img.toDataURL(); }).catch(() => {});
+    }
+  }, 600);
+}
+
+ipcMain.on('panel:show', () => {
+  panelOpen = true;
+  _openPanel(tabMap.get(activeId));
 });
 ipcMain.on('panel:show:quick', () => {
   panelOpen = true;
-  ++_panelSeq;
-  const tab = tabMap.get(activeId);
-  if (tab?.bv && tab.url !== 'newtab') {
-    tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-    _parkBV(tab.bv);
-  }
+  _openPanel(tabMap.get(activeId));
 });
-// Inject keep-alive JS into BV but do NOT remove it — panel will appear in clipped area.
-// Also send a full-window snapshot so the black area exposed by BV clipping is covered.
-// The live BV sits on top of the snapshot on the left; the static snapshot shows on the right.
-ipcMain.on('panel:show:keepalive', async () => {
+ipcMain.on('panel:show:keepalive', () => {
   panelOpen = true;
-  const tab = tabMap.get(activeId);
-  if (!tab?.bv || tab.url === 'newtab') return;
-  const bv = tab.bv;
-  // Inject keep-alive so videos/audio are never paused when BV is clipped
-  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  // Send snapshot to fill the window background (covers black area right of clip edge).
-  // Use cached snapshot if available (instant); otherwise live-capture as fallback.
-  if (tab.snapshot) {
-    send('panel:snapshot', tab.snapshot);
-  } else {
-    bv.webContents.capturePage()
-      .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
-      .catch(() => {});
-  }
-});
-// Resize BV to leave right-side room for the open panel (so panel HTML shows above BV)
-ipcMain.on('panel:clip', (_, x) => {
-  panelOpen  = true;                     // prevent tab-switch from resetting bounds
-  panelClipX = Math.max(0, x || 0);
-  const tab = tabMap.get(activeId);
-  if (tab?.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
-    try { win.addBrowserView(tab.bv); } catch {} // ensure BV is attached (idempotent)
-    setBounds(tab.bv);                  // resize BV to leave panel area uncovered
-  }
+  _openPanel(tabMap.get(activeId));
 });
 ipcMain.on('panel:show:fast', () => {
   panelOpen = true;
-  const seq = ++_panelSeq;
-  const tab = tabMap.get(activeId);
-  if (!tab?.bv || tab.url === 'newtab') return;
-  const bv = tab.bv;
-  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  _parkBV(bv);
-  bv.webContents.capturePage()
-    .then(img => { if (panelOpen && _panelSeq === seq) send('panel:snapshot', img.toDataURL()); })
-    .catch(() => {});
+  _openPanel(tabMap.get(activeId));
 });
 ipcMain.on('panel:show:nowait', () => {
-  // Instant open — no capture, no snapshot. Used for full-screen overlays.
   panelOpen = true;
-  const tab = tabMap.get(activeId);
-  if (!tab?.bv || tab.url === 'newtab') return;
-  tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  _parkBV(tab.bv);
+  _openPanel(tabMap.get(activeId));
 });
-// New: synchronous park — used by tab right-click context menu for zero-delay, zero-flicker display
 ipcMain.on('panel:show:sync', () => {
   panelOpen = true;
-  const tab = tabMap.get(activeId);
-  if (!tab?.bv || tab.url === 'newtab') return;
-  tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  _parkBV(tab.bv);
-  // Still send a snapshot so the background looks like the website
-  tab.bv.webContents.capturePage()
-    .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
-    .catch(() => {});
+  _openPanel(tabMap.get(activeId));
 });
 ipcMain.on('panel:show:instant', () => {
-  // Park BV offscreen immediately — keeps video/audio running with no GPU freeze.
-  // Then async-send a snapshot to fill the panel background.
   panelOpen = true;
-  const tab = tabMap.get(activeId);
-  if (!tab?.bv || tab.url === 'newtab') return;
-  const bv = tab.bv;
-  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  _parkBV(bv); // synchronous — BV stays compositing offscreen, video never freezes
-  // Send cached snapshot immediately so panel background isn't blank
-  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
-  // Single async capture to refresh the cached snapshot (no polling needed —
-  // the BV is still rendering offscreen so the frame is current when panel closes)
-  bv.webContents.capturePage()
-    .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
-    .catch(() => {});
+  _openPanel(tabMap.get(activeId));
 });
+
+// Resize BV to leave right-side room for the open panel (so panel HTML shows above BV)
+ipcMain.on('panel:clip', (_, x) => {
+  panelOpen  = true;
+  panelClipX = Math.max(0, x || 0);
+  const tab = tabMap.get(activeId);
+  if (tab?.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
+    try { win.addBrowserView(tab.bv); } catch {}
+    setBounds(tab.bv);
+  }
+});
+
 ipcMain.on('panel:hide', () => {
   panelOpen = false;
   _panelSeq = 0;    // invalidate any pending async panel:show:fast chains
@@ -1723,6 +1898,32 @@ ipcMain.on('panel:hide', () => {
   }
   send('panel:snapshot:clear');
 });
+// ── Sidebar add-link modal — park BV (2×2) so the modal overlay receives clicks ─
+// BrowserViews always render above BrowserWindow DOM regardless of z-index.
+// We park the BV as a 2×2 square behind the nav bar (same as _openPanel) so it
+// can't eat mouse events. The 2×2 approach keeps the GPU compositor frame-sink
+// alive so video/audio never suspends — unlike y=winH which takes the BV
+// off-screen and triggers WasHidden() at the native level.
+ipcMain.on('sidebar:modal:open', () => {
+  // Delegate to _openPanel which handles PANEL_KEEP_ALIVE_JS, screenshot, and
+  // the 2×2 park in the correct order.
+  panelOpen = true;
+  _openPanel(tabMap.get(activeId));
+});
+ipcMain.on('sidebar:modal:close', () => {
+  panelOpen = false;
+  _panelSeq = 0;
+  panelClipX = 0;
+  const tab = tabMap.get(activeId);
+  if (tab?.bv && tab.url !== 'newtab') {
+    try { if (tab.bv.webContents.isDestroyed()) return; } catch { return; }
+    try { win.addBrowserView(tab.bv); } catch {}
+    try { setBounds(tab.bv); } catch {}
+    tab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
+  }
+  send('panel:snapshot:clear');
+});
+
 ipcMain.on('sidebar:toggle', (_, show) => {
   sidebarOn = !!show;
   // Update bounds for all tabs so sidebar offset is applied immediately
@@ -1898,11 +2099,69 @@ function* walkDir(dir) {
   } catch {}
 }
 
+// ── Helper: find Chromium Bookmarks file across all profiles ──────────────────
+// chromiumPaths stores paths like: .../User Data/Default/Bookmarks
+// If the user's active profile isn't 'Default', we scan siblings too.
+function _findChromiumBookmarks(defaultPath) {
+  if (!defaultPath) return null;
+  try {
+    if (fs.existsSync(defaultPath)) return defaultPath;
+    // Walk up two levels to get the User Data directory
+    const userData = path.dirname(path.dirname(defaultPath));
+    if (!fs.existsSync(userData)) return null;
+    const entries = fs.readdirSync(userData, { withFileTypes: true });
+    for (const ent of entries) {
+      if (!ent.isDirectory()) continue;
+      if (!/^(Default|Profile \d+|Guest Profile|System Profile)$/.test(ent.name)) continue;
+      const bmPath = path.join(userData, ent.name, 'Bookmarks');
+      if (fs.existsSync(bmPath)) return bmPath;
+    }
+  } catch {}
+  return null;
+}
+
+// ── Windows: register as default browser in system Default Apps ───────────────
+function _registerWindowsDefaultBrowser() {
+  if (process.platform !== 'win32') return;
+  try {
+    const { execSync } = require('child_process');
+    const exePath = app.getPath('exe');
+    const appId   = 'RawBrowserURL';
+    const clsPath = `HKCU\\Software\\Classes\\${appId}`;
+    const capPath = `HKCU\\Software\\Raw Browser\\Capabilities`;
+    const reg = (key, name, val) => {
+      const escaped = String(val).replace(/"/g, '\\"');
+      const cmd = name === ''
+        ? `reg add "${key}" /ve /t REG_SZ /d "${escaped}" /f`
+        : `reg add "${key}" /v "${name}" /t REG_SZ /d "${escaped}" /f`;
+      execSync(cmd, { windowsHide: true, stdio: 'ignore' });
+    };
+    // ProgID — what the OS invokes when opening http/https links
+    reg(clsPath, '', 'Raw Browser URL');
+    reg(clsPath, 'URL Protocol', '');
+    reg(`${clsPath}\\DefaultIcon`, '', `${exePath},0`);
+    reg(`${clsPath}\\shell\\open\\command`, '', `"${exePath}" "%1"`);
+    // Capabilities — makes the app appear in Settings › Default Apps
+    reg(capPath, 'ApplicationName', 'Raw Browser');
+    reg(capPath, 'ApplicationIcon', `${exePath},0`);
+    reg(capPath, 'ApplicationDescription', 'Privacy-first browser — built-in ad blocking, no tracking');
+    reg(`${capPath}\\URLAssociations`, 'http',  appId);
+    reg(`${capPath}\\URLAssociations`, 'https', appId);
+    reg(`${capPath}\\URLAssociations`, 'ftp',   appId);
+    reg(`${capPath}\\FileAssociations`, '.html', appId);
+    reg(`${capPath}\\FileAssociations`, '.htm',  appId);
+    // RegisteredApplications — the key that makes Windows list it in Default Apps
+    reg('HKCU\\Software\\RegisteredApplications', 'Raw Browser', capPath);
+  } catch { /* fail silently — restricted environments */ }
+}
+
 // ── IPC: Default browser ──────────────────────────────────────────────────────
 ipcMain.on('browser:set-default', () => {
   app.setAsDefaultProtocolClient('https');
   app.setAsDefaultProtocolClient('http');
+  app.setAsDefaultProtocolClient('ftp');
   if (process.platform === 'win32') {
+    _registerWindowsDefaultBrowser();
     shell.openExternal('ms-settings:defaultapps').catch(() => {});
   } else if (process.platform === 'darwin') {
     shell.openExternal('x-apple.systempreferences:com.apple.preference.general').catch(() => {});
@@ -1993,7 +2252,7 @@ ipcMain.handle('setup:detect-browsers', () => {
     .map(b => {
       let found = false;
       if (_CHROME_BROWSER_IDS.has(b.id)) {
-        found = exists(chromiumPaths[b.id]);
+        found = !!_findChromiumBookmarks(chromiumPaths[b.id]);
       } else if (_MOZ_BROWSER_IDS.has(b.id)) {
         found = !!findMozillaBookmarkBackup(mozBases[b.id] || []);
       } else if (b.id === 'safari') {
@@ -2072,8 +2331,9 @@ ipcMain.handle('browser:import-bookmarks', async (_, browserId) => {
   }
 
   // ── Chromium-based browsers ────────────────────────────────────────────────
-  const bmPath = _buildChromiumPaths()[browserId];
-  if (!bmPath) return { error: 'Browser not supported for import' };
+  const defaultBmPath = _buildChromiumPaths()[browserId];
+  const bmPath = _findChromiumBookmarks(defaultBmPath);
+  if (!bmPath) return { error: `${browserId} not found or has no bookmarks file` };
   try {
     const raw = JSON.parse(fs.readFileSync(bmPath, 'utf8'));
     const bms = [];
@@ -2248,6 +2508,187 @@ ipcMain.on('ext:toggle', (_, { id, enabled }) => {
     const script = enabled ? EXT_SCRIPTS[id] : EXT_UNSCRIPTS[id];
     if (script) tab.bv.webContents.executeJavaScript(script).catch(() => {});
   }
+});
+
+// ── IPC: Incognito (Ignore) separate window ────────────────────────────
+let incognitoWin  = null;
+const igTabMap    = new Map();
+let   igNextId    = 5000;
+let   igActiveId  = null;
+
+function sendIg(ch, ...a) {
+  if (incognitoWin && !incognitoWin.isDestroyed()) incognitoWin.webContents.send(ch, ...a);
+}
+
+const IG_TOP = 82; // tab-row 34 + nav-row 48
+const IG_SEARCH = 'https://www.startpage.com/search?q=';
+function igResolveUrl(raw) {
+  if (!raw || raw === 'newtab') return 'newtab';
+  if (/^(javascript|vbscript|data|file):/i.test(raw)) return IG_SEARCH + encodeURIComponent(raw);
+  if (/^(https?|ftp):\/\//i.test(raw)) return raw;
+  if (/^(about:|view-source:)/i.test(raw)) return raw;
+  if (/^localhost(:\d+)?(\/.*)?$/.test(raw)) return 'http://' + raw;
+  if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(raw)) return 'https://' + raw;
+  return IG_SEARCH + encodeURIComponent(raw);
+}
+function igSetBounds(bv) {
+  if (!incognitoWin || incognitoWin.isDestroyed()) return;
+  const [w, h] = incognitoWin.getContentSize();
+  bv.setBounds({ x: 0, y: IG_TOP, width: w, height: Math.max(1, h - IG_TOP) });
+}
+
+function igNavData(tab) {
+  if (!tab?.bv || tab.bv.webContents.isDestroyed()) return { url: tab?.url, canBack: false, canFwd: false };
+  const wc = tab.bv.webContents;
+  return { url: tab.url, title: tab.title, loading: tab.loading, canBack: wc.canGoBack(), canFwd: wc.canGoForward() };
+}
+
+function igActivateTab(id) {
+  const tab = igTabMap.get(id);
+  if (!tab || !incognitoWin || incognitoWin.isDestroyed()) return;
+  for (const t of igTabMap.values()) { if (t.bv) try { incognitoWin.removeBrowserView(t.bv); } catch {} }
+  if (tab.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
+    incognitoWin.addBrowserView(tab.bv);
+    igSetBounds(tab.bv);
+  }
+  igActiveId = id;
+  sendIg('ig:tab:activate', id);
+  sendIg('ig:nav:state', igNavData(tab));
+}
+
+function igCreateTab(url = 'newtab', activate = true) {
+  const id = ++igNextId;
+  const bv = new BrowserView({
+    backgroundColor: '#0a071a',
+    webPreferences: {
+      nodeIntegration:  false,
+      contextIsolation: true,
+      sandbox:          false,
+      partition:        'incognito',
+      preload:          path.join(__dirname, 'preload.js'),
+      webSecurity:      true,
+      experimentalFeatures: true,
+    },
+  });
+  const tab = { id, bv, url: url === 'newtab' ? 'newtab' : url, title: 'New Tab', favicon: null, loading: false };
+  igTabMap.set(id, tab);
+  const wc = bv.webContents;
+  wc.setBackgroundThrottling(false);
+  if (settings.spoofUserAgent) wc.setUserAgent(SPOOF_UA);
+  wc.setWindowOpenHandler(({ url: u }) => {
+    if (/^(javascript|vbscript|file):/i.test(u)) return { action: 'deny' };
+    igCreateTab(u, true); return { action: 'deny' };
+  });
+  const norm = u => (u && u !== 'about:blank') ? u : '';
+  wc.on('page-title-updated', (_, t) => {
+    tab.title = t;
+    sendIg('ig:tab:update', { id, url: tab.url, title: t, loading: tab.loading, favicon: tab.favicon });
+    if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+  });
+  wc.on('did-start-loading', () => {
+    tab.loading = true;
+    sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: true, favicon: tab.favicon });
+  });
+  wc.on('did-navigate', (_, u) => {
+    tab.url = norm(u) || tab.url; tab.favicon = null;
+    sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: tab.loading, favicon: null });
+    if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+  });
+  wc.on('did-navigate-in-page', (_, u) => {
+    tab.url = norm(u) || tab.url;
+    sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: tab.loading, favicon: tab.favicon });
+    if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+  });
+  wc.on('page-favicon-updated', (_, favs) => {
+    tab.favicon = favs[0] || null;
+    sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: tab.loading, favicon: tab.favicon });
+  });
+  wc.on('did-stop-loading', () => {
+    tab.loading = false;
+    tab.url = norm(wc.getURL()) || tab.url;
+    sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: false, favicon: tab.favicon });
+    if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+    if (/youtube\.com/i.test(tab.url) && settings.adblockEnabled !== false) wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
+    wc.insertCSS('html::-webkit-scrollbar{display:none!important}html{scrollbar-width:none!important}', { cssOrigin:'user' }).catch(() => {});
+  });
+  sendIg('ig:tab:add', { id, url: tab.url, title: tab.title, loading: false, favicon: null });
+  if (url !== 'newtab') {
+    const resolved = igResolveUrl(url);
+    tab.url = resolved; tab.loading = true;
+    wc.loadURL(resolved).catch(() => {});
+  }
+  if (activate) igActivateTab(id);
+  return tab;
+}
+
+ipcMain.on('incognito:open', () => {
+  if (incognitoWin && !incognitoWin.isDestroyed()) { incognitoWin.focus(); return; }
+  incognitoWin = new BrowserWindow({
+    width: 1200, height: 800, minWidth: 640, minHeight: 400,
+    frame: false, backgroundColor: '#0a071a',
+    icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'logo.icns' : 'logo.ico'),
+    webPreferences: { nodeIntegration: true, contextIsolation: false, webviewTag: false },
+  });
+  igTabMap.clear(); igActiveId = null; igNextId = 5000;
+  incognitoWin.loadFile(path.join(__dirname, 'incognito.html'));
+  incognitoWin.once('ready-to-show', () => {
+    incognitoWin.show();
+    if (win && !win.isDestroyed()) win.webContents.send('incognito:state', true);
+    igCreateTab('newtab', true);
+  });
+  incognitoWin.on('resize', () => {
+    for (const t of igTabMap.values()) {
+      if (t.bv && t.url !== 'newtab' && !t.bv.webContents.isDestroyed()) try { igSetBounds(t.bv); } catch {}
+    }
+  });
+  incognitoWin.on('closed', () => {
+    for (const t of igTabMap.values()) { if (t.bv) try { t.bv.webContents.destroy(); } catch {} }
+    igTabMap.clear(); igActiveId = null; incognitoWin = null;
+    if (win && !win.isDestroyed()) win.webContents.send('incognito:state', false);
+  });
+});
+
+ipcMain.on('ig:tab:create',   (_, url) => igCreateTab(url || 'newtab', true));
+ipcMain.on('ig:tab:activate', (_, id)  => igActivateTab(id));
+ipcMain.on('ig:tab:close',    (_, id)  => {
+  const tab = igTabMap.get(id); if (!tab) return;
+  if (tab.bv) { try { incognitoWin?.removeBrowserView(tab.bv); } catch {} try { tab.bv.webContents.destroy(); } catch {} }
+  igTabMap.delete(id);
+  if (igTabMap.size === 0) { if (incognitoWin && !incognitoWin.isDestroyed()) incognitoWin.close(); return; }
+  if (igActiveId === id) { const next = [...igTabMap.values()].pop(); if (next) igActivateTab(next.id); }
+  sendIg('ig:tab:remove', id);
+});
+ipcMain.on('ig:nav:go', (_, raw) => {
+  const tab = igTabMap.get(igActiveId); if (!tab?.bv) return;
+  const url = igResolveUrl(raw); tab.url = url; tab.loading = true;
+  // Ensure BrowserView is visible (won't be attached if we were on newtab)
+  if (incognitoWin && !incognitoWin.isDestroyed()) {
+    try { incognitoWin.removeBrowserView(tab.bv); } catch {}
+    incognitoWin.addBrowserView(tab.bv);
+    igSetBounds(tab.bv);
+  }
+  tab.bv.webContents.loadURL(url).catch(() => {});
+});
+ipcMain.on('ig:nav:back',    () => { const t = igTabMap.get(igActiveId); if (t?.bv) t.bv.webContents.goBack(); });
+ipcMain.on('ig:nav:forward', () => { const t = igTabMap.get(igActiveId); if (t?.bv) t.bv.webContents.goForward(); });
+ipcMain.on('ig:nav:reload',  () => { const t = igTabMap.get(igActiveId); if (t?.bv) t.bv.webContents.reload(); });
+ipcMain.on('ig:nav:stop',    () => { const t = igTabMap.get(igActiveId); if (t?.bv) t.bv.webContents.stop(); });
+ipcMain.on('ig:win:minimize', () => { incognitoWin?.minimize(); });
+ipcMain.on('ig:win:maximize', () => {
+  if (!incognitoWin) return;
+  incognitoWin.isMaximized() ? incognitoWin.unmaximize() : incognitoWin.maximize();
+});
+ipcMain.on('ig:win:close',   () => { incognitoWin?.close(); });
+
+// ── IPC: Autofill bridge ──────────────────────────────────────────────────────
+ipcMain.on('autofill:query', (_, data) => {
+  // Forward login-form detection from active tab to renderer (vault lookup)
+  send('autofill:query', data);
+});
+ipcMain.on('autofill:fill', (_, data) => {
+  // Forward fill credentials back to the active tab's preload
+  const tab = tabMap.get(activeId);
+  if (tab && tab.bv) tab.bv.webContents.send('autofill:fill', data);
 });
 
 // ── IPC: Picture-in-Picture ───────────────────────────────────────────────────
