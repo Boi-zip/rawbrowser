@@ -1,6 +1,6 @@
 {
   "name": "raw-browser",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Raw — privacy-first browser. Built-in ad blocking, tracker blocking, fingerprint resistance.",
   "main": "main.js",
   "scripts": {
@@ -67,6 +67,15 @@
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "assets/logo.ico",
       "uninstallerIcon": "assets/logo.ico"
-    }
+    },
+    "protocols": [
+      { "name": "Raw Browser", "schemes": ["https", "http"] }
+    ],
+    "fileAssociations": [
+      { "ext": "html",  "name": "HTML Document",  "description": "Open with Raw" },
+      { "ext": "htm",   "name": "HTML Document",  "description": "Open with Raw" },
+      { "ext": "xhtml", "name": "XHTML Document", "description": "Open with Raw" },
+      { "ext": "pdf",   "name": "PDF Document",   "description": "Open with Raw" }
+    ]
   }
 }

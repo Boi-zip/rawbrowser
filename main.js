@@ -9,6 +9,7 @@ const fs                 = require('fs');
 const https              = require('https');
 const { spawn }          = require('child_process');
 const { pathToFileURL }  = require('url');
+const os                 = require('os');
 const { shouldBlock }    = require('./blocklist.js');
 
 // Domains never blocked regardless of settings (needed for site functionality)
@@ -185,6 +186,46 @@ app.commandLine.appendSwitch('disable-background-media-suspend');
 if (process.platform === 'win32') {
   app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedMediaFoundation');
 }
+
+// ── Default browser + external URL handling ──────────────────────────────────
+// Register RAW as a capable handler for http/https at the OS level.
+// On Windows 10/11 this writes the registry entries; user still selects via Settings.
+// On macOS this may set it directly depending on OS version.
+app.setAsDefaultProtocolClient('https');
+app.setAsDefaultProtocolClient('http');
+
+// Extract a navigable URL from a process argv array (set as default browser or open-with).
+function getArgUrl(argv) {
+  for (const a of (argv || []).slice(1)) {
+    if (/^https?:\/\//i.test(a)) return a;
+    if (/^file:\/\//i.test(a))   return a;
+    // Windows: file path passed directly (e.g. double-click .html)
+    if (/\.(html?|xhtml|pdf)$/i.test(a)) {
+      try { if (fs.existsSync(a)) return pathToFileURL(a).href; } catch {}
+    }
+  }
+  return null;
+}
+
+// Single-instance lock: if RAW is already running and an external link is clicked,
+// forward the URL to the existing window instead of opening a second instance.
+const _gotSingleLock = app.requestSingleInstanceLock();
+if (!_gotSingleLock) { app.quit(); }
+app.on('second-instance', (_, argv) => {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.focus();
+  const url = getArgUrl(argv);
+  if (url) createTab(url, true);
+});
+
+// macOS: link clicked in another app while RAW is already running
+let _pendingExtUrl = null;
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  if (win) createTab(url, true);
+  else _pendingExtUrl = url;
+});
 
 const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
 const SPOOF_UA_HINTS = '"Chromium";v="134","Google Chrome";v="134","Not-A.Brand";v="99"';
@@ -675,7 +716,7 @@ let   win      = null;
 let   totalBlocked = 0;
 let   panelOpen    = false;
 let   panelClipX   = 0;       // >0 = BV clipped to leave room for open panel
-let   _panelSeq    = 0;        // increments on every panel:show:* to cancel stale async chains
+let   _panelSeq         = 0;        // increments on every panel:show:* to cancel stale async chains
 
 // ── IPC shortcut ──────────────────────────────────────────────────────────────
 function send(ch, ...a) {
@@ -721,6 +762,17 @@ function setBounds(bv) {
   // If a panel is clipping the BV width (to show panel in uncovered area), respect it
   const bvW = panelClipX > 0 ? Math.max(0, panelClipX - x) : Math.max(0, w - x);
   bv.setBounds({ x, y: CHROME_H, width: bvW, height: Math.max(h - CHROME_H, 0) });
+}
+
+// ── Park BV offscreen instead of removing it ────────────────────────────────
+// Keeps the GPU compositor alive so video/audio never freezes or pauses.
+// The BV is still "attached" to the window but positioned far off-screen left.
+// panel:hide calls setBounds() to restore it to the correct position.
+function _parkBV(bv) {
+  if (!bv || bv.webContents.isDestroyed()) return;
+  const [w, h] = win.getContentSize();
+  try { win.addBrowserView(bv); } catch {} // ensure attached (idempotent)
+  bv.setBounds({ x: -(w + 200), y: 0, width: w, height: h });
 }
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
@@ -1239,6 +1291,10 @@ app.whenReady().then(() => {
     setupSession(session.fromPartition('persist:main'));
     win.show();
     createTab('newtab', true);
+    // Open URL passed on command line (RAW launched as default browser / open-with handler)
+    const _startUrl = getArgUrl(process.argv);
+    if (_startUrl) createTab(_startUrl, true);
+    if (_pendingExtUrl) { createTab(_pendingExtUrl, true); _pendingExtUrl = null; }
     // Auto-check yt-dlp after UI is stable
     setTimeout(() => ytdlpCheckUpdate(), 3500);
     // Keep the cached page snapshot fresh (used by panel popups to show current page state).
@@ -1548,32 +1604,22 @@ ipcMain.on('panel:show', () => {
   panelOpen = true;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
-  const wc = tab.bv.webContents;
-  // Inject keep-alive FIRST so media doesn't pause when BV is detached
-  wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {})
-    .then(() => {
-      if (!panelOpen) return Promise.reject('closed');
-      return wc.capturePage(); // Capture WHILE BV still attached — never black
-    })
-    .then(img => {
-      if (!panelOpen) return;
-      try { win.removeBrowserView(tab.bv); } catch {} // Remove BV
-      send('panel:snapshot', img.toDataURL());         // Send live screenshot
-    })
-    .catch(() => {
-      // Fallback: just remove BV, no screenshot
-      if (!panelOpen) return;
-      try { win.removeBrowserView(tab.bv); } catch {}
-    });
+  const bv = tab.bv;
+  const wc = bv.webContents;
+  wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  _parkBV(bv); // park immediately — no removal, video stays live
+  // Async capture for background snapshot
+  wc.capturePage()
+    .then(img => { if (panelOpen) send('panel:snapshot', img.toDataURL()); })
+    .catch(() => {});
 });
 ipcMain.on('panel:show:quick', () => {
   panelOpen = true;
   ++_panelSeq;
   const tab = tabMap.get(activeId);
-  if (tab?.bv) {
-    try {
-      win.removeBrowserView(tab.bv);
-    } catch {}
+  if (tab?.bv && tab.url !== 'newtab') {
+    tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+    _parkBV(tab.bv);
   }
 });
 // Inject keep-alive JS into BV but do NOT remove it — panel will appear in clipped area.
@@ -1612,65 +1658,48 @@ ipcMain.on('panel:show:fast', () => {
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
   const bv = tab.bv;
-  // Inject keep-alive FIRST, then capture, then remove BV — prevents media pausing
-  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {})
-    .then(() => {
-      if (!panelOpen || _panelSeq !== seq) return Promise.reject('stale');
-      return bv.webContents.capturePage();
-    })
-    .then(img => {
-      if (!panelOpen || _panelSeq !== seq) return;
-      try { win.removeBrowserView(bv); } catch {}
-      send('panel:snapshot', img.toDataURL());
-    })
-    .catch(err => {
-      if (err === 'stale' || !panelOpen || _panelSeq !== seq) return;
-      try { win.removeBrowserView(bv); } catch {}
-    });
+  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  _parkBV(bv);
+  bv.webContents.capturePage()
+    .then(img => { if (panelOpen && _panelSeq === seq) send('panel:snapshot', img.toDataURL()); })
+    .catch(() => {});
 });
-ipcMain.on('panel:show:nowait', async () => {
-  // Instant open — no capture, no snapshot shown. Used for overlays that cover everything.
+ipcMain.on('panel:show:nowait', () => {
+  // Instant open — no capture, no snapshot. Used for full-screen overlays.
   panelOpen = true;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
-  await tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-  if (!panelOpen) return;
-  try { win.removeBrowserView(tab.bv); } catch {}
+  tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  _parkBV(tab.bv);
 });
-ipcMain.on('panel:show:instant', async () => {
-  // Instant open WITH website visible.
-  // Order matters for both zero-flicker AND video keep-alive:
-  //   1. Send snapshot first so the renderer paints it instantly (no black flash)
-  //   2. await keep-alive so the JS is GUARANTEED to run inside the BV before detach
-  //      (if we remove BV before the JS runs, visibilitychange fires as hidden=true
-  //       and videos pause before the override is in place)
-  //   3. Remove BV — by now keep-alive has overridden hidden/visibilityState
+// New: synchronous park — used by tab right-click context menu for zero-delay, zero-flicker display
+ipcMain.on('panel:show:sync', () => {
+  panelOpen = true;
+  const tab = tabMap.get(activeId);
+  if (!tab?.bv || tab.url === 'newtab') return;
+  tab.bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  _parkBV(tab.bv);
+  // Still send a snapshot so the background looks like the website
+  tab.bv.webContents.capturePage()
+    .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
+    .catch(() => {});
+});
+ipcMain.on('panel:show:instant', () => {
+  // Park BV offscreen immediately — keeps video/audio running with no GPU freeze.
+  // Then async-send a snapshot to fill the panel background.
   panelOpen = true;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') return;
   const bv = tab.bv;
-  if (tab.snapshot) {
-    // Step 1: snapshot renders immediately in the renderer
-    send('panel:snapshot', tab.snapshot);
-    // Step 2: keep-alive runs in the BV (~10-20 ms, imperceptible)
-    await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-    // Step 3: safe to detach — visibility is already overridden
-    if (!panelOpen) return;
-    try { win.removeBrowserView(bv); } catch {}
-  } else {
-    // No cache yet — live capture fallback (first open after launch)
-    try {
-      const img = await bv.webContents.capturePage();
-      if (!panelOpen) return;
-      await bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
-      if (!panelOpen) return;
-      try { win.removeBrowserView(bv); } catch {}
-      send('panel:snapshot', img.toDataURL());
-    } catch {
-      if (!panelOpen) return;
-      try { win.removeBrowserView(bv); } catch {}
-    }
-  }
+  bv.webContents.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
+  _parkBV(bv); // synchronous — BV stays compositing offscreen, video never freezes
+  // Send cached snapshot immediately so panel background isn't blank
+  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
+  // Single async capture to refresh the cached snapshot (no polling needed —
+  // the BV is still rendering offscreen so the frame is current when panel closes)
+  bv.webContents.capturePage()
+    .then(img => { if (panelOpen) { tab.snapshot = img.toDataURL(); send('panel:snapshot', tab.snapshot); } })
+    .catch(() => {});
 });
 ipcMain.on('panel:hide', () => {
   panelOpen = false;
@@ -1756,6 +1785,308 @@ ipcMain.on('bookmark:remove', (_, id) => {
   save(F.bookmarks, bookmarks);
   send('bookmarks:set', bookmarks);
 });
+// Bulk import bookmarks from external source (setup import step)
+ipcMain.on('bookmarks:bulk-add', (_, items) => {
+  if (!Array.isArray(items) || !items.length) return;
+  const existingUrls = new Set(bookmarks.map(b => b.url));
+  const newOnes = items
+    .filter(b =>
+      b && typeof b.url === 'string' && typeof b.title === 'string' &&
+      // Strict: only http/https URLs — never allow javascript:, file:, data:, etc.
+      /^https?:\/\//i.test(b.url) &&
+      b.url.length < 2048 &&
+      !existingUrls.has(b.url)
+    )
+    .map((b, i) => ({
+      id: Date.now() + i,
+      url: b.url,
+      // Sanitize title — strip any HTML/control chars
+      title: String(b.title).replace(/[\x00-\x1f<>"']/g, '').slice(0, 300) || 'Bookmark',
+      favicon: null, ts: Date.now()
+    }));
+  if (!newOnes.length) return;
+  bookmarks.push(...newOnes);
+  save(F.bookmarks, bookmarks);
+  send('bookmarks:set', bookmarks);
+});
+
+// ── Helpers: LZ4 block decoder (for Firefox mozlz4 bookmark backups) ──────────
+function lz4BlockDecode(src, outputSize) {
+  const dst = Buffer.alloc(outputSize);
+  let si = 0, di = 0;
+  while (si < src.length) {
+    const token = src[si++];
+    let litLen = token >>> 4;
+    if (litLen === 15) { let x; do { x = src[si++]; litLen += x; } while (x === 255); }
+    src.copy(dst, di, si, si + litLen); si += litLen; di += litLen;
+    if (si >= src.length) break;
+    const offset = src[si] | (src[si + 1] << 8); si += 2;
+    let matchLen = (token & 0xf) + 4;
+    if ((token & 0xf) === 15) { let x; do { x = src[si++]; matchLen += x; } while (x === 255); }
+    const ms = di - offset;
+    for (let k = 0; k < matchLen; k++) dst[di++] = dst[ms + k];
+  }
+  return dst.slice(0, di);
+}
+function decodeMozlz4(buf) {
+  if (buf.slice(0, 8).toString('binary') !== 'mozLz40\0') throw new Error('Not mozlz4');
+  const uncompressedSize = buf.readUInt32LE(8);
+  // Cap at 64 MB — a real Firefox bookmark file is never this large.
+  // Prevents DoS via malformed/crafted mozlz4 file.
+  if (uncompressedSize > 64 * 1024 * 1024) throw new Error('mozlz4: output too large, refusing to decode');
+  return lz4BlockDecode(buf.slice(12), uncompressedSize);
+}
+function extractFirefoxBookmarks(node, out = []) {
+  if (!node) return out;
+  if (node.type === 'text/x-moz-place' && node.uri && node.title &&
+      !/^(place:|javascript:|vbscript:)/i.test(node.uri) && /^https?:\/\//i.test(node.uri)) {
+    out.push({ title: String(node.title).slice(0, 500), url: node.uri });
+  }
+  if (Array.isArray(node.children)) node.children.forEach(c => extractFirefoxBookmarks(c, out));
+  return out;
+}
+function findFirefoxBookmarkBackup() {
+  const home = os.homedir();
+  const pl   = process.platform;
+  const base = pl === 'win32'  ? path.join(os.homedir(), 'AppData', 'Roaming', 'Mozilla', 'Firefox', 'Profiles')
+             : pl === 'darwin' ? path.join(home, 'Library', 'Application Support', 'Firefox', 'Profiles')
+                               : path.join(home, '.mozilla', 'firefox');
+  return findMozillaBookmarkBackup([base]);
+}
+// Generic finder: searches a list of profile-base directories for mozlz4 backups.
+// Handles all Firefox forks that use the same profile layout.
+function findMozillaBookmarkBackup(bases) {
+  for (const base of (Array.isArray(bases) ? bases : [bases])) {
+    if (!base) continue;
+    try {
+      if (!fs.existsSync(base)) continue;
+      const profiles = fs.readdirSync(base);
+      for (const prof of profiles) {
+        if (prof === 'Crash Reports' || prof === 'crash-reports') continue;
+        const bbDir = path.join(base, prof, 'bookmarkbackups');
+        try {
+          const files = fs.readdirSync(bbDir).filter(f => f.endsWith('.jsonlz4') || f.endsWith('.baklz4'));
+          if (!files.length) continue;
+          // Use the most recently modified backup
+          const best = files.map(f => {
+            try { return { f, mt: fs.statSync(path.join(bbDir, f)).mtimeMs }; } catch { return null; }
+          }).filter(Boolean).sort((a, b) => b.mt - a.mt)[0];
+          if (best) return path.join(bbDir, best.f);
+        } catch {}
+      }
+    } catch {}
+  }
+  return null;
+}
+// Build profile-base path list for a Firefox-family browser given its app-data dir name(s)
+function getMozProfileBases(winNames, macNames, linuxNames) {
+  const home = os.homedir();
+  const pl   = process.platform;
+  const roaming = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  const local   = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  if (pl === 'win32')  return winNames.map(n => path.join(roaming, n));
+  if (pl === 'darwin') return macNames.map(n => path.join(home, 'Library', 'Application Support', n));
+  return linuxNames.map(n => path.join(home, n));
+}
+function* walkDir(dir) {
+  try {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) yield* walkDir(full);
+      else yield full;
+    }
+  } catch {}
+}
+
+// ── IPC: Default browser ──────────────────────────────────────────────────────
+ipcMain.on('browser:set-default', () => {
+  app.setAsDefaultProtocolClient('https');
+  app.setAsDefaultProtocolClient('http');
+  if (process.platform === 'win32') {
+    shell.openExternal('ms-settings:defaultapps').catch(() => {});
+  } else if (process.platform === 'darwin') {
+    shell.openExternal('x-apple.systempreferences:com.apple.preference.general').catch(() => {});
+  }
+});
+ipcMain.handle('browser:is-default', () => app.isDefaultProtocolClient('https'));
+
+// ── IPC: Browser data import ──────────────────────────────────────────────────
+// Strict allowlist — never let the renderer supply an arbitrary string to a file-read path.
+const _MOZ_BROWSER_IDS = new Set(['firefox','librewolf','zen','waterfox','floorp','palemoon','basilisk','iceweasel']);
+const _CHROME_BROWSER_IDS = new Set(['chrome','edge','brave','opera','vivaldi','arc','thorium','chromium','opera-gx','yandex']);
+const _SPECIAL_IDS = new Set(['safari','ie']);
+
+function _buildChromiumPaths() {
+  const home = os.homedir();
+  const pl   = process.platform;
+  const local = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  const roam  = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  const bm = n => `${n}${path.sep}Bookmarks`; // append Bookmarks filename
+  function w(p) { return path.join(local, p, 'Bookmarks'); }
+  function m(p) { return path.join(home, 'Library', 'Application Support', p, 'Bookmarks'); }
+  function l(p) { return path.join(home, p, 'Bookmarks'); }
+  const table = {
+    chrome:    { win: w('Google\\Chrome\\User Data\\Default'),   mac: m('Google/Chrome/Default'),         lin: l('.config/google-chrome/Default') },
+    edge:      { win: w('Microsoft\\Edge\\User Data\\Default'),  mac: m('Microsoft Edge/Default'),         lin: l('.config/microsoft-edge/Default') },
+    brave:     { win: w('BraveSoftware\\Brave-Browser\\User Data\\Default'), mac: m('BraveSoftware/Brave-Browser/Default'), lin: l('.config/BraveSoftware/Brave-Browser/Default') },
+    opera:     { win: path.join(roam, 'Opera Software', 'Opera Stable', 'Bookmarks'), mac: m('com.operasoftware.Opera'), lin: l('.config/opera') + '/Bookmarks' },
+    'opera-gx':{ win: path.join(roam, 'Opera Software', 'Opera GX Stable', 'Bookmarks'), mac: m('com.operasoftware.OperaGX'), lin: l('.config/opera') + '/Bookmarks' },
+    vivaldi:   { win: w('Vivaldi\\User Data\\Default'),          mac: m('Vivaldi/Default'),                lin: l('.config/vivaldi/Default') },
+    arc:       { win: w('Arc\\User Data\\Default'),              mac: m('Arc/User Data/Default'),          lin: null },
+    thorium:   { win: w('Thorium\\User Data\\Default'),          mac: m('Thorium/Default'),                lin: l('.config/thorium/Default') },
+    chromium:  { win: w('Chromium\\User Data\\Default'),         mac: m('Chromium/Default'),               lin: l('.config/chromium/Default') },
+    yandex:    { win: w('Yandex\\YandexBrowser\\User Data\\Default'), mac: m('Yandex/YandexBrowser/Default'), lin: l('.config/yandex-browser-beta/Default') },
+  };
+  const result = {};
+  for (const [id, paths] of Object.entries(table)) {
+    result[id] = pl === 'win32' ? paths.win : pl === 'darwin' ? paths.mac : paths.lin;
+  }
+  return result;
+}
+function _buildMozillaForkBases() {
+  // Each entry: list of profile BASE directories to search
+  return {
+    firefox:   getMozProfileBases(['Mozilla\\Firefox\\Profiles'], ['Firefox/Profiles'], ['.mozilla/firefox']),
+    librewolf: getMozProfileBases(['LibreWolf\\Profiles'], ['LibreWolf/Profiles'], ['.librewolf']),
+    zen:       getMozProfileBases(['Zen\\Profiles', 'Zen Browser\\Profiles'], ['Zen Browser/Profiles'], ['.zen']),
+    waterfox:  getMozProfileBases(['Waterfox\\Profiles'], ['Waterfox/Profiles'], ['.waterfox']),
+    floorp:    getMozProfileBases(['Floorp\\Profiles'], ['Floorp/Profiles'], ['.floorp']),
+    palemoon:  getMozProfileBases(['Moonchild Productions\\Pale Moon\\Profiles'], ['Pale Moon/Profiles'], ['.moonchild productions/pale moon']),
+    basilisk:  getMozProfileBases(['Moonchild Productions\\Basilisk\\Profiles'], ['Basilisk/Profiles'], ['.moonchild productions/basilisk']),
+    iceweasel: getMozProfileBases(['Iceweasel\\Profiles'], ['Iceweasel/Profiles'], ['.iceweasel']),
+  };
+}
+
+ipcMain.handle('setup:detect-browsers', () => {
+  const home = os.homedir();
+  const pl   = process.platform;
+  const exists = p => { try { return !!p && fs.existsSync(p); } catch { return false; } };
+  const chromiumPaths = _buildChromiumPaths();
+  const mozBases      = _buildMozillaForkBases();
+
+  const BROWSERS = [
+    // ── Chromium family ──
+    { id: 'chrome',    name: 'Google Chrome' },
+    { id: 'edge',      name: 'Microsoft Edge' },
+    { id: 'brave',     name: 'Brave' },
+    { id: 'opera',     name: 'Opera' },
+    { id: 'opera-gx',  name: 'Opera GX' },
+    { id: 'vivaldi',   name: 'Vivaldi' },
+    { id: 'arc',       name: 'Arc' },
+    { id: 'thorium',   name: 'Thorium' },
+    { id: 'chromium',  name: 'Chromium' },
+    { id: 'yandex',    name: 'Yandex Browser' },
+    // ── Firefox family (all use mozlz4 format) ──
+    { id: 'firefox',   name: 'Firefox',   isFirefox: true },
+    { id: 'librewolf', name: 'LibreWolf', isFirefox: true },
+    { id: 'zen',       name: 'Zen Browser',isFirefox: true },
+    { id: 'waterfox',  name: 'Waterfox',  isFirefox: true },
+    { id: 'floorp',    name: 'Floorp',    isFirefox: true },
+    { id: 'palemoon',  name: 'Pale Moon', isFirefox: true },
+    { id: 'basilisk',  name: 'Basilisk',  isFirefox: true },
+    // ── Other ──
+    ...(pl === 'darwin' ? [{ id: 'safari', name: 'Safari' }] : []),
+    ...(pl === 'win32'  ? [{ id: 'ie',     name: 'IE Favorites' }] : []),
+  ];
+
+  return BROWSERS
+    .map(b => {
+      let found = false;
+      if (_CHROME_BROWSER_IDS.has(b.id)) {
+        found = exists(chromiumPaths[b.id]);
+      } else if (_MOZ_BROWSER_IDS.has(b.id)) {
+        found = !!findMozillaBookmarkBackup(mozBases[b.id] || []);
+      } else if (b.id === 'safari') {
+        found = exists(path.join(home, 'Library', 'Safari', 'Bookmarks.plist'));
+      } else if (b.id === 'ie') {
+        found = exists(path.join(home, 'Favorites'));
+      }
+      return { id: b.id, name: b.name, found, isFirefox: !!b.isFirefox };
+    });
+});
+
+ipcMain.handle('browser:import-bookmarks', async (_, browserId) => {
+  // Strict allowlist — prevent renderer from supplying an arbitrary browserId
+  if (typeof browserId !== 'string' ||
+      (!_MOZ_BROWSER_IDS.has(browserId) && !_CHROME_BROWSER_IDS.has(browserId) && !_SPECIAL_IDS.has(browserId))) {
+    return { error: 'Unknown browser' };
+  }
+
+  const home = os.homedir();
+  const pl   = process.platform;
+
+  // ── Firefox family (all use mozlz4 bookmark backups) ─────────────────────
+  if (_MOZ_BROWSER_IDS.has(browserId)) {
+    try {
+      const mozBases  = _buildMozillaForkBases();
+      const bakPath   = findMozillaBookmarkBackup(mozBases[browserId] || []);
+      if (!bakPath) return { error: `No ${browserId} bookmark backup found` };
+      const buf  = fs.readFileSync(bakPath);
+      const json = JSON.parse(decodeMozlz4(buf).toString('utf8'));
+      const bms  = extractFirefoxBookmarks(json);
+      return { bookmarks: bms, count: bms.length };
+    } catch (e) { return { error: e.message }; }
+  }
+
+  // ── Internet Explorer / Edge Legacy (Favorites folder) ──────────────────
+  if (browserId === 'ie') {
+    try {
+      const favDir = path.join(home, 'Favorites');
+      const bms = [];
+      for (const fpath of walkDir(favDir)) {
+        if (!fpath.toLowerCase().endsWith('.url')) continue;
+        try {
+          const txt = fs.readFileSync(fpath, 'utf8');
+          const m = txt.match(/^\s*URL\s*=\s*(.+)/im);
+          if (!m) continue;
+          const url = m[1].trim();
+          if (!/^https?:\/\//i.test(url)) continue;
+          bms.push({ title: path.basename(fpath, '.url'), url });
+        } catch {}
+      }
+      return { bookmarks: bms, count: bms.length };
+    } catch (e) { return { error: e.message }; }
+  }
+
+  // ── Safari (macOS only) ────────────────────────────────────────────────────
+  if (browserId === 'safari') {
+    try {
+      if (pl !== 'darwin') return { error: 'Safari is only on macOS' };
+      const plistPath = path.join(home, 'Library', 'Safari', 'Bookmarks.plist');
+      const { execSync } = require('child_process');
+      const jsonStr = execSync(`plutil -convert json -o - "${plistPath}"`).toString('utf8');
+      const root    = JSON.parse(jsonStr);
+      const bms     = [];
+      function walkSafari(node) {
+        if (!node) return;
+        if (node.WebBookmarkType === 'WebBookmarkTypeLeaf' && node.URLString && node.URIDictionary?.title) {
+          if (/^https?:\/\//i.test(node.URLString))
+            bms.push({ title: node.URIDictionary.title, url: node.URLString });
+        }
+        const children = node.Children || node.WebBookmarkChildren;
+        if (Array.isArray(children)) children.forEach(walkSafari);
+      }
+      walkSafari(root);
+      return { bookmarks: bms, count: bms.length };
+    } catch (e) { return { error: e.message }; }
+  }
+
+  // ── Chromium-based browsers ────────────────────────────────────────────────
+  const bmPath = _buildChromiumPaths()[browserId];
+  if (!bmPath) return { error: 'Browser not supported for import' };
+  try {
+    const raw = JSON.parse(fs.readFileSync(bmPath, 'utf8'));
+    const bms = [];
+    function extractChrome(node) {
+      if (!node) return;
+      if (node.type === 'url' && node.url && node.name && /^https?:\/\//i.test(node.url))
+        bms.push({ title: node.name, url: node.url });
+      if (Array.isArray(node.children)) node.children.forEach(extractChrome);
+    }
+    ['bookmark_bar', 'other', 'synced'].forEach(k => extractChrome((raw.roots || {})[k]));
+    return { bookmarks: bms, count: bms.length };
+  } catch (e) { return { error: e.message }; }
+});
 
 // ── IPC: History ──────────────────────────────────────────────────────────────
 ipcMain.on('history:clear', () => {
@@ -1770,8 +2101,34 @@ ipcMain.on('downloads:clear', () => {
   save(F.downloads, []);
   send('downloads:update', downloads);
 });
-ipcMain.on('downloads:open',   (_, p) => shell.openPath(p).catch(() => {}));
-ipcMain.on('downloads:reveal', (_, p) => shell.showItemInFolder(p));
+ipcMain.on('downloads:open',   (_, p) => {
+  // Validate: must be an absolute path to an existing file in a safe location.
+  // Never open paths that start with ~, contain .. traversal, or point outside home/downloads.
+  if (typeof p !== 'string') return;
+  try {
+    const resolved = path.resolve(p);
+    const safe = [
+      os.homedir(),
+      app.getPath('downloads'),
+      app.getPath('temp'),
+    ].some(d => resolved.startsWith(path.resolve(d) + path.sep) || resolved === path.resolve(d));
+    if (!safe || !fs.existsSync(resolved)) return;
+    shell.openPath(resolved).catch(() => {});
+  } catch {}
+});
+ipcMain.on('downloads:reveal', (_, p) => {
+  if (typeof p !== 'string') return;
+  try {
+    const resolved = path.resolve(p);
+    const safe = [
+      os.homedir(),
+      app.getPath('downloads'),
+      app.getPath('temp'),
+    ].some(d => resolved.startsWith(path.resolve(d) + path.sep) || resolved === path.resolve(d));
+    if (!safe) return;
+    shell.showItemInFolder(resolved);
+  } catch {}
+});
 
 // ── IPC: Settings ─────────────────────────────────────────────────────────────
 ipcMain.on('settings:reset', () => {

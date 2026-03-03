@@ -1932,13 +1932,19 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 }
 .setup-step.active {
   display: flex;
-  animation: stepIn .3s cubic-bezier(.22,1,.36,1);
+  animation: stepInRight .28s cubic-bezier(.22,1,.36,1) both;
 }
-@keyframes stepIn {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0);    }
+.setup-step.active.from-back {
+  animation-name: stepInLeft;
 }
-
+@keyframes stepInRight {
+  from { opacity: 0; transform: translateX(22px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes stepInLeft {
+  from { opacity: 0; transform: translateX(-22px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
 .setup-icon {
   width: 56px; height: 56px;
   background: rgba(var(--acc-raw),.07);
@@ -2056,6 +2062,122 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .setup-done-row:nth-child(3){animation-delay:.34s;}
 @keyframes doneRowIn{to{opacity:1;transform:none;}}
 .setup-done-icon{color:var(--acc);flex-shrink:0;display:flex;}.setup-done-text{font-size:12px;color:var(--t1);font-weight:500;}
+
+/* Setup: animated welcome logo */
+.setup-welcome-logo{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.swl-img{width:68px;height:68px;border-radius:20px;object-fit:contain;position:relative;z-index:1;animation:swlGlow 3s ease-in-out infinite;}
+@keyframes swlGlow{0%,100%{box-shadow:0 8px 32px rgba(var(--acc-raw),.38),0 0 0 1px rgba(var(--acc-raw),.2);}50%{box-shadow:0 14px 52px rgba(var(--acc-raw),.6),0 0 0 1px rgba(var(--acc-raw),.32);}}
+.swl-ring{position:absolute;border-radius:50%;border:1px solid rgba(var(--acc-raw),.15);pointer-events:none;}
+.swl-ring-lg{width:108px;height:108px;animation:swlRingPulse 3s ease-in-out infinite;}
+.swl-ring-sm{width:88px;height:88px;animation:swlRingPulse 3s ease-in-out infinite .4s;}
+@keyframes swlRingPulse{0%,100%{transform:scale(1);opacity:.7;}50%{transform:scale(1.07);opacity:.22;}}
+.swl-badge{position:absolute;bottom:-7px;right:-12px;background:var(--acc);color:#000;font-size:7px;font-weight:800;letter-spacing:.06em;padding:2px 6px;border-radius:5px;line-height:1.4;z-index:2;animation:swlBadge 2.8s ease-in-out infinite;}
+@keyframes swlBadge{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
+/* Setup: feature pills */
+.setup-pills{display:flex;flex-direction:column;gap:7px;width:100%;max-width:400px;margin-top:14px;}
+.setup-pill{display:flex;align-items:center;gap:11px;padding:10px 14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:11px;text-align:left;font-size:12px;color:var(--t2);line-height:1.45;opacity:0;animation:pillFadeUp .38s cubic-bezier(.22,1,.36,1) both;}
+.setup-pill:nth-child(1){animation-delay:.1s;}.setup-pill:nth-child(2){animation-delay:.19s;}.setup-pill:nth-child(3){animation-delay:.28s;}.setup-pill:nth-child(4){animation-delay:.37s;}
+.setup-pill strong{color:var(--t0);}
+@keyframes pillFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.setup-pill-icon{color:var(--acc);flex-shrink:0;display:flex;width:22px;height:22px;align-items:center;justify-content:center;}
+/* Setup: browser import step */
+.setup-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%;max-width:440px;margin-top:10px;}
+.setup-import-detecting,.setup-import-none{grid-column:1/-1;text-align:center;font-size:12px;color:var(--t4);padding:16px 0;}
+.setup-import-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.07);border-radius:12px;transition:border-color .15s,background .15s;cursor:default;}
+.setup-import-card:hover:not(.sic-not-found){border-color:rgba(var(--acc-raw),.3);background:rgba(var(--acc-raw),.04);}
+.sic-not-found{opacity:.38;}
+.sic-not-installed{font-size:9.5px;color:var(--t4);margin-top:1px;}
+.sic-logo{width:32px;height:32px;border-radius:9px;flex-shrink:0;background:rgba(255,255,255,.08) center/20px no-repeat;}
+.sic-logo-chrome{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='12' fill='%234285f4'/%3E%3Ccircle cx='24' cy='24' r='5' fill='white'/%3E%3Cpath d='M24 12h18.9c-2.5-7-9-12-16.9-12A19.9 19.9 0 0 0 4 18z' fill='%23ea4335'/%3E%3Cpath d='M7.1 30L-2.4 13.5A20 20 0 0 0 24 44l9.5-16.5A10 10 0 0 1 24 34a10 10 0 0 1-8.7-5z' fill='%2334a853'/%3E%3Cpath d='M42.9 30A20 20 0 0 0 44 24a20 20 0 0 0-1.1-6h-18.8a10 10 0 0 1 3.4 13.5z' fill='%23fbbc05'/%3E%3C/svg%3E");}
+.sic-logo-edge{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M8 28c0 8.8 7.2 16 16 16s16-7.2 16-16H8z' fill='%230078d4'/%3E%3Cpath d='M4 22c0-11 9-20 20-20 7 0 13.2 3.6 16.8 9H20c-6.6 0-12 5.4-12 12v3H4v-4z' fill='%2305a6f0'/%3E%3C/svg%3E");}
+.sic-logo-brave{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M24 4l4 4h8l2 3-4 13 2 4-8 16-4 4-4-4-8-16 2-4-4-13 2-3h8z' fill='%23fb542b'/%3E%3Cpath d='M24 30l-6-6 2-8h8l2 8z' fill='white' opacity='.9'/%3E%3C/svg%3E");}
+.sic-logo-opera{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23ff1b2d'/%3E%3Cellipse cx='24' cy='24' rx='9' ry='14' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E");}
+.sic-logo-vivaldi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23ef3939'/%3E%3Cpath d='M14 14l10 20 10-20' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+.sic-logo-firefox{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23ff9400'/%3E%3Ccircle cx='24' cy='24' r='10' fill='%23e63f19'/%3E%3C/svg%3E");}
+/* Firefox forks */
+.sic-logo-librewolf{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%230893e0'/%3E%3Ccircle cx='24' cy='24' r='10' fill='%230057a3'/%3E%3Cpath d='M18 24a6 6 0 0 1 12 0' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");}
+.sic-logo-zen{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%231a1a2e'/%3E%3Ccircle cx='24' cy='24' r='8' fill='none' stroke='%23a78bfa' stroke-width='2.5'/%3E%3Ccircle cx='24' cy='24' r='3' fill='%23a78bfa'/%3E%3C/svg%3E");}
+.sic-logo-waterfox{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%2300c8c8'/%3E%3Ccircle cx='24' cy='24' r='9' fill='none' stroke='white' stroke-width='2.5'/%3E%3Cpath d='M24 15v18M15 24h18' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");}
+.sic-logo-floorp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23884dff'/%3E%3Ccircle cx='24' cy='24' r='10' fill='%23ff4d88'/%3E%3Ccircle cx='24' cy='24' r='4' fill='white'/%3E%3C/svg%3E");}
+.sic-logo-palemoon{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23556b7d'/%3E%3Cpath d='M28 16c-7 0-12 5-12 11s5 11 12 11c-5-2-8-6-8-11s3-9 8-11z' fill='%23c8d8e8'/%3E%3Ccircle cx='30' cy='18' r='3' fill='%23c8d8e8'/%3E%3C/svg%3E");}
+.sic-logo-basilisk{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23282828'/%3E%3Cpath d='M14 34 L24 12 L34 34' stroke='%23aaa' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M17 27h14' stroke='%23aaa' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");}
+/* Chromium forks */
+.sic-logo-thorium{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%230070f3'/%3E%3Cpath d='M24 12v24M12 24h24' stroke='white' stroke-width='2.8' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='24' r='6' fill='%2300c6ff'/%3E%3C/svg%3E");}
+.sic-logo-chromium{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='12' fill='%234a90d9'/%3E%3Ccircle cx='24' cy='24' r='5' fill='white'/%3E%3Cpath d='M24 12h18.9c-2.5-7-9-12-16.9-12A19.9 19.9 0 0 0 4 18z' fill='%2364b5f6'/%3E%3Cpath d='M7.1 30L-2.4 13.5A20 20 0 0 0 24 44l9.5-16.5A10 10 0 0 1 24 34a10 10 0 0 1-8.7-5z' fill='%2390caf9'/%3E%3Cpath d='M42.9 30A20 20 0 0 0 44 24a20 20 0 0 0-1.1-6h-18.8a10 10 0 0 1 3.4 13.5z' fill='%23bbdefb'/%3E%3C/svg%3E");}
+.sic-logo-arc{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3CdefinXS%3E%3ClinearGradient id='ag' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23c084fc'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='24' cy='24' r='20' fill='url(%23ag)'/%3E%3Cpath d='M14 32 C14 20 22 13 24 13 C26 13 34 20 34 32' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");}
+.sic-logo-yandex{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23ff0000'/%3E%3Ctext x='13' y='32' font-size='22' font-weight='900' fill='white' font-family='serif'%3EЯ%3C/text%3E%3C/svg%3E");}
+.sic-logo-opera-gx{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23111'/%3E%3Ccircle cx='24' cy='24' r='13' fill='none' stroke='%23ff1b2d' stroke-width='2.5'/%3E%3Crect x='22' y='10' width='4' height='28' rx='2' fill='%23ff1b2d'/%3E%3C/svg%3E");}
+.sic-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.sic-name{font-size:11.5px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sic-btn{padding:3px 9px;font-size:10px;font-weight:700;border:1px solid rgba(var(--acc-raw),.3);border-radius:6px;background:rgba(var(--acc-raw),.07);color:var(--acc);cursor:pointer;font-family:var(--f);transition:background .12s;white-space:nowrap;flex-shrink:0;}
+.sic-btn:hover:not(:disabled){background:rgba(var(--acc-raw),.18);}
+.sic-btn:disabled{opacity:.4;cursor:default;}
+.sic-btn.done-import{background:rgba(76,217,100,.12);border-color:rgba(76,217,100,.3);color:#4cd964;}
+.setup-import-header{font-size:10.5px;color:var(--t4);margin-top:6px;margin-bottom:2px;width:100%;max-width:440px;text-align:left;}
+.setup-import-status{font-size:11px;color:var(--acc);margin-top:7px;min-height:15px;opacity:.9;}
+/* Setup: set as default browser card (done step) */
+.setup-set-default{width:100%;max-width:380px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);}
+#setup-set-default-btn{width:100%;padding:10px 16px;background:rgba(var(--acc-raw),.06);border:1.5px solid rgba(var(--acc-raw),.2);border-radius:11px;color:var(--acc);font-size:12px;font-weight:600;font-family:var(--f);cursor:pointer;transition:background .14s,border-color .14s;display:flex;align-items:center;justify-content:center;gap:8px;}
+#setup-set-default-btn:hover:not(:disabled){background:rgba(var(--acc-raw),.14);border-color:rgba(var(--acc-raw),.38);}
+#setup-set-default-btn:disabled{opacity:.55;cursor:default;}
+#setup-set-default-btn.done{opacity:.7;}
+.sdb-hint{font-size:10px;color:var(--t4);margin-top:5px;text-align:center;}
+/* Splash step 0 */
+.setup-splash-wrap{position:relative;width:calc(100% + 52px);margin:-18px -26px;min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:32px 26px 90px;gap:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(var(--acc-raw),.08) 0%,transparent 70%);}
+.splash-content-area{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:2;}
+.splash-logo{width:88px;height:88px;border-radius:24px;object-fit:contain;box-shadow:0 12px 48px rgba(var(--acc-raw),.45),0 0 0 1px rgba(var(--acc-raw),.22);animation:splashLogoUp .85s cubic-bezier(.22,1,.36,1) both;}
+@keyframes splashLogoUp{from{opacity:0;transform:translateY(52px) scale(.72);}to{opacity:1;transform:none;}}
+.splash-welcome-title{font-size:28px;font-weight:800;letter-spacing:-.07em;color:var(--t0);margin:14px 0 0;animation:splashFadeUp .6s .38s cubic-bezier(.22,1,.36,1) both;}
+.splash-welcome-sub{font-size:13px;color:var(--t3);margin:0;animation:splashFadeUp .6s .54s cubic-bezier(.22,1,.36,1) both;}
+@keyframes splashFadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+.splash-wave-area{position:absolute;bottom:0;left:0;right:0;height:80px;overflow:hidden;z-index:1;}
+.splash-wave{position:absolute;bottom:0;width:200%;height:100%;display:flex;}
+.splash-wave svg{flex-shrink:0;width:50%;height:100%;}
+.w1{animation:waveScroll 6s linear infinite;color:rgba(var(--acc-raw),.15);}
+.w2{animation:waveScroll 9s linear infinite reverse;color:rgba(var(--acc-raw),.08);bottom:10px;}
+@keyframes waveScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+/* ── Battle Arena (Step 0) ───────────────────────────────────────────────── */
+/* Floating particles */
+@keyframes particleFloat{0%{transform:translateY(0) translateX(0) scale(1);opacity:.7}33%{transform:translateY(-38px) translateX(12px) scale(1.3);opacity:.4}66%{transform:translateY(-22px) translateX(-8px) scale(.8);opacity:.6}100%{transform:translateY(-60px) translateX(4px) scale(.4);opacity:0}}
+.splash-particle{position:absolute;border-radius:50%;background:rgba(var(--acc-raw),.55);pointer-events:none;animation:particleFloat linear infinite;will-change:transform,opacity;}
+.sp1{width:5px;height:5px;left:14%;bottom:90px;animation-duration:3.8s;animation-delay:0s;}
+.sp2{width:3px;height:3px;left:28%;bottom:70px;animation-duration:2.9s;animation-delay:.7s;}
+.sp3{width:6px;height:6px;left:50%;bottom:85px;animation-duration:4.3s;animation-delay:.4s;}
+.sp4{width:4px;height:4px;left:68%;bottom:75px;animation-duration:3.1s;animation-delay:1.2s;}
+.sp5{width:3px;height:3px;left:80%;bottom:90px;animation-duration:3.6s;animation-delay:.2s;}
+.sp6{width:5px;height:5px;left:38%;bottom:68px;animation-duration:4.8s;animation-delay:1.8s;}
+.sp7{width:4px;height:4px;left:22%;bottom:110px;animation-duration:3.3s;animation-delay:2.1s;}
+.sp8{width:3px;height:3px;left:72%;bottom:100px;animation-duration:2.7s;animation-delay:.9s;}
+/* Arena itself */
+.battle-arena{position:relative;width:100%;max-width:300px;height:90px;display:flex;align-items:center;justify-content:space-between;margin:10px auto 0;z-index:2;}
+.ba-fighter{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ba-logo{width:26px;height:26px;border-radius:8px;animation:baLogoGlow 5s ease-in-out infinite;}
+.ba-tracker-face{width:28px;height:28px;}
+.ba-label{font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--t4);text-transform:uppercase;}
+.ba-middle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:3;pointer-events:none;}
+.ba-vs{font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.1em;}
+.ba-zap{font-size:18px;line-height:1;transform-origin:left center;filter:drop-shadow(0 0 6px rgba(var(--acc-raw),1));}
+.ba-blocked{font-size:11px;font-weight:900;letter-spacing:.15em;color:#4cd964;text-shadow:0 0 16px rgba(76,217,100,1),0 0 32px rgba(76,217,100,.5);}
+/* Arena glow flash behind RAW logo when impact happens */
+@keyframes baFlash{0%,43%,65%,100%{opacity:0}50%{opacity:.7}55%{opacity:.4}62%{opacity:0}}
+.ba-impact-glow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,rgba(var(--acc-raw),.8) 0%,transparent 70%);pointer-events:none;animation:baFlash 5s ease-in-out infinite;}
+@keyframes baRaw{0%{transform:translateX(-62px) scale(.5);opacity:0}10%{transform:translateX(0) scale(1);opacity:1}44%{transform:translateX(0)}47%{transform:translateX(22px) scale(1.28)}57%{transform:translateX(5px) scale(1.07)}78%{transform:translateX(0) scale(1)}88%{transform:translateX(0) scale(1.1);opacity:1}95%{opacity:.8}100%{transform:translateX(-62px) scale(.5);opacity:0}}
+.ba-raw{animation:baRaw 5s ease-in-out infinite;}
+@keyframes baLogoGlow{0%,40%{box-shadow:0 4px 14px rgba(var(--acc-raw),.35)}47%{box-shadow:0 0 36px 10px rgba(var(--acc-raw),.9),0 0 60px 20px rgba(var(--acc-raw),.35)}62%{box-shadow:0 4px 14px rgba(var(--acc-raw),.35)}100%{box-shadow:0 4px 14px rgba(var(--acc-raw),.35)}}
+@keyframes baTracker{0%{transform:translateX(62px) scale(.5);opacity:0}10%{transform:translateX(0) scale(1);opacity:1}37%{transform:translateX(-12px) scale(1.12)}47%{transform:translateX(-12px) scale(1.12)}58%{transform:translateX(-12px) rotate(-18deg);filter:brightness(4) saturate(4) blur(1px)}68%{transform:translateX(160px) scale(.1) rotate(90deg);opacity:0}100%{transform:translateX(62px) scale(.5);opacity:0}}
+.ba-tracker{animation:baTracker 5s ease-in-out infinite;}
+@keyframes baVs{0%,7%{opacity:1}35%,100%{opacity:0}}
+.ba-vs{animation:baVs 5s ease-in-out infinite;}
+@keyframes baZap{0%,42%{opacity:0;transform:scaleX(0)}50%{opacity:1;transform:scaleX(1)}64%{opacity:0}100%{opacity:0}}
+.ba-zap{animation:baZap 5s ease-in-out infinite;}
+@keyframes baBlocked{0%,60%{opacity:0;transform:scale(.4) translateY(10px)}70%{opacity:1;transform:scale(1.2)}80%{transform:scale(1)}90%{opacity:1}97%,100%{opacity:0;transform:translateY(-10px)}}
+.ba-blocked{animation:baBlocked 5s ease-in-out infinite;}
+/* ── Mini wave strip (reusable on any setup step) ───────────────────────── */
+.step-mini-waves{position:relative;width:calc(100% + 52px);margin:10px -26px -18px;height:26px;overflow:hidden;pointer-events:none;}
+.step-mini-waves .smw1,.step-mini-waves .smw2{position:absolute;bottom:0;width:200%;height:100%;display:flex;}
+.step-mini-waves .smw1{color:rgba(var(--acc-raw),.11);animation:waveScroll 5s linear infinite;}
+.step-mini-waves .smw2{color:rgba(var(--acc-raw),.06);animation:waveScroll 8s linear infinite reverse;}
+.step-mini-waves svg{flex-shrink:0;width:50%;height:100%;}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ACCENT OVERRIDES — all rgba(0,212,200,...) replaced with rgba(var(--acc-raw),...)
@@ -2665,7 +2787,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
   </div>
   <div id="calc-btns">
     <button class="cb fn" data-calc="C">C</button>
-    <button class="cb fn" data-calc="+/-">+/−</button>
+    <button class="cb fn" data-calc="⌫">⌫</button>
     <button class="cb fn" data-calc="%">%</button>
     <button class="cb op" data-calc="÷">÷</button>
     <button class="cb" data-calc="7">7</button>
@@ -3410,7 +3532,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="set-card">
             <div class="set-r">
               <div class="set-r-lbl"><span>Version</span></div>
-              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">Beta</span>
+              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.2</span>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Built with</span></div>
@@ -3472,49 +3594,85 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
+        <span class="setup-dot"></span>
       </div>
 
-      <!-- Step 0: Welcome + comparison table -->
+      <!-- Step 0: Welcome / Splash -->
       <div class="setup-step" data-step="0">
-        <div style="position:relative;margin-bottom:4px">
-          <img src="assets/logo.png" alt="RAW" style="width:52px;height:52px;border-radius:14px;object-fit:contain;display:block;box-shadow:0 6px 24px rgba(var(--acc-raw),.32),0 0 0 1px rgba(var(--acc-raw),.16)">
-          <span style="position:absolute;bottom:-5px;right:-8px;background:var(--acc);color:#000;font-size:7.5px;font-weight:800;letter-spacing:.04em;padding:2px 5px;border-radius:5px;line-height:1.2">PRIVATE</span>
-        </div>
-        <h2 class="setup-title" style="margin-bottom:2px;font-size:18px">Welcome to RAW</h2>
-        <p class="setup-desc" style="margin-bottom:10px;font-size:12px;opacity:.6">Privacy-first browsing. No telemetry, no compromises.</p>
-        <div class="setup-compare">
-          <div class="sc-row sc-head">
-            <div class="sc-label"></div>
-            <div class="sc-col sc-hl-lbl">RAW</div>
-            <div class="sc-col">Chrome</div>
-            <div class="sc-col">Firefox</div>
-            <div class="sc-col">Brave</div>
+        <div class="setup-splash-wrap">
+          <div class="splash-content-area">
+            <img src="assets/logo.png" alt="RAW" class="splash-logo">
+            <h2 class="splash-welcome-title">Welcome to Raw</h2>
+            <p class="splash-welcome-sub">Private. Fast. Yours.</p>
           </div>
-          <div class="sc-row">
-            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M4 6l1.5 1.5L8 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Ad Blocking</div>
-            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-yes">✓</div>
+          <!-- Floating particles -->
+          <div class="splash-particle sp1" aria-hidden="true"></div>
+          <div class="splash-particle sp2" aria-hidden="true"></div>
+          <div class="splash-particle sp3" aria-hidden="true"></div>
+          <div class="splash-particle sp4" aria-hidden="true"></div>
+          <div class="splash-particle sp5" aria-hidden="true"></div>
+          <div class="splash-particle sp6" aria-hidden="true"></div>
+          <div class="splash-particle sp7" aria-hidden="true"></div>
+          <div class="splash-particle sp8" aria-hidden="true"></div>
+          <!-- Animated battle demo -->
+          <div class="battle-arena" role="img" aria-label="RAW Browser defeating a tracker">
+            <div class="ba-impact-glow" aria-hidden="true"></div>
+            <div class="ba-fighter ba-raw">
+              <img src="assets/logo.png" alt="" class="ba-logo">
+              <div class="ba-label">RAW</div>
+            </div>
+            <div class="ba-middle">
+              <div class="ba-vs">VS</div>
+              <div class="ba-zap">&#x26A1;</div>
+              <div class="ba-blocked">BLOCKED!</div>
+            </div>
+            <div class="ba-fighter ba-tracker">
+              <svg class="ba-tracker-face" viewBox="0 0 40 40" fill="none">
+                <ellipse cx="20" cy="23" rx="14" ry="10" fill="#ff3333" opacity=".92"/>
+                <ellipse cx="20" cy="20" rx="10" ry="7" fill="white"/>
+                <circle cx="20" cy="20" r="4" fill="#1a0000"/>
+                <circle cx="21.8" cy="18.5" r="1.2" fill="white"/>
+                <path d="M12 13 L9 5" stroke="#ff3333" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="8" cy="4" r="2" fill="#ff3333"/>
+                <path d="M28 13 L31 5" stroke="#ff3333" stroke-width="1.6" stroke-linecap="round"/>
+                <circle cx="32" cy="4" r="2" fill="#ff3333"/>
+                <path d="M7 23 L2 20M7 27 L2 30" stroke="#ff3333" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M33 23 L38 20M33 27 L38 30" stroke="#ff3333" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <div class="ba-label">Tracker</div>
+            </div>
           </div>
-          <div class="sc-row">
-            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1.5L2 3v3.5c0 2.2 1.7 3.8 4 4.5 2.3-.7 4-2.3 4-4.5V3L6 1.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg></span>Tracker Protection</div>
-            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div><div class="sc-col sc-yes">✓</div>
-          </div>
-          <div class="sc-row">
-            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2" fill="currentColor" opacity=".5"/><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Fingerprint Spoofing</div>
-            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div>
-          </div>
-          <div class="sc-row">
-            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="4" width="8" height="6" rx="1.5" stroke="currentColor" stroke-width="1.1"/><path d="M4 4V3a2 2 0 014 0v1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Zero Telemetry</div>
-            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-par">∼</div><div class="sc-col sc-no">✕</div>
-          </div>
-          <div class="sc-row">
-            <div class="sc-label"><span class="sc-label-icon"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10c1-2 3-3 4-3s3 1 4 3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><circle cx="6" cy="4.5" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M6 7.5v1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></span>Poison Data Mode</div>
-            <div class="sc-col sc-yes">✓</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div><div class="sc-col sc-no">✕</div>
+          <div class="splash-wave-area" aria-hidden="true">
+            <div class="splash-wave w1">
+              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 30C240 0 480 60 720 30C960 0 1200 60 1440 30L1440 60H0Z" fill="currentColor"/></svg>
+              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 30C240 0 480 60 720 30C960 0 1200 60 1440 30L1440 60H0Z" fill="currentColor"/></svg>
+            </div>
+            <div class="splash-wave w2">
+              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 40C360 10 720 60 1080 35C1260 22 1380 50 1440 40L1440 60H0Z" fill="currentColor"/></svg>
+              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 40C360 10 720 60 1080 35C1260 22 1380 50 1440 40L1440 60H0Z" fill="currentColor"/></svg>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Step 1: Toolbar customization -->
+      <!-- Step 1: Import data -->
       <div class="setup-step" data-step="1">
+        <div class="setup-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M13 3v13M8 11l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 20h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2 class="setup-title">Bring your bookmarks.</h2>
+        <p class="setup-desc" style="font-size:12px">Import from your old browser — one click, bookmarks only, nothing else.</p>
+        <div class="setup-import-grid" id="setup-import-grid">
+          <div class="setup-import-detecting">Detecting browsers…</div>
+        </div>
+        <div class="setup-import-status" id="setup-import-status"></div>
+      </div>
+
+      <!-- Step 2: Toolbar customization -->
+      <div class="setup-step" data-step="2">
         <div class="setup-icon">
           <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
             <rect x="1" y="1" width="26" height="20" rx="4" stroke="currentColor" stroke-width="1.4"/>
@@ -3524,10 +3682,14 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         <h2 class="setup-title">Your toolbar, your way.</h2>
         <p class="setup-desc" style="margin-bottom:6px;font-size:12px">Choose which buttons appear in your toolbar. You can change this anytime.</p>
         <div class="tb-setup-grid" id="setup-tb-grid"></div>
+        <div class="step-mini-waves" aria-hidden="true">
+          <div class="smw1"><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 13C240 0 480 26 720 13C960 0 1200 26 1440 13L1440 26H0Z" fill="currentColor"/></svg><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 13C240 0 480 26 720 13C960 0 1200 26 1440 13L1440 26H0Z" fill="currentColor"/></svg></div>
+          <div class="smw2"><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 17C360 4 720 26 1080 14C1260 8 1380 20 1440 17L1440 26H0Z" fill="currentColor"/></svg><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 17C360 4 720 26 1080 14C1260 8 1380 20 1440 17L1440 26H0Z" fill="currentColor"/></svg></div>
+        </div>
       </div>
 
-      <!-- Step 2: Extensions -->
-      <div class="setup-step" data-step="2">
+      <!-- Step 3: Extensions -->
+      <div class="setup-step" data-step="3">
         <div class="setup-icon">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
             <path d="M14 3l2.5 5 5.5.8-4 3.9.95 5.5L14 15.6l-4.95 2.6.95-5.5-4-3.9 5.5-.8L14 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
@@ -3539,8 +3701,8 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         <div class="ext-setup-grid" id="setup-ext-grid"></div>
       </div>
 
-      <!-- Step 3: Theme -->
-      <div class="setup-step" data-step="3">
+      <!-- Step 4: Theme -->
+      <div class="setup-step" data-step="4">
         <div class="setup-icon">
           <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
             <circle cx="13" cy="13" r="11" stroke="currentColor" stroke-width="1.4"/>
@@ -3576,10 +3738,14 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <span class="theme-swatch-lbl">Mono</span>
           </button>
         </div>
+        <div class="step-mini-waves" aria-hidden="true">
+          <div class="smw1"><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 13C240 0 480 26 720 13C960 0 1200 26 1440 13L1440 26H0Z" fill="currentColor"/></svg><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 13C240 0 480 26 720 13C960 0 1200 26 1440 13L1440 26H0Z" fill="currentColor"/></svg></div>
+          <div class="smw2"><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 17C360 4 720 26 1080 14C1260 8 1380 20 1440 17L1440 26H0Z" fill="currentColor"/></svg><svg viewBox="0 0 1440 26" preserveAspectRatio="none"><path d="M0 17C360 4 720 26 1080 14C1260 8 1380 20 1440 17L1440 26H0Z" fill="currentColor"/></svg></div>
+        </div>
       </div>
 
-      <!-- Step 4: Done -->
-      <div class="setup-step" data-step="4">
+      <!-- Step 5: Done -->
+      <div class="setup-step" data-step="5">
         <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
           <div style="width:80px;height:80px;border-radius:50%;background:rgba(var(--acc-raw),.10);border:1.5px solid rgba(var(--acc-raw),.25);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(var(--acc-raw),.15);animation:donePulse 2.6s ease-in-out infinite">
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -3608,6 +3774,13 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <div class="setup-done-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 8.5l2.5 2.5L11 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
             <div class="setup-done-text">Toolbar &amp; extensions configured</div>
           </div>
+        </div>
+        <div class="setup-set-default">
+          <button id="setup-set-default-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Set as Default Browser
+          </button>
+          <div class="sdb-hint">Opens system settings &mdash; select RAW from the list</div>
         </div>
       </div>
 
@@ -3660,14 +3833,16 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
   }
 })();
 
-/* Page snapshot */
+/* Page snapshot — receives live updates every ~150ms while a panel is open */
 ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
   // Discard stale snapshot if all panels are already closed
-  // (race: panel:hide fired before async chain completed)
   if (!document.querySelector('.panel.on')) return;
-  snap.innerHTML = `<img src="${dataURL}">`;
+  // Reuse existing <img> so the browser doesn't thrash the DOM on every live-refresh frame
+  let img = snap.querySelector('img');
+  if (!img) { img = document.createElement('img'); snap.appendChild(img); }
+  img.src = dataURL;
   snap.style.display = 'block';
 });
 ipcRenderer.on('panel:snapshot:clear', () => {
@@ -3852,9 +4027,13 @@ function renderTabs() {
 
 function showTabCtx(tab, cx, cy) {
   document.getElementById('_ctx')?.remove();
-  // Remove BV so context menu can render over the page area (BV is a native surface).
-  // panel:show:instant uses the cached snapshot — instant, no async capture freeze.
-  ipcRenderer.send('panel:show:instant');
+  // Only remove the BV when the active tab is a real website (has a BV).
+  // If we're on the newtab homepage, the context menu renders fine in the HTML
+  // layer and sending panel:show:instant would needlessly hide the newtab layer.
+  const activeTab = S.tabs.find(t => t.id === S.activeId);
+  if (activeTab && activeTab.url !== 'newtab') {
+    ipcRenderer.send('panel:show:sync');
+  }
   const m = document.createElement('div');
   m.id = '_ctx'; m.className = 'ctx';
   m.style.cssText = 'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none';
@@ -4908,6 +5087,17 @@ function showRbConfirm(title, msg, okLabel) {
     const n = parseFloat(cur);
     if (k === 'C') {
       cur = '0'; expr = ''; op = null; waitNext = false;
+    } else if (k === '⌫') {
+      // Backspace: delete last digit of current entry.
+      // If we're in waitNext (just finished an op or result), clear cur to 0.
+      if (waitNext) {
+        cur = '0'; waitNext = false;
+      } else if (cur.length > 1) {
+        cur = cur.slice(0, -1);
+        if (cur === '-') cur = '0'; // lone minus → reset
+      } else {
+        cur = '0';
+      }
     } else if (k === '+/-') {
       cur = String(-n);
     } else if (k === '%') {
@@ -4988,6 +5178,22 @@ function showRbConfirm(title, msg, okLabel) {
       if (btn && btn.dataset.calc) pressKey(btn.dataset.calc);
     });
   }
+
+  // Keyboard support for calculator when panel is open
+  document.addEventListener('keydown', e => {
+    const panel = document.getElementById('panel-calc');
+    if (!panel || !panel.classList.contains('on')) return;
+    if (e.key === 'Backspace')        { e.preventDefault(); pressKey('⌫'); }
+    else if (e.key === 'Escape')      { e.preventDefault(); pressKey('C'); }
+    else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); pressKey('='); }
+    else if (e.key === '+')           pressKey('+');
+    else if (e.key === '-')           pressKey('−');
+    else if (e.key === '*')           pressKey('×');
+    else if (e.key === '/')           { e.preventDefault(); pressKey('÷'); }
+    else if (e.key === '%')           pressKey('%');
+    else if (e.key === '.')           pressKey('.');
+    else if (/^[0-9]$/.test(e.key))  pressKey(e.key);
+  });
 
   const calcSciBtns = document.getElementById('calc-sci-btns');
   if (calcSciBtns) {
@@ -6306,6 +6512,47 @@ if (btnYtdlp) {
   TB_ITEMS.forEach(it  => _tbState[it.key]  = true);
   EXT_ITEMS.forEach(it => _extState[it.key] = it.def);
 
+  /* ── Render import step ── */
+  async function renderImportStep() {
+    const grid = $('setup-import-grid');
+    if (!grid || grid.dataset.rendered) return;
+    grid.dataset.rendered = '1';
+    let browsers = [];
+    try { browsers = await ipcRenderer.invoke('setup:detect-browsers'); } catch {}
+    if (!browsers.length) {
+      grid.innerHTML = '<div class="setup-import-none">Could not detect browsers on this device.</div>';
+      return;
+    }
+    if (browsers.length === 1) grid.style.gridTemplateColumns = '1fr';
+    grid.innerHTML = '';
+    browsers.forEach(b => {
+      const card = document.createElement('div');
+      card.className = 'setup-import-card' + (b.found ? '' : ' sic-not-found');
+      card.innerHTML =
+        '<div class="sic-info"><div class="sic-name">' + b.name + '</div>' +
+        (b.found ? '' : '<div class="sic-not-installed">Not installed</div>') +
+        '</div>' +
+        '<button class="sic-btn"' + (b.found ? '' : ' disabled') + '>Import</button>';
+      const btn = card.querySelector('.sic-btn');
+      if (!b.found) { btn.title = b.name + ' was not detected on this device.'; }
+      btn.addEventListener('click', async () => {
+        btn.textContent = '…'; btn.disabled = true;
+        try {
+          const res = await ipcRenderer.invoke('browser:import-bookmarks', b.id);
+          if (res.error) { btn.textContent = 'Error'; btn.title = res.error; btn.disabled = false; }
+          else {
+            ipcRenderer.send('bookmarks:bulk-add', res.bookmarks);
+            btn.textContent = '✓ Done';
+            btn.classList.add('done-import');
+            const st = $('setup-import-status');
+            if (st) st.textContent = res.count + ' bookmarks imported from ' + b.name + '.';
+          }
+        } catch (e) { btn.textContent = 'Error'; btn.title = e.message; btn.disabled = false; }
+      });
+      grid.appendChild(card);
+    });
+  }
+
   /* ── Render toolbar grid ── */
   function renderTbSetup() {
     const grid = document.getElementById('setup-tb-grid');
@@ -6366,13 +6613,41 @@ if (btnYtdlp) {
 
   /* ── Step navigation ── */
   function showStep(n) {
-    steps.forEach((s, i) => s.classList.toggle('active', i === n));
-    dots.forEach((d, i)  => d.classList.toggle('active',  i === n));
-    if (n === 1) renderTbSetup();
-    if (n === 2) renderExtSetup();
-    if (n === 3) initThemeStep();
+    const goingBack = n < cur;
+    steps.forEach(s => s.classList.remove('active', 'from-back'));
+    dots.forEach((d, i) => d.classList.toggle('active', i === n));
+    const next = steps[n];
+    if (next) {
+      if (goingBack) next.classList.add('from-back');
+      next.classList.add('active');
+    }
+    if (n === 1) renderImportStep();
+    if (n === 2) renderTbSetup();
+    if (n === 3) renderExtSetup();
+    if (n === 4) initThemeStep();
     if (btnNext) btnNext.textContent = n >= steps.length - 1 ? 'Start Browsing →' : 'Next →';
     cur = n;
+  }
+
+  /* ── Set as default browser (done step) ── */
+  const btnDefault = document.getElementById('setup-set-default-btn');
+  if (btnDefault) {
+    ipcRenderer.invoke('browser:is-default').then(isDefault => {
+      if (isDefault) {
+        btnDefault.innerHTML = '✓ Already your default browser';
+        btnDefault.disabled = true; btnDefault.classList.add('done');
+      }
+    }).catch(() => {});
+    btnDefault.addEventListener('click', () => {
+      ipcRenderer.send('browser:set-default');
+      btnDefault.textContent = 'Opening settings…'; btnDefault.disabled = true;
+      setTimeout(() => {
+        ipcRenderer.invoke('browser:is-default').then(d => {
+          if (d) { btnDefault.innerHTML = '✓ RAW is your default browser'; btnDefault.classList.add('done'); }
+          else   { btnDefault.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 4.5v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Set as Default Browser'; btnDefault.disabled = false; }
+        }).catch(() => { btnDefault.textContent = 'Set as Default Browser'; btnDefault.disabled = false; });
+      }, 3500);
+    });
   }
 
   /* ── Dismiss ── */
