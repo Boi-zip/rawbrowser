@@ -1120,6 +1120,7 @@ let   win      = null;
 let   totalBlocked = 0;
 let   panelOpen    = false;
 let   panelClipX   = 0;       // >0 = BV clipped to leave room for open panel
+let   _omniParked  = false;   // true while BV is parked for the omni dropdown
 let   _panelSeq         = 0;        // increments on every panel:show:* to cancel stale async chains
 
 // ── IPC shortcut ──────────────────────────────────────────────────────────────
@@ -2106,6 +2107,17 @@ ipcMain.on('nav:go', (_, { id, tabUrl }) => {
     panelClipX = 0;
     send('panels:closeAll');
   }
+  // If the BV was parked for the omni dropdown, decrement the capturer count
+  // immediately so it exits off-screen rendering mode before becoming visible
+  // again. Without this, the BV is repositioned onscreen but stays in capturer
+  // mode for ~160ms (until osCloseDrop fires), causing a compositor glitch that
+  // makes the toolbar appear blurry/flickery at the top.
+  if (_omniParked) {
+    _omniParked = false;
+    if (t.bv && !t.bv.webContents.isDestroyed()) {
+      try { t.bv.webContents.decrementCapturerCount(); } catch {}
+    }
+  }
   const url = stripTracking(resolveUrl(tabUrl));
   if (url === 'newtab') {
     // Return to newtab: detach BV, update tab state
@@ -2558,10 +2570,13 @@ ipcMain.on('omni:drop:show', () => {
   if (panelOpen) return; // panel already parked the BV — don't double-increment
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+  _omniParked = true;
   _parkBV(tab.bv);
 });
 ipcMain.on('omni:drop:hide', () => {
   if (panelOpen) return; // panel will restore the BV when it closes — don't decrement early
+  if (!_omniParked) return; // nav:go already unparked — skip to avoid double-decrement
+  _omniParked = false;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
   _unparkBV(tab.bv);
