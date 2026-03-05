@@ -20,13 +20,25 @@ const BUILTIN_WHITELIST = [
   // Spotify — CDN, auth, and DRM license domains required for playback
   'spotify.com','scdn.co','spotifycdn.com','spotifycdn.net',
   'pscdn.co','spotilocal.com','audio-ak-spotify-com.akamaized.net',
+  // Google — ALL auth, sign-in, and service domains must preserve headers intact.
+  // Google's OAuth flow validates Referer, Sec-Fetch-*, and other headers across
+  // redirects between these domains. Any stripping triggers the
+  // "This browser may not be secure" block on accounts.google.com.
+  'google.com','accounts.google.com','apis.google.com',
+  'googleapis.com','googleusercontent.com','gstatic.com',
+  'gmail.com','youtube.com','ytimg.com','ggpht.com',
+  'google-analytics.com','googletagmanager.com',
 ];
 
 if (process.platform === 'win32') app.setAppUserModelId('com.raw.browser');
 
+// Remove the automation flag Electron sets by default — Google checks this
+// to determine if the browser is automated/non-standard. Must be set before
+// any window is created (commandLine switches are read at startup).
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+
 // ── ENHANCED PRIVACY: Prevent IP leaks through WebRTC ───────────────────────
 app.commandLine.appendSwitch('disable-webrtc-ip-handling');
-app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'default_public_interface_only');
 app.commandLine.appendSwitch('webrtc-ip-handling-policy', 'disable_non_proxied_udp');
 
@@ -171,25 +183,22 @@ app.commandLine.appendSwitch('disable-web-notifications');
   } catch { /* Widevine unavailable — silently continue */ }
 })();
 
-// Remove the "navigator.webdriver" automation signal that Google and other sites
-// use to detect headless/automated browsers. Must be set before the process starts.
-app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
-
 // Allow audio/video autoplay without user gesture (needed for Music Player)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-// Enable hardware-accelerated media key handling (required for Widevine DRM on Spotify/Netflix)
-app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService');
+// Enable hardware-accelerated media key handling + platform EME — all features combined
+// into ONE appendSwitch call because Chromium only honours the LAST --enable-features
+// value; separate calls silently overwrite each other.
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService,PlatformEncryptedMediaFoundation');
+} else {
+  app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService');
+}
 // Prevent Chromium from EVER suspending background renderer processes or their media.
 // This is the definitive fix for videos/audio pausing when a BV is detached from the window.
 // JS-level overrides (visibility, blur, etc.) can race with native Chromium scheduler events;
 // these flags disable the scheduler behaviour entirely at the process level.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-media-suspend');
-
-// Enable platform EME (Widevine / PlayReady) on Windows — required for Spotify, Netflix, etc.
-if (process.platform === 'win32') {
-  app.commandLine.appendSwitch('enable-features', 'PlatformEncryptedMediaFoundation');
-}
 
 // ── Default browser + external URL handling ──────────────────────────────────
 // Register RAW as a capable handler for http/https at the OS level.
@@ -231,21 +240,59 @@ app.on('open-url', (event, url) => {
   else _pendingExtUrl = url;
 });
 
-const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
-const SPOOF_UA_HINTS = '"Not A(Brand";v="99", "Google Chrome";v="136", "Chromium";v="136"';
+const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const SPOOF_UA_HINTS = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"';
+
+// ── Global UA fallback ─────────────────────────────────────────────────────────
+// The deepest possible override — covers every WebContents that has NOT had
+// setUserAgent() called explicitly (service workers, pre-flight auth checks,
+// non-partitioned popup windows, etc.). Must be set BEFORE app.whenReady().
+app.userAgentFallback = SPOOF_UA;
+
+// Set the UA at the Chromium process level — applies to every renderer, service
+// worker, and sub-frame before any JS runs, overriding Electron's own binary string.
+app.commandLine.appendSwitch('user-agent', SPOOF_UA);
+
+// ── Block WebAuthn / Passkeys at the Chromium level ──────────────────────────
+// Prevents the Windows Hello / native FIDO2 dialog from appearing on Google,
+// Microsoft, or any other site. JS-level credential stubs in preload.js give
+// sites a graceful "not supported" signal; these flags ensure the underlying
+// Chromium authenticator subsystem never even initialises.
+// Combine ALL disable-features into one call — Chromium only honours the last value.
+// Also disable ElectronNonClientWindowFromFrame — this Electron-specific feature
+// exposes internals that detection scripts can query.
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns,WebAuthentication,WebAuthenticationCableSecondFactor,WebAuthenticationPasskeysInBrowserWindow,WebAuthenticationRemoteDesktopSupport');
+
+// ── Anti-bot detection flags ─────────────────────────────────────────────────
+// Remove Electron-specific infobars / first-run markers that differ from Chrome.
+app.commandLine.appendSwitch('disable-infobars');
+app.commandLine.appendSwitch('no-first-run');
+app.commandLine.appendSwitch('no-default-browser-check');
+// Disable component extensions (Chrome's built-in internal extensions like PDF
+// viewer) — Electron loads different ones which can be detected via chrome.runtime.
+app.commandLine.appendSwitch('disable-component-extensions-with-background-pages');
+// Ensure the user-data-dir doesn't leak an Electron-specific path in error reports
+app.commandLine.appendSwitch('disable-crash-reporter');
 
 // ── YouTube stealth ad-skip content script ────────────────────────────────────
-// Stealth design:
+// This is used as an Add-On (ext key: 'yt-ad') — NOT injected automatically.
+// Design:
 //  • Random variable key per-injection — can't be fingerprinted by name
-//  • No setInterval — purely event-driven (MutationObserver + rAF)
-//  • Fast-forward at 16× instead of seeking to end — ad impression fires,
-//    but the user sees <1 s of content; far less detectable than timeUpdate jump
-//  • CSS hides banner/in-feed/overlay ad units silently — no DOM removal
-//  • One-shot 900ms delayed check handles late-loading ads, not a recurring poll
+//  • MutationObserver reacts to player class changes and specific ad nodes only
+//  • Polling fallback every 600ms (lightweight, ad-in-progress only)
+//  • Saves/restores user mute, volume, playbackRate across each ad
+//  • Dismisses skip buttons, overlay ads, and bot-check dialogs
+//  • No canvas/pixel readback — avoids GPU stalls and fingerprinting risk
 const YT_AD_SKIP = `(function(){
-  // Rotating key — new random property name each injection, no stable fingerprint
+  // Re-entrant guard with cleanup of prior instance
   var _k='_rb'+Math.random().toString(36).slice(2,7);
-  if(window[_k]){try{window[_k].obs.disconnect();}catch(e){}if(window[_k].iv)clearInterval(window[_k].iv);delete window[_k];}
+  if(window._rbYtAdKey){
+    try{window[window._rbYtAdKey].obs.disconnect();}catch(e){}
+    if(window[window._rbYtAdKey]&&window[window._rbYtAdKey].iv)
+      clearInterval(window[window._rbYtAdKey].iv);
+    delete window[window._rbYtAdKey];
+  }
+  window._rbYtAdKey=_k;
 
   // ── CSS: hide every known non-video ad surface ─────────────────────────────
   if(!document.getElementById('_rb_ac')){
@@ -261,36 +308,38 @@ const YT_AD_SKIP = `(function(){
       '.ytp-ad-overlay-container,.ytp-ce-covering-ad,'+
       '.ytp-ce-element,.ytp-ce-covering-overlay,'+
       '.ytp-suggested-action,.ytp-ad-module,'+
-      '[id^="google_ads_iframe"],[id^="aswift_"]{display:none!important}'+
+      '[id^="google_ads_iframe"],[id^="aswift_"],'+
       '.ad-showing .ytp-pause-overlay,'+
-      '.ad-interrupting .ytp-pause-overlay{display:none!important}'+
-      '.ytp-ad-text,.ytp-ad-preview-container,.ytp-ad-badge-container{display:none!important}'+
-      '.ytp-ad-message-container,.ytp-ad-image-overlay,.ytp-ad-overlay-ad-info-button-container{display:none!important}';
+      '.ad-interrupting .ytp-pause-overlay,'+
+      '.ytp-ad-text,.ytp-ad-preview-container,.ytp-ad-badge-container,'+
+      '.ytp-ad-message-container,.ytp-ad-image-overlay,.ytp-ad-overlay-ad-info-button-container,'+
+      'ytd-player-legacy-desktop-watch-ads-renderer,'+
+      '.ytp-ad-persistent-progress-bar-container,'+
+      '.ytp-ad-progress-list,.ytp-ad-simple-ad-badge,'+
+      'ytd-display-ad-renderer[slot],ytd-action-companion-ad-renderer[slot],'+
+      '.ytd-video-masthead-ad-v3-renderer,#video-masthead-ad,'+
+      'ytd-companion-slot-renderer[slot],'+
+      'ytd-rich-item-renderer:has(.ytd-ad-slot-renderer),'+
+      'ytd-rich-section-renderer:has(ytd-statement-banner-renderer)'+
+      '{display:none!important}';
     (document.head||document.documentElement).appendChild(_s);
   }
 
-  // Track whether we were in an ad on the previous check — used for reliable restore
   var _wasInAd=false;
-  // Track user mute/rate state before ad so we restore to THEIR settings
-  var _userMuted=false;
-  var _userRate=1;
-  var _userVolume=1;
-  // Prevent rapid-fire restore thrashing
+  var _userMuted=false,_userRate=1,_userVolume=1;
   var _restoreTimer=null;
-  // Track consecutive black-screen frames to auto-recover
-  var _blackFrames=0;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   function _inAd(player){
     if(player&&(player.classList.contains('ad-showing')||
                 player.classList.contains('ad-interrupting')))return true;
     if(document.querySelector('.ytp-ad-player-overlay-instream-info'))return true;
-    // Check for ad text container
-    var adText=document.querySelector('.ytp-ad-text');
+    if(document.querySelector('.ytp-ad-persistent-progress-bar-container'))return true;
+    var adText=document.querySelector('.ytp-ad-text,.ytp-ad-simple-ad-badge');
     if(adText&&adText.offsetParent!==null)return true;
-    // Check for ad skip button being present (strong signal)
-    var skipBtn=document.querySelector('.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button');
+    var skipBtn=document.querySelector('.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button,.ytp-ad-skip-button-slot');
     if(skipBtn&&skipBtn.offsetParent!==null)return true;
+    var progList=document.querySelector('.ytp-ad-progress-list');
+    if(progList&&progList.offsetParent!==null)return true;
     return false;
   }
 
@@ -300,52 +349,20 @@ const YT_AD_SKIP = `(function(){
            document.querySelector('video');
   }
 
-  // Black screen detection — if video is playing but no visible frames, reload
-  function _checkBlackScreen(video){
-    if(!video||video.paused||video.ended||!video.videoWidth)return;
-    try{
-      var c=document.createElement('canvas');
-      c.width=16;c.height=9;
-      var ctx=c.getContext('2d');
-      ctx.drawImage(video,0,0,16,9);
-      var d=ctx.getImageData(0,0,16,9).data;
-      var total=0;
-      for(var i=0;i<d.length;i+=4)total+=d[i]+d[i+1]+d[i+2];
-      // Nearly all black pixels
-      if(total<100){
-        _blackFrames++;
-        if(_blackFrames>6){
-          _blackFrames=0;
-          // Force reload the video source to recover
-          var player=document.querySelector('#movie_player');
-          if(player&&player.loadVideoByPlayerVars){
-            // SPA method
-          }
-          // Simplest recovery: skip forward by a tiny amount to force re-buffer
-          try{video.currentTime+=0.2;}catch(e){}
-        }
-      }else{
-        _blackFrames=0;
-      }
-    }catch(e){_blackFrames=0;}
-  }
-
   function _act(){
     try{
-      // 1. Click any visible skip button first — cleanest possible outcome
+      // 1. Click any visible skip button — cleanest outcome
       var skipBtns=document.querySelectorAll(
         '.ytp-ad-skip-button-modern,.ytp-skip-ad-button,'+
         '.ytp-ad-skip-button,.ytp-ad-skip-button-slot .ytp-button,'+
         'button.ytp-ad-skip-button-modern,'+
-        '.ytp-ad-skip-button-container button,'+
-        '.ytp-ad-skip-button-modern .ytp-ad-button-icon'
+        '.ytp-ad-skip-button-container button'
       );
       for(var si=0;si<skipBtns.length;si++){
         var skip=skipBtns[si];
         if(skip&&skip.offsetParent!==null&&!skip.hidden&&skip.offsetWidth>0){
           skip.click();
-          // After clicking skip, give YT a moment to transition
-          setTimeout(_act,300);
+          setTimeout(_act,350);
           return;
         }
       }
@@ -355,35 +372,24 @@ const YT_AD_SKIP = `(function(){
       var inAd=_inAd(player);
 
       if(inAd&&video&&video.readyState>0){
-        // Save user state BEFORE we modify anything (only on first ad detection)
-        // Guard: if playbackRate > 2 we already set it to ad-speed — don't save that
         if(!_wasInAd){
+          // Save user state on first ad frame only; ignore if already at ad speed
           _userMuted=video.muted;
           _userRate=(video.playbackRate>2)?1:video.playbackRate;
           _userVolume=video.volume;
         }
         _wasInAd=true;
-
-        // 2. Mute immediately so user hears nothing
         if(!video.muted)video.muted=true;
-
-        // 3. Speed up massively to burn through the ad
         if(video.playbackRate<8)try{video.playbackRate=16;}catch(e){}
-
-        // 4. Seek to near-end for fastest skip
-        if(video.duration&&isFinite(video.duration)&&video.duration>0.3){
-          try{video.currentTime=Math.max(0,video.duration-0.1);}catch(e){}
+        if(video.duration&&isFinite(video.duration)&&video.duration>0.5){
+          try{video.currentTime=Math.max(0,video.duration-0.15);}catch(e){}
         }
-
-        // 5. Ensure video is playing (not paused by ad overlay)
         if(video.paused&&video.readyState>0)try{video.play();}catch(e){}
       } else if(_wasInAd&&!inAd){
-        // Ad just ended — restore user's playback state
         _wasInAd=false;
         if(_restoreTimer)clearTimeout(_restoreTimer);
         _restoreTimer=setTimeout(function(){
           var v=_getVideo();
-          // Restore unconditionally — if still in ad the next _act cycle re-applies ad speed
           if(v){
             try{v.playbackRate=_userRate||1;}catch(e){}
             try{v.muted=_userMuted;}catch(e){}
@@ -391,28 +397,30 @@ const YT_AD_SKIP = `(function(){
             if(v.paused&&v.readyState>0)try{v.play();}catch(e){}
           }
           _restoreTimer=null;
-        },300);
-      } else if(!inAd&&video&&!video.paused){
-        // Not in ad — check for black screen issue
-        _checkBlackScreen(video);
+        },350);
       }
 
-      // 6. Dismiss overlay/companion close buttons
+      // 2. Dismiss overlay close buttons
       document.querySelectorAll(
         '.ytp-ad-overlay-close-button,.ytp-ad-overlay-slot-close-button,'+
         '.ytp-suggested-action-badge-expanded-close-button,'+
         '.ytp-ad-overlay-close-container'
       ).forEach(function(el){try{el.click();}catch(e){}});
 
-      // 7. Dismiss "Sign in to confirm you're not a bot" / bot-check enforcement dialog
-      // YT shows ytd-enforcement-message-view-model inside a paper dialog when bot-like
-      // behavior is detected. We click the "Continue watching" button if present.
-      var botDlg=document.querySelector('ytd-enforcement-message-view-model,tp-yt-paper-dialog[id*="confirm"],.ytd-enforcement-message-view-model');
+      // 3. Dismiss bot-check / ad-block enforcement dialogs
+      var botDlg=document.querySelector(
+        'ytd-enforcement-message-view-model,'+
+        'tp-yt-paper-dialog[id*="confirm"],'+
+        'ytd-watch-modal tp-yt-paper-dialog,'+
+        'ytd-modal-with-title-and-button-renderer'
+      );
       if(botDlg&&botDlg.offsetParent!==null){
-        // Try "Watch without signing in" or any dismiss/close button
-        var watchBtn=botDlg.querySelector('button[aria-label*="without"],button[aria-label*="Continue"],button[aria-label*="continue"],button[aria-label*="Watch"],.yt-spec-button-shape-next--filled');
+        var watchBtn=botDlg.querySelector(
+          'button[aria-label*="without" i],button[aria-label*="Continue" i],'+
+          'button[aria-label*="Watch" i],button[aria-label*="Dismiss" i],'+
+          '.yt-spec-button-shape-next--filled,.yt-spec-button-shape-next--tonal'
+        );
         if(!watchBtn){
-          // Fall back: the last button in the dialog is usually the "Continue" action
           var btns=botDlg.querySelectorAll('button,.yt-spec-button-shape-next');
           if(btns.length)watchBtn=btns[btns.length-1];
         }
@@ -421,35 +429,38 @@ const YT_AD_SKIP = `(function(){
     }catch(e){}
   }
 
-  // ── MutationObserver — reacts to class changes and new ad nodes ────────────
+  // ── MutationObserver — only fires on ad-relevant class/node changes ─────────
+  // Observes player attribute changes + ad node additions only (no subtree sieve).
   var _obs=new MutationObserver(function(muts){
+    var needAct=false;
     for(var i=0;i<muts.length;i++){
       var t=muts[i].target;
-      if(t&&t.classList&&(
+      // Attribute change on player (ad-showing / ad-interrupting class)
+      if(muts[i].type==='attributes'&&t&&t.classList&&(
         t.classList.contains('ad-showing')||
-        t.classList.contains('ad-interrupting')||
-        t.classList.contains('ytp-ad-player-overlay')
-      )){_act();return;}
-      if(muts[i].addedNodes&&muts[i].addedNodes.length){
-        for(var j=0;j<muts[i].addedNodes.length;j++){
-          var n=muts[i].addedNodes[j];
-          if(n.classList&&(n.classList.contains('ytp-ad-module')||
-             n.classList.contains('ytp-ad-overlay-container')||
-             n.classList.contains('ytp-ad-text'))){
-            _act();return;
-          }
+        t.classList.contains('ad-interrupting')
+      )){needAct=true;break;}
+      // Node additions — only care if a known ad node was inserted
+      var added=muts[i].addedNodes;
+      for(var j=0;j<added.length;j++){
+        var n=added[j];
+        if(n.nodeType!==1)continue;
+        var c=n.className||'';
+        if(c.indexOf('ytp-ad')!==-1||c.indexOf('ad-showing')!==-1||c.indexOf('ad-interrupting')!==-1){
+          needAct=true;break;
         }
-        _act();return;
       }
+      if(needAct)break;
     }
+    if(needAct)_act();
   });
 
-  // ── Polling fallback — catches ads the observer misses ─────────────────────
+  // ── Polling fallback — only active while an ad is in progress ──────────────
   var _iv=setInterval(function(){
     var p=document.querySelector('#movie_player,.html5-video-player');
-    if(_inAd(p))_act();
-    else if(_wasInAd)_act(); // trigger restore
-  },400);
+    if(_inAd(p)||_wasInAd)_act();
+  },600);
+
   window[_k]={obs:_obs,iv:_iv};
 
   function _attach(){
@@ -457,6 +468,7 @@ const YT_AD_SKIP = `(function(){
     if(p){
       _obs.observe(p,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     } else {
+      // Player hasn't rendered yet — wait for it
       var _w=new MutationObserver(function(){
         var p2=document.querySelector('#movie_player,.html5-video-player,ytd-player');
         if(p2){
@@ -464,19 +476,16 @@ const YT_AD_SKIP = `(function(){
           _obs.observe(p2,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
         }
       });
-      _w.observe(document.documentElement,{childList:true,subtree:true});
+      _w.observe(document.body||document.documentElement,{childList:true,subtree:false});
     }
-    // Also observe the full page for late-loading player
-    _obs.observe(document.documentElement,{childList:true,subtree:false});
   }
 
   _attach();
   _act();
+  // Catch late-loading player and in-roll ads on navigation
   setTimeout(_act,400);
-  setTimeout(_act,1000);
-  setTimeout(_act,2000);
-  setTimeout(_act,4000);
-  setTimeout(_act,7000);  // catch very late ad loads
+  setTimeout(_act,1500);
+  setTimeout(_act,3500);
 })();`;
 
 // ── YouTube ad-tracking URLs to block at network level ────────────────────────
@@ -499,76 +508,392 @@ const YT_AD_BLOCK_PATTERNS = [
   /googlesyndication\.com/i,
   /youtube\.com\/pagead\/paralleladview/i,
   /youtube\.com\/api\/stats\/qoe\?.*adformat/i, // QoE only when ad-related
+  // 2024/2025 ad logging and survey endpoints
+  /jnn-pa\.googleapis\.com\/v1:logAdEvent/i,
+  /youtube\.com\/api\/stats\/watchtime\?.*ad/i,
+  /youtube\.com\/pagead\/adview/i,
+  /youtube\.com\/pagead\/viewthroughconversion/i,
 ];
 
-// ── Video PiP floating button — injected into every BV page ──────────────────
-// A click inside the page gives requestPictureInPicture() a real user gesture.
-const VIDEO_PIP_INJECT = `(function(){
-  if(window._rawPipInjected)return;
-  window._rawPipInjected=true;
+// ── Google / auth UA fix ────────────────────────────────────────────────────
+// Injected via executeJavaScript (runs in the page's MAIN world, NOT preload
+// isolated world, and ignores CSP entirely). This overrides navigator.userAgentData
+// so Google's sign-in never sees the real "Electron" brand, which triggers the
+// "This browser may not be secure" error at the password step.
+// Must run on EVERY navigation to google.com / accounts.google.com etc.
+//
+// KEY ANTI-DETECTION: Google's scripts use Function.prototype.toString() and
+// Object.getOwnPropertyDescriptor() to detect if properties have been overridden
+// with custom getters. We wrap both so our overrides appear native.
+const GOOGLE_UA_FIX = `(function(){
+  if(window._rbGoogleFix)return;
+  window._rbGoogleFix=true;
+  try{
+    /* ── Step 0: Function.prototype.toString stealth ────────────────────────
+       Google checks if getters are native by calling fn.toString() and looking
+       for "[native code]". We wrap toString so all our custom getters report
+       as native. This MUST happen before any _def calls. */
+    var _fakeNatives=new WeakSet();
+    var _origFnToStr=Function.prototype.toString;
+    var _toStrProxy=function toString(){
+      if(_fakeNatives.has(this))return'function '+((this.name||'')||'')+'() { [native code] }';
+      return _origFnToStr.call(this);
+    };
+    _fakeNatives.add(_toStrProxy);
+    Function.prototype.toString=_toStrProxy;
+    /* Also protect Function.prototype.call/apply/bind.toString from revealing overrides */
+    try{Object.defineProperty(Function.prototype,'toString',{writable:true,configurable:true});}catch(e){}
 
-  // Single shared floating button — position:fixed
+    /* ── Step 0b: Object.getOwnPropertyDescriptor stealth ──────────────────
+       Google also uses Object.getOwnPropertyDescriptor(navigator, prop) to
+       inspect property descriptors and detect custom getters. We intercept
+       queries for key navigator properties and return native-looking descriptors. */
+    var _origGOPD=Object.getOwnPropertyDescriptor;
+    var _spoofedProps=new Map(); /* target -> Set of prop names */
+    Object.getOwnPropertyDescriptor=function(obj,prop){
+      var s=_spoofedProps.get(obj);
+      if(s&&s.has(prop)){
+        /* Return descriptor on Navigator.prototype instead — looks like the native one */
+        var d=_origGOPD.call(Object,Object.getPrototypeOf(obj)||obj,prop);
+        if(d)return d;
+      }
+      return _origGOPD.call(Object,obj,prop);
+    };
+    _fakeNatives.add(Object.getOwnPropertyDescriptor);
+
+    var _UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    var _br=[{brand:'Not_A Brand',version:'8'},{brand:'Chromium',version:'120'},{brand:'Google Chrome',version:'120'}];
+    var _fvl=[{brand:'Not_A Brand',version:'8.0.0.0'},{brand:'Chromium',version:'120.0.6099.234'},{brand:'Google Chrome',version:'120.0.6099.234'}];
+    var _aud={
+      brands:_br, mobile:false, platform:'Windows',
+      getHighEntropyValues:function getHighEntropyValues(hints){
+        return Promise.resolve({architecture:'x86',bitness:'64',brands:_br,
+          fullVersionList:_fvl,mobile:false,model:'',
+          platform:'Windows',platformVersion:'10.0.0',uaFullVersion:'120.0.6099.234',
+          wow64:false});
+      },
+      toJSON:function toJSON(){return {brands:_br,mobile:false,platform:'Windows'};}
+    };
+    _fakeNatives.add(_aud.getHighEntropyValues);
+    _fakeNatives.add(_aud.toJSON);
+
+    function _def(t,p,v){
+      try{
+        var g=function(){return v;};
+        _fakeNatives.add(g);
+        Object.defineProperty(t,p,{get:g,configurable:true});
+        /* Track overridden props so GOPD can spoof them */
+        if(!_spoofedProps.has(t))_spoofedProps.set(t,new Set());
+        _spoofedProps.get(t).add(p);
+      }catch(e){}
+    }
+    _def(navigator,'userAgentData',_aud);
+    _def(navigator,'webdriver',false);
+    _def(navigator,'userAgent',_UA);
+    _def(navigator,'appVersion','5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    _def(navigator,'vendor','Google Inc.');
+    _def(navigator,'platform','Win32');
+    _def(navigator,'language','en-US');
+    _def(navigator,'languages',Object.freeze(['en-US','en']));
+    _def(navigator,'hardwareConcurrency',8);
+    _def(navigator,'pdfViewerEnabled',true);
+    _def(navigator,'cookieEnabled',true);
+    _def(navigator,'onLine',true);
+    _def(navigator,'maxTouchPoints',0);
+    _def(navigator,'appCodeName','Mozilla');
+    _def(navigator,'appName','Netscape');
+    _def(navigator,'product','Gecko');
+    _def(navigator,'productSub','20030107');
+    /* Plugins — Chrome always has PDF viewers; empty plugins is a strong signal */
+    try{
+      var _fp={name:'PDF Viewer',description:'Portable Document Format',filename:'internal-pdf-viewer',length:0};
+      var _fp2={name:'Chrome PDF Viewer',description:'Portable Document Format',filename:'internal-pdf-viewer',length:0};
+      var _fp3={name:'Chromium PDF Viewer',description:'Portable Document Format',filename:'internal-pdf-viewer',length:0};
+      var _fp4={name:'Microsoft Edge PDF Viewer',description:'Portable Document Format',filename:'internal-pdf-viewer',length:0};
+      var _fp5={name:'WebKit built-in PDF',description:'Portable Document Format',filename:'internal-pdf-viewer',length:0};
+      var _fpl=Object.assign([_fp,_fp2,_fp3,_fp4,_fp5],{namedItem:function(n){return n.includes('PDF')?_fp:null;},item:function(i){return[_fp,_fp2,_fp3,_fp4,_fp5][i]||null;},refresh:function(){}});
+      _def(navigator,'plugins',_fpl);
+      var _mt=Object.assign([{type:'application/pdf',description:'PDF',enabledPlugin:_fp,suffixes:'pdf'}],{namedItem:function(t){return t==='application/pdf'?{}:null;},item:function(i){return i===0?{}:null;}});
+      _def(navigator,'mimeTypes',_mt);
+    }catch(e){}
+    /* ── window.chrome — delete entirely and rebuild from scratch ───────────
+       Electron sets its own chrome.runtime with Electron-specific properties
+       (e.g. chrome.runtime.id pointing to internal extension). Assigning over
+       it may silently fail if properties are non-configurable. Deleting the
+       entire object and recreating it guarantees a clean Chrome-matching shape. */
+    try{delete window.chrome;}catch(e){} try{window.chrome=undefined;}catch(e){}
+    window.chrome={};
+    window.chrome.app={isInstalled:false,InstallState:{DISABLED:'disabled',INSTALLED:'installed',NOT_INSTALLED:'not_installed'},RunningState:{CANNOT_RUN:'cannot_run',READY_TO_RUN:'ready_to_run',RUNNING:'running'},getDetails:function getDetails(){return null;},getIsInstalled:function getIsInstalled(){return false;},installState:function installState(cb){if(cb)cb('not_installed');},runningState:function runningState(){return'cannot_run';}};
+    window.chrome.runtime={id:undefined,connect:function connect(){return{postMessage:function(){},onMessage:{addListener:function(){}},disconnect:function(){}};},sendMessage:function sendMessage(){},onMessage:{addListener:function(){}},onConnect:{addListener:function(){}},getPlatformInfo:function getPlatformInfo(cb){if(cb)cb({os:'win',arch:'x86-64',nacl_arch:'x86-64'});return Promise.resolve({os:'win',arch:'x86-64',nacl_arch:'x86-64'});},getManifest:function getManifest(){return undefined;},getURL:function getURL(){return'';},reload:function reload(){},requestUpdateCheck:function requestUpdateCheck(cb){if(cb)cb('no_update',{});}};
+    window.chrome.csi=function csi(){return{startE:Date.now(),onloadT:Date.now(),pageT:1000,tran:15};};
+    window.chrome.loadTimes=function loadTimes(){return{requestTime:Date.now()/1000,startLoadTime:Date.now()/1000,commitLoadTime:Date.now()/1000,finishDocumentLoadTime:Date.now()/1000,finishLoadTime:Date.now()/1000,firstPaintTime:Date.now()/1000,firstPaintAfterLoadTime:0,navigationType:'Other',wasFetchedViaSpdy:true,wasNpnNegotiated:true,npnNegotiatedProtocol:'h2',wasAlternateProtocolAvailable:false,connectionInfo:'h2'};};
+    /* Mark chrome.app/runtime/csi/loadTimes as fake-native for toString checks */
+    _fakeNatives.add(window.chrome.app.getDetails);_fakeNatives.add(window.chrome.app.getIsInstalled);
+    _fakeNatives.add(window.chrome.app.installState);_fakeNatives.add(window.chrome.app.runningState);
+    _fakeNatives.add(window.chrome.runtime.connect);_fakeNatives.add(window.chrome.runtime.sendMessage);
+    _fakeNatives.add(window.chrome.runtime.getPlatformInfo);_fakeNatives.add(window.chrome.runtime.getManifest);
+    _fakeNatives.add(window.chrome.runtime.getURL);_fakeNatives.add(window.chrome.runtime.reload);
+    _fakeNatives.add(window.chrome.runtime.requestUpdateCheck);
+    _fakeNatives.add(window.chrome.csi);_fakeNatives.add(window.chrome.loadTimes);
+    /* Block WebAuthn/Passkeys — Google falls back to password entry.
+       Keep PublicKeyCredential as a constructor but report no platform authenticator
+       (setting to undefined is detectable since Chrome always has it). */
+    try{
+      var _oc=navigator.credentials;
+      var _cg=function get(o){if(o&&o.publicKey)return Promise.reject(new DOMException('Not allowed','NotAllowedError'));return _oc?_oc.get.call(_oc,o):Promise.reject(new DOMException('Not allowed','NotAllowedError'));};
+      var _cc=function create(o){if(o&&o.publicKey)return Promise.reject(new DOMException('Not allowed','NotAllowedError'));return _oc?_oc.create.call(_oc,o):Promise.reject(new DOMException('Not allowed','NotAllowedError'));};
+      _fakeNatives.add(_cg);_fakeNatives.add(_cc);
+      Object.defineProperty(navigator,'credentials',{get:function(){return{get:_cg,create:_cc,preventSilentAccess:function(){return Promise.resolve();},store:function(c){return _oc?_oc.store.call(_oc,c):Promise.resolve();}};},configurable:true});
+    }catch(e){}
+    try{
+      if(typeof PublicKeyCredential!=='undefined'){
+        var _pkc=function PublicKeyCredential(){throw new TypeError("Illegal constructor");};
+        _pkc.isUserVerifyingPlatformAuthenticatorAvailable=function(){return Promise.resolve(false);};
+        _pkc.isConditionalMediationAvailable=function(){return Promise.resolve(false);};
+        _fakeNatives.add(_pkc);_fakeNatives.add(_pkc.isUserVerifyingPlatformAuthenticatorAvailable);_fakeNatives.add(_pkc.isConditionalMediationAvailable);
+        Object.defineProperty(window,'PublicKeyCredential',{value:_pkc,configurable:true,writable:true});
+      }
+    }catch(e){}
+    /* Headless detection: outerWidth/outerHeight === 0 in headless mode */
+    try{
+      var _ow=window.outerWidth||window.innerWidth||1280;
+      var _oh=window.outerHeight||window.innerHeight||720;
+      _def(window,'outerWidth',_ow);
+      _def(window,'outerHeight',_oh);
+    }catch(e){}
+    try{
+      _def(screen,'availWidth',screen.width||1920);
+      _def(screen,'availHeight',screen.height||1080);
+      _def(screen,'availLeft',0);
+      _def(screen,'availTop',0);
+    }catch(e){}
+    /* Remove Electron-specific globals */
+    try{delete window.Electron;}catch(e){}
+    try{delete window.__electron;}catch(e){}
+    try{delete window.__electronBinding;}catch(e){}
+    try{if(window.process)delete window.process;}catch(e){}
+    try{if(window.require)delete window.require;}catch(e){}
+    try{if(window.module)delete window.module;}catch(e){}
+    try{delete window.Buffer;}catch(e){}
+    try{delete window.global;}catch(e){}
+    try{delete window.__dirname;}catch(e){}
+    try{delete window.__filename;}catch(e){}
+    /* Remove non-Chrome browser identity signals */
+    try{delete window.opr;}catch(e){}
+    try{delete window.opera;}catch(e){}
+    try{if(navigator.brave)_def(navigator,'brave',undefined);}catch(e){}
+    try{if('globalPrivacyControl' in navigator)_def(navigator,'globalPrivacyControl',false);}catch(e){}
+    /* Remove automation/testing globals */
+    try{delete window.__nightmare;}catch(e){}
+    try{delete window.callPhantom;}catch(e){}
+    try{delete window._phantom;}catch(e){}
+    try{delete window.domAutomation;}catch(e){}
+    try{delete window.domAutomationController;}catch(e){}
+    try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;}catch(e){}
+    try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;}catch(e){}
+    try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;}catch(e){}
+    /* Remove Firefox/legacy signals */
+    try{delete window.controllers;}catch(e){}
+    try{delete window.Components;}catch(e){}
+    try{delete window.mozInnerScreenX;}catch(e){}
+    /* clientInformation alias */
+    try{if(!window.clientInformation)_def(window,'clientInformation',navigator);}catch(e){}
+    /* document.hasFocus() */
+    try{var _hf=function hasFocus(){return true;};_fakeNatives.add(_hf);Object.defineProperty(document,'hasFocus',{value:_hf,configurable:true,writable:true});}catch(e){}
+    /* navigator.connection */
+    try{if(!navigator.connection)_def(navigator,'connection',{effectiveType:'4g',rtt:50,downlink:10,saveData:false,addEventListener:function(){},removeEventListener:function(){}});}catch(e){}
+    /* speechSynthesis voices */
+    try{if(window.speechSynthesis){var _origGV=window.speechSynthesis.getVoices.bind(window.speechSynthesis);var _fv=[{voiceURI:'Google US English',name:'Google US English',lang:'en-US',localService:true,default:true},{voiceURI:'Google UK English Female',name:'Google UK English Female',lang:'en-GB',localService:false,default:false}];var _gvFn=function getVoices(){var r=_origGV();return(r&&r.length)?r:_fv;};_fakeNatives.add(_gvFn);window.speechSynthesis.getVoices=_gvFn;}}catch(e){}
+    /* Notification.permission */
+    try{if(typeof Notification!=='undefined')Object.defineProperty(Notification,'permission',{get:function(){return'default';},configurable:true});}catch(e){}
+    /* Permission API — return 'prompt' for all permission queries (matches fresh Chrome install) */
+    try{if(navigator.permissions){var _origQ=navigator.permissions.query.bind(navigator.permissions);var _pqFn=function query(desc){if(desc&&(desc.name==='notifications'||desc.name==='push'))return Promise.resolve({state:'prompt',status:'prompt',onchange:null});return _origQ(desc);};_fakeNatives.add(_pqFn);navigator.permissions.query=_pqFn;}}catch(e){}
+    /* Block service worker registration — SW context doesn't get our overrides,
+       so Google's SW could report real Electron identity back to the server. */
+    try{if(navigator.serviceWorker){var _origReg=navigator.serviceWorker.register.bind(navigator.serviceWorker);var _srFn=function register(){return Promise.reject(new DOMException('Failed to register a ServiceWorker','SecurityError'));};_fakeNatives.add(_srFn);navigator.serviceWorker.register=_srFn;}}catch(e){}
+  }catch(e){}
+})();
+`;
+const _GOOGLE_RE = /google\.com|googleapis\.com|gstatic\.com|gmail\.com|youtube\.com/i;
+function _injectGoogleUAFix(wc) {
+  if (!wc || wc.isDestroyed()) return;
+  try {
+    const url = wc.getURL();
+    if (url && _GOOGLE_RE.test(url)) {
+      wc.executeJavaScript(GOOGLE_UA_FIX).catch(() => {});
+    }
+  } catch {}
+}
+
+// ── Video PiP — injected into every BV page ──────────────────────────────────
+// Button appears at the TOP-RIGHT corner of the video element itself.
+// Shows on hover (YouTube / any site) and on autoplay without hover (TikTok).
+// Real in-page click → requestPictureInPicture works everywhere.
+const VIDEO_PIP_INJECT = `(function(){
+  if(window._rawPipV3)return;
+  window._rawPipV3=true;
+
+  /* ── Floating PiP button — positioned over video top-right ── */
   var btn=document.createElement('button');
-  btn.textContent='\u29c9 Pop Out';
-  btn.style.cssText='position:fixed;z-index:2147483647;top:-100px;right:12px;'+
-    'background:rgba(0,0,0,.88);color:#fff;border:1px solid rgba(255,255,255,.25);'+
-    'border-radius:8px;padding:7px 16px;font:600 12px/1 -apple-system,sans-serif;'+
-    'cursor:pointer;opacity:0;transition:opacity .2s;pointer-events:all;'+
-    'backdrop-filter:blur(10px);white-space:nowrap;box-shadow:0 2px 14px rgba(0,0,0,.6);';
+  btn.id='_rawPipBtn';
+  btn.style.cssText=
+    'position:fixed;z-index:2147483647;top:12px;right:12px;'+
+    'background:rgba(0,0,0,.72);color:#fff;'+
+    'border:none;border-radius:7px;'+
+    'padding:6px 12px 6px 9px;font:600 11px/1.2 -apple-system,sans-serif;'+
+    'cursor:pointer;display:flex;align-items:center;gap:5px;'+
+    'backdrop-filter:blur(10px);white-space:nowrap;'+
+    'box-shadow:0 2px 12px rgba(0,0,0,.65);'+
+    'opacity:0;pointer-events:none;'+
+    'transition:opacity .16s;';
+  btn.innerHTML=
+    '<svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">'+
+    '<rect x="1" y="2" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>'+
+    '<rect x="6.5" y="6" width="5.5" height="4" rx="1" fill="currentColor" opacity=".75"/>'+
+    '</svg><span id="_rawPipLbl">Pop Out</span>';
   document.documentElement.appendChild(btn);
 
-  var currentVideo=null,hideTimer=null,mx=0,my=0;
+  var _pip=false, _activeV=null, _hideTimer=null, _ro=null;
 
-  function positionBtn(r){
-    btn.style.top=(r.top+12)+'px';
-    btn.style.right=(window.innerWidth-r.right+12)+'px';
+  /* ── Position button at top-right of a video element ── */
+  function _pos(v){
+    if(!v)return;
+    var r=v.getBoundingClientRect();
+    var bw=btn.offsetWidth||90;
+    btn.style.top=Math.max(8,r.top+8)+'px';
+    btn.style.left=Math.max(0,r.right-bw-8)+'px';
+    btn.style.right='auto';
+    btn.style.bottom='auto';
   }
-  function showBtn(v,r){
-    clearTimeout(hideTimer);
-    currentVideo=v;
-    positionBtn(r);
+
+  function _show(v){
+    clearTimeout(_hideTimer);
+    if(v)_activeV=v;
+    if(_activeV)_pos(_activeV);
     btn.style.opacity='1';
+    btn.style.pointerEvents='all';
   }
-  function scheduleHide(){
-    hideTimer=setTimeout(function(){btn.style.opacity='0';currentVideo=null;},400);
+  function _hide(delay){
+    clearTimeout(_hideTimer);
+    _hideTimer=setTimeout(function(){
+      btn.style.opacity='0';
+      btn.style.pointerEvents='none';
+    },delay||0);
   }
 
-  btn.addEventListener('mouseenter',function(){clearTimeout(hideTimer);});
-  btn.addEventListener('mouseleave',scheduleHide);
-  btn.addEventListener('click',function(e){
-    e.stopPropagation();e.preventDefault();
-    var v=currentVideo;if(!v)return;
-    try{
-      if(document.pictureInPictureElement){document.exitPictureInPicture().catch(function(){});}
-      else{v.requestPictureInPicture().catch(function(err){console.warn('[RAW PiP]',err.message);});}
-    }catch(ex){}
+  /* Reposition when user scrolls/resizes (keeps button glued to video) */
+  function _repos(){
+    if(btn.style.opacity==='1'&&_activeV){ _pos(_activeV); }
+  }
+  window.addEventListener('scroll',_repos,{passive:true,capture:true});
+  window.addEventListener('resize',_repos,{passive:true});
+
+  /* ── Bind hover events directly to a video element ── */
+  function _bindVideo(v){
+    if(v._rawPipBound)return;
+    v._rawPipBound=true;
+    v.addEventListener('mouseenter',function(){_show(v);},true);
+    v.addEventListener('mouseleave',function(e){
+      /* Don't hide if mouse moved onto the button */
+      if(!_pip&&e.relatedTarget!==btn)_hide(550);
+    },true);
+    /* Track video resize/position changes so button stays glued to the video */
+    if(typeof ResizeObserver!=='undefined'){
+      if(_ro)_ro.disconnect();
+      _ro=new ResizeObserver(function(){ if(btn.style.opacity==='1'&&_activeV)_pos(_activeV); });
+      _ro.observe(v);
+    }
+  }
+  function _bindAll(){
+    document.querySelectorAll('video').forEach(_bindVideo);
+  }
+  _bindAll();
+
+  /* Watch for videos added dynamically (TikTok / YouTube SPA) */
+  var _mo=new MutationObserver(function(muts){
+    for(var i=0;i<muts.length;i++){
+      if(muts[i].addedNodes&&muts[i].addedNodes.length){ _bindAll(); break; }
+    }
+  });
+  _mo.observe(document.documentElement,{childList:true,subtree:true});
+
+  /* ── Also poll for autoplay videos the hover approach can't catch ── */
+  /* (TikTok: video plays full-screen without the user hovering)       */
+  function _bestPlaying(){
+    var vw=window.innerWidth,vh=window.innerHeight,best=null,score=-1;
+    document.querySelectorAll('video').forEach(function(v){
+      if(v.paused||v.ended)return;
+      if(v.readyState<2&&v.videoWidth<1)return;
+      var r=v.getBoundingClientRect();
+      if(r.width<60||r.height<40)return;
+      if(r.right<=0||r.bottom<=0||r.left>=vw||r.top>=vh)return;
+      var s=(v.duration||0)*6+(r.width*r.height/6000);
+      if(s>score){score=s;best=v;}
+    });
+    return best;
+  }
+  function _poll(){
+    if(_pip){_show();return;}
+    var v=_bestPlaying();
+    if(v){ _bindVideo(v); _show(v); }
+    /* Don't auto-hide — let mouseleave / _hide handle it */
+  }
+
+  /* ── Video play/pause events ── */
+  document.addEventListener('play',function(e){
+    if(e.target&&e.target.tagName==='VIDEO'){ _bindVideo(e.target); _poll(); }
+  },true);
+  document.addEventListener('pause',function(e){
+    if(e.target&&e.target.tagName==='VIDEO'&&e.target===_activeV){
+      if(!_pip) _hide(800);
+    }
+  },true);
+
+  /* ── PiP state tracking ── */
+  document.addEventListener('enterpictureinpicture',function(){
+    _pip=true;
+    var lbl=document.getElementById('_rawPipLbl');
+    if(lbl)lbl.textContent='Exit PiP';
+    _show();
+  });
+  document.addEventListener('leavepictureinpicture',function(){
+    _pip=false;
+    var lbl=document.getElementById('_rawPipLbl');
+    if(lbl)lbl.textContent='Pop Out';
+    _hide(700);
   });
 
-  /* Use mousemove on document — works even when overlay divs cover the video.
-     Check every known video rect on each move (cheap: videos are few). */
-  document.addEventListener('mousemove',function(e){
-    mx=e.clientX;my=e.clientY;
-    var videos=document.querySelectorAll('video');
-    var found=null,foundR=null;
-    for(var i=0;i<videos.length;i++){
-      var v=videos[i];
-      if(v.readyState<1||v.videoWidth<10)continue; // ignore audio-only/hidden
-      var r=v.getBoundingClientRect();
-      if(r.width<80||r.height<50)continue;
-      if(mx>=r.left&&mx<=r.right&&my>=r.top&&my<=r.bottom){found=v;foundR=r;break;}
-    }
-    if(found){
-      showBtn(found,foundR);
-    }else if(currentVideo){
-      // If mouse left video area (but not onto btn), schedule hide
-      var br=btn.getBoundingClientRect();
-      var onBtn=mx>=br.left&&mx<=br.right&&my>=br.top&&my<=br.bottom;
-      if(!onBtn) scheduleHide();
-    }
-  },{passive:true});
+  /* Keep button visible when mouse is on it */
+  btn.addEventListener('mouseenter',function(){ clearTimeout(_hideTimer); });
+  btn.addEventListener('mouseleave',function(e){
+    if(!_pip&&e.relatedTarget!==_activeV) _hide(300);
+  });
 
-  /* Also watch for new videos added dynamically */
-  new MutationObserver(function(){}).observe(document.documentElement,{childList:true,subtree:true});
+  /* ── Click: enter or exit PiP ── */
+  btn.addEventListener('click',function(e){
+    e.stopPropagation(); e.preventDefault();
+    if(document.pictureInPictureElement){
+      document.exitPictureInPicture().catch(function(){});
+    }else{
+      var v=_activeV||_bestPlaying()||
+            document.querySelector('#movie_player video')||
+            document.querySelector('.html5-video-player video')||
+            document.querySelector('video');
+      if(!v)return;
+      try{v.disablePictureInPicture=false;}catch(x){}
+      v.requestPictureInPicture().catch(function(err){
+        console.warn('[RAW PiP]',err.message);
+      });
+    }
+  });
+
+  /* ── Initial poll + recurring poll for autoplay sites ── */
+  var _polled=0;
+  var _fastIv=setInterval(function(){
+    _poll(); _polled++;
+    if(_polled>=60){ clearInterval(_fastIv); setInterval(_poll,4000); }
+  },1000);
+  _poll();
 })();`;
 
 // ── Extension content scripts (injected into BrowserView via executeJavaScript) ─
@@ -576,38 +901,50 @@ const EXT_SCRIPTS = {
   'dark-mode':
     `(function(){
       if(document.getElementById('_rawDark'))return;
-      /* 1. color-scheme:dark so native form inputs render dark */
+      /* Step 1: Set color-scheme so native inputs render dark */
       var s=document.createElement('style');s.id='_rawDark';
       s.textContent=':root{color-scheme:dark!important;}'+
         '::selection{background:rgba(0,180,160,.5)!important;}';
       document.head.appendChild(s);
-      /* 2. If page is light, apply CSS invert so it looks dark.
-         No matchMedia patching — that causes sites with built-in dark mode
-         (Google, GitHub, etc.) to activate their native theme, making the
-         background dark so the luminance check never triggers the invert,
-         leaving a broken half-dark state. Pure CSS invert is more reliable. */
+
+      /* Step 2: Smart invert — only on light pages.
+         Checks actual computed background of html/body (falls back through
+         transparency chain), respects declared color-scheme:dark, and
+         skips sites that already have a dark-mode class on <html>/<body>.
+         SVG inline elements are re-inverted so icons stay natural. */
       function _applyInvert(){
         if(document.getElementById('_rawDarkInv'))return;
+        /* Check if site natively declared dark color-scheme */
+        try {
+          var cs = getComputedStyle(document.documentElement).colorScheme || '';
+          if(cs.includes('dark')) return;
+        } catch(e){}
+        /* Check for common dark-mode class names on root/body */
+        var rootCls = (document.documentElement.className||'')+' '+((document.body||{}).className||'');
+        if(/\b(dark|dark-mode|dark-theme|dark-layout|night|black-theme)\b/i.test(rootCls)) return;
+        /* Find real background — walk up from body through transparent layers */
         var el=document.body||document.documentElement;
         var bg=getComputedStyle(el).backgroundColor;
-        var m=bg.match(/\\d+/g);
-        var lum=m?(+m[0]*299+(+m[1])*587+(+m[2])*114)/1000:255;
-        if(lum>100){
-          var si=document.createElement('style');si.id='_rawDarkInv';
-          /* Apply to body (not html) — avoids Electron compositor hit-test issues
-             that can block pointer-events on interactive page elements. */
-          si.textContent='body{filter:invert(1) hue-rotate(180deg)!important;}'+
-            /* Re-invert media so images/video stay natural-looking.
-               iframe excluded — applying filter to iframes causes compositor
-               layer conflicts that prevent mouse events reaching embedded content. */
-            'img,video,canvas,picture,embed,object,'+
-            '[style*="background-image"]{filter:invert(1) hue-rotate(180deg)!important;}';
-          document.head.appendChild(si);
+        if(bg==='rgba(0, 0, 0, 0)'||bg==='transparent'){
+          bg=getComputedStyle(document.documentElement).backgroundColor;
         }
+        var m=bg.match(/\\d+/g);
+        /* If still transparent or unreadable, assume light (invert) */
+        var lum=m&&m.length>=3?(+m[0]*299+(+m[1])*587+(+m[2])*114)/1000:210;
+        if(lum<90) return; /* page is already dark — skip */
+        var si=document.createElement('style');si.id='_rawDarkInv';
+        /* Apply filter to body. SVG added to re-invert list so inline icons
+           stay natural. iframe excluded — compositor layer conflict in Electron. */
+        si.textContent='body{filter:invert(1) hue-rotate(180deg)!important;}'+
+          'img,video,canvas,picture,embed,object,svg,'+
+          '[style*="background-image"],[style*="background:url"],[style*="background: url"]'+
+          '{filter:invert(1) hue-rotate(180deg)!important}';
+        document.head.appendChild(si);
       }
       if(document.readyState==='complete'){_applyInvert();}
-      else{window.addEventListener('load',function(){setTimeout(_applyInvert,200);});}
-      setTimeout(_applyInvert,400);
+      else{window.addEventListener('load',function(){setTimeout(_applyInvert,600);});}
+      /* Also run after a 900ms delay so JS-powered dark themes have time to apply */
+      setTimeout(_applyInvert,900);
     })()`,
   'no-animations':
     `(function(){if(document.getElementById('_rawNoAnim'))return;var s=document.createElement('style');s.id='_rawNoAnim';s.textContent='*,*::before,*::after{animation:none!important;transition:none!important;}';document.head.appendChild(s);})()`,
@@ -619,10 +956,6 @@ const EXT_SCRIPTS = {
     `(function(){if(document.getElementById('_rawGray'))return;var s=document.createElement('style');s.id='_rawGray';s.textContent='html{filter:grayscale(1)!important;}';document.head.appendChild(s);})()`,
   'night-filter':
     `(function(){if(document.getElementById('_rawNight'))return;var d=document.createElement('div');d.id='_rawNight';d.style.cssText='position:fixed;inset:0;background:rgba(255,130,0,.18);pointer-events:none;z-index:2147483646;';document.documentElement.appendChild(d);})()`,
-  'remove-banners':
-    `(function(){if(document.getElementById('_rawBan'))return;var s=document.createElement('style');s.id='_rawBan';` +
-    `s.textContent='[id*="cookie" i],[class*="cookie" i],[id*="gdpr" i],[class*="gdpr" i],[id*="consent" i],[class*="consent" i],[id*="onetrust"],[id*="cookiebot"],[class*="cc-window"],[class*="cookie-notice"],[class*="cookie-banner"],[class*="cookie-bar"],[data-nosnippet*="cookie"]{display:none!important;}body,html{overflow:auto!important;}';` +
-    `document.head.appendChild(s);})()`,
   'highlight-links':
     `(function(){if(document.getElementById('_rawLinks'))return;var s=document.createElement('style');s.id='_rawLinks';s.textContent='a{text-decoration-line:underline!important;text-decoration-color:rgba(0,212,200,.55)!important;text-underline-offset:2px!important;}';document.head.appendChild(s);})()`,
   'scroll-progress':
@@ -639,6 +972,60 @@ const EXT_SCRIPTS = {
     `(function(){if(document.getElementById('_rawAntiTrk'))return;var s=document.createElement('style');s.id='_rawAntiTrk';s.textContent='img[width="1"],img[height="1"],img[width="0"],img[height="0"],img[style*="display:none"],img[style*="display: none"]{display:none!important;visibility:hidden!important;}';document.head.appendChild(s);})()`,
   'print-clean':
     `(function(){if(document.getElementById('_rawPrint'))return;var s=document.createElement('style');s.id='_rawPrint';s.textContent='@media print{nav,header,footer,aside,iframe,[class*="ad"],[id*="ad"],[class*="banner"],[class*="sidebar"],[class*="popup"],[class*="cookie"],[class*="social"],[class*="share"],[class*="related"]{display:none!important}body{font-size:11pt!important;line-height:1.6!important;color:#000!important;background:#fff!important}a::after{content:" ("attr(href)")";}img{max-width:100%!important}}';document.head.appendChild(s);})()`,
+  'smooth-scroll':
+    `(function(){if(document.getElementById('_rawSmooth'))return;var s=document.createElement('style');s.id='_rawSmooth';s.textContent='html{scroll-behavior:smooth!important;}';document.head.appendChild(s);})()`,
+  'smart-copy':
+    `(function(){if(window._rawSmartCopy)return;window._rawSmartCopy=true;document.addEventListener('copy',function(e){var sel=window.getSelection();if(!sel||!sel.toString())return;e.preventDefault();e.clipboardData.setData('text/plain',sel.toString());},true);})()`,
+  'hide-comments':
+    `(function(){if(document.getElementById('_rawHideCom'))return;var s=document.createElement('style');s.id='_rawHideCom';s.textContent='[id*="comment" i],[class*="comment" i],[id*="disqus"],[class*="disqus"],[id*="discuss" i],[class*="discuss" i],[id*="replies" i],[class*="replies" i]{display:none!important;}';document.head.appendChild(s);})()`,
+  'link-preview':
+    `(function(){if(window._rawLinkPrev)return;window._rawLinkPrev=true;var tip=document.createElement('div');tip.id='_rawLinkPrev';tip.style.cssText='position:fixed;bottom:12px;left:50%;transform:translateX(-50%);max-width:520px;background:rgba(12,12,12,.92);color:#a0a0a0;font:12px/1.4 system-ui,sans-serif;padding:4px 14px;border-radius:7px;z-index:2147483646;pointer-events:none;opacity:0;transition:opacity .15s;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';document.documentElement.appendChild(tip);document.addEventListener('mouseover',function(e){var a=e.target.closest('a');if(a&&a.href&&!/^javascript/i.test(a.href)){tip.textContent=a.href;tip.style.opacity='1';}});document.addEventListener('mouseout',function(e){if(e.target.closest('a'))tip.style.opacity='0';});})()`,
+  'custom-cursor':
+    `(function(){if(window._rawCursor)return;window._rawCursor=true;var tr=document.createElement('div');tr.id='_rawCursorRing';tr.style.cssText='position:fixed;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(0,212,200,.75);pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);transition:top .06s linear,left .06s linear;top:-100px;left:-100px;box-shadow:0 0 10px rgba(0,212,200,.35);';document.documentElement.appendChild(tr);document.addEventListener('mousemove',function(e){tr.style.top=e.clientY+'px';tr.style.left=e.clientX+'px';});})()`,
+  'auto-scroll':
+    `(function(){if(window._rawAutoScrollBtn)return;var spd=0,anim,btn=document.createElement('div');btn.id='_rawAutoScrollBtn';btn.style.cssText='position:fixed;bottom:60px;right:20px;z-index:2147483647;background:rgba(0,0,0,.85);color:#00d4c8;font:bold 12px/1 system-ui;padding:6px 14px;border-radius:8px;cursor:pointer;user-select:none;border:1px solid rgba(0,212,200,.4);';btn.textContent='\u25bc Auto';window._rawAutoScrollBtn=btn;function tick(){if(spd>0){window.scrollBy(0,spd);anim=requestAnimationFrame(tick);}}btn.onclick=function(e){e.stopPropagation();spd=spd>0?0:1.5;btn.textContent=spd>0?'\u25a0 Stop':'\u25bc Auto';if(spd>0)anim=requestAnimationFrame(tick);else if(anim)cancelAnimationFrame(anim);};document.body.appendChild(btn);})()`,
+  'high-contrast':
+    `(function(){if(document.getElementById('_rawHiCon'))return;var s=document.createElement('style');s.id='_rawHiCon';s.textContent='html{filter:contrast(1.65)!important;}';document.head.appendChild(s);})()`,
+  'pip-mode':
+    // Trigger PiP via the floating button injected by VIDEO_PIP_INJECT — it has a
+    // real user-gesture context from the click event (IPC-direct requestPiP fails).
+    `(function(){
+      window._rawPip=true;
+      // If VIDEO_PIP_INJECT button is already in the page, use it (has user gesture)
+      var btn=document.getElementById('_rawPipBtn');
+      if(btn){
+        var ev=new MouseEvent('click',{bubbles:true,cancelable:true,view:window});
+        btn.dispatchEvent(ev);
+        return;
+      }
+      // Fallback: find best visible video and attempt PiP (may need a real user gesture
+      // but works on pages that allow autoplay with permissions policy)
+      var vw=window.innerWidth,vh=window.innerHeight;
+      var best=null,bestScore=-1;
+      document.querySelectorAll('video').forEach(function(v){
+        var r=v.getBoundingClientRect();
+        if(r.width<80||r.height<50)return;
+        var score=(v.paused?0:3000)+(v.duration||0)*10+(r.width*r.height/1e4);
+        if(score>bestScore){bestScore=score;best=v;}
+      });
+      if(!best)best=document.querySelector('#movie_player video')||document.querySelector('video');
+      if(best){
+        try{best.disablePictureInPicture=false;}catch(e){}
+        best.requestPictureInPicture().catch(function(err){
+          console.warn('[RAW pip-mode]',err.message,'— hover the video and use the Pop Out button');
+        });
+      }
+    })()`,
+  'sticky-notes':
+    `(function(){if(window._rawStickyNotes)return;window._rawStickyNotes=true;var d=document.createElement('div');d.id='_rawStickyNotes';d.style.cssText='position:fixed;bottom:80px;right:20px;z-index:2147483647;width:230px;background:rgba(10,10,10,.97);border-radius:12px;border:1px solid rgba(0,212,200,.3);box-shadow:0 4px 24px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,sans-serif;';var hdr=document.createElement('div');hdr.style.cssText='padding:8px 12px;background:rgba(0,212,200,.1);font-size:11px;font-weight:700;color:#00d4c8;cursor:move;display:flex;align-items:center;justify-content:space-between;user-select:none;';hdr.innerHTML='<span>\u{1F4DD} STICKY NOTE</span>';var cls=document.createElement('button');cls.textContent='\u00d7';cls.style.cssText='background:none;border:none;color:#666;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;';cls.onclick=function(){d.remove();window._rawStickyNotes=false;};hdr.appendChild(cls);var ta=document.createElement('textarea');ta.style.cssText='width:100%;height:110px;background:transparent;border:none;border-top:1px solid rgba(255,255,255,.07);padding:10px 12px;color:#ccc;font-size:12px;resize:vertical;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5;';ta.placeholder='Type notes\u2026';d.appendChild(hdr);d.appendChild(ta);document.documentElement.appendChild(d);var mx=0,my=0,drag=false;hdr.addEventListener('mousedown',function(e){drag=true;mx=e.clientX-d.offsetLeft;my=e.clientY-d.offsetTop;});document.addEventListener('mousemove',function(e){if(!drag)return;d.style.right='auto';d.style.bottom='auto';d.style.left=(e.clientX-mx)+'px';d.style.top=(e.clientY-my)+'px';});document.addEventListener('mouseup',function(){drag=false;});})()`,
+  'low-data':
+    `(function(){if(document.getElementById('_rawLowData'))return;var s=document.createElement('style');s.id='_rawLowData';s.textContent='img,picture,svg image{visibility:hidden!important;}video,iframe[src*="youtube"],iframe[src*="vimeo"]{display:none!important;}';document.head.appendChild(s);var b=document.createElement('div');b.id='_rawLowDataBadge';b.style.cssText='position:fixed;top:10px;right:10px;z-index:2147483646;background:rgba(10,10,10,.9);color:#f0c030;font:700 10px/1 system-ui;padding:4px 10px;border-radius:6px;border:1px solid rgba(240,192,48,.3);pointer-events:none;letter-spacing:.06em;';b.textContent='LOW DATA MODE';document.documentElement.appendChild(b);})()`,
+  'neon-glow':
+    `(function(){if(document.getElementById('_rawNeonGlow'))return;var s=document.createElement('style');s.id='_rawNeonGlow';s.textContent='h1,h2,h3{text-shadow:0 0 14px rgba(0,212,200,.55),0 0 32px rgba(0,212,200,.2)!important;color:#e0fffe!important;}a:hover{text-shadow:0 0 8px rgba(0,212,200,.65)!important;color:#00ffec!important;}button,input[type="submit"]{box-shadow:0 0 10px rgba(0,212,200,.35),0 0 22px rgba(0,212,200,.12)!important;}';document.head.appendChild(s);})()`,
+  'page-zoom':
+    `(function(){if(window._rawZoomCtrl)return;window._rawZoomCtrl=true;var lvl=1;var wrap=document.createElement('div');wrap.id='_rawZoomCtrl';wrap.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:6px;background:rgba(10,10,10,.92);border:1px solid rgba(0,212,200,.28);border-radius:10px;padding:5px 10px;font-family:system-ui;box-shadow:0 4px 16px rgba(0,0,0,.5);';function _btn(t){var b=document.createElement('button');b.textContent=t;b.style.cssText='background:rgba(0,212,200,.12);border:1px solid rgba(0,212,200,.25);color:#00d4c8;font-size:14px;font-weight:700;width:26px;height:26px;border-radius:6px;cursor:pointer;';return b;}var bM=_btn('-'),lbl=document.createElement('span'),bP=_btn('+'),bR=_btn('\u21ba');lbl.style.cssText='color:#ccc;font-size:11px;font-weight:600;min-width:38px;text-align:center;';lbl.textContent='100%';function _sz(z){lvl=Math.min(3,Math.max(0.3,z));document.body.style.zoom=lvl;lbl.textContent=Math.round(lvl*100)+'%';}bM.onclick=function(){_sz(+(lvl-0.1).toFixed(1));};bP.onclick=function(){_sz(+(lvl+0.1).toFixed(1));};bR.onclick=function(){_sz(1);};[bM,lbl,bP,bR].forEach(function(el){wrap.appendChild(el);});document.documentElement.appendChild(wrap);})()`,
+  // YouTube Ad Skipper — enabled as an add-on, not automatically
+  'yt-ad': YT_AD_SKIP,
 };
 
 const EXT_UNSCRIPTS = {
@@ -648,8 +1035,7 @@ const EXT_UNSCRIPTS = {
   'focus-mode':      `(function(){var s=document.getElementById('_rawFocus');if(s)s.remove();})()`,
   'grayscale':       `(function(){var s=document.getElementById('_rawGray');if(s)s.remove();})()`,
   'night-filter':    `(function(){var el=document.getElementById('_rawNight');if(el)el.remove();})()`,
-  'remove-banners':  `(function(){var s=document.getElementById('_rawBan');if(s)s.remove();})()`,
-  'highlight-links':  `(function(){var s=document.getElementById('_rawLinks');if(s)s.remove();})()`,
+  'highlight-links':  `(function(){var s=document.getElementById('_rawLinks');if(s)s.remove();})()`, 
   'scroll-progress':  `(function(){document.getElementById('_rawScProg')?.remove();})()`,
   'font-boost':       `(function(){document.getElementById('_rawFont')?.remove();})()`,
   'reader-mode':      `(function(){document.getElementById('_rawReader')?.remove();})()`,
@@ -657,6 +1043,19 @@ const EXT_UNSCRIPTS = {
   'word-count':       `(function(){document.getElementById('_rawWordCnt')?.remove();})()`,
   'anti-tracking':    `(function(){document.getElementById('_rawAntiTrk')?.remove();})()`,
   'print-clean':      `(function(){document.getElementById('_rawPrint')?.remove();})()`,
+  'smooth-scroll':    `(function(){document.getElementById('_rawSmooth')?.remove();})()`,
+  'smart-copy':       `(function(){window._rawSmartCopy=false;})()`,
+  'hide-comments':    `(function(){document.getElementById('_rawHideCom')?.remove();})()`,
+  'link-preview':     `(function(){document.getElementById('_rawLinkPrev')?.remove();window._rawLinkPrev=false;})()`,
+  'custom-cursor':    `(function(){document.getElementById('_rawCursorRing')?.remove();window._rawCursor=false;})()`,
+  'auto-scroll':      `(function(){var b=document.getElementById('_rawAutoScrollBtn');if(b)b.remove();window._rawAutoScrollBtn=false;})()`,
+  'high-contrast':    `(function(){document.getElementById('_rawHiCon')?.remove();})()`,
+  'pip-mode':         `(function(){if(document.pictureInPictureElement)document.exitPictureInPicture().catch(function(){});window._rawPip=false;})()`,
+  'sticky-notes':     `(function(){document.getElementById('_rawStickyNotes')?.remove();window._rawStickyNotes=false;})()`,
+  'low-data':         `(function(){document.getElementById('_rawLowData')?.remove();document.getElementById('_rawLowDataBadge')?.remove();})()`,
+  'neon-glow':        `(function(){document.getElementById('_rawNeonGlow')?.remove();})()`,
+  'page-zoom':        `(function(){document.getElementById('_rawZoomCtrl')?.remove();try{if(document.body)document.body.style.zoom='';}catch(e){}window._rawZoomCtrl=false;})()`,
+  'yt-ad':            `(function(){try{if(window._rbYtAdKey){var k=window._rbYtAdKey;window[k]&&window[k].obs&&window[k].obs.disconnect();window[k]&&window[k].iv&&clearInterval(window[k].iv);delete window[k];delete window._rbYtAdKey;}var s=document.getElementById('_rb_ac');if(s)s.remove();}catch(e){}})()`,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -775,15 +1174,30 @@ function setBounds(bv) {
 // panel:hide calls setBounds() to restore it to the correct position.
 function _parkBV(bv) {
   if (!bv || bv.webContents.isDestroyed()) return;
-  const [w] = win.getContentSize();
-  try { win.addBrowserView(bv); } catch {} // ensure attached (idempotent)
-  // CRITICAL: Park with bounds INSIDE the window, not outside.
-  // When bounds are fully outside (e.g. x:-(w+200)), Chromium's compositor
-  // marks the RenderWidget surface as non-rendering and suspends media at
-  // the native level — no JS override can prevent that. Parking as a 1px
-  // strip hidden behind the chrome bar keeps the compositor surface active
-  // so video/audio never pauses regardless of what the page JS does.
-  bv.setBounds({ x: 0, y: CHROME_H - 1, width: w, height: 1 });
+  const [w, h] = win.getContentSize();
+  const bvH = Math.max(h - CHROME_H, 1);
+  try { win.addBrowserView(bv); } catch {}
+  // incrementCapturerCount(size) is the Electron API that puts Chromium into
+  // off-screen rendering mode at the given resolution. This has two effects:
+  //   1. Prevents the renderer process from being suspended (WasHidden() is blocked)
+  //   2. Keeps the video decoder producing frames into an off-screen buffer that
+  //      capturePage() can read — even when the BV has no visible screen pixels.
+  // CRITICAL: pass the explicit size. Without it, Chromium defaults to the current
+  // surface size. If the surface is tiny or off-screen, the video decoder produces
+  // no frames (hence: audio plays, video frozen). With the correct size it renders
+  // at full resolution off-screen so capturePage() returns live video frames.
+  try { bv.webContents.incrementCapturerCount({ width: w, height: bvH }); } catch {}
+  // Move BV fully off the left edge. Zero visible pixels in the window means HTML
+  // panels are never occluded by the BV. The BV stays attached so the OS-level
+  // compositor keeps the frame sink alive. incrementCapturerCount handles renderer
+  // keep-alive; without it this would suspend the renderer (see old comment).
+  bv.setBounds({ x: -(w + 10), y: CHROME_H, width: w, height: bvH });
+}
+function _unparkBV(bv) {
+  if (!bv || bv.webContents.isDestroyed()) return;
+  try { bv.webContents.decrementCapturerCount(); } catch {}
+  try { win.addBrowserView(bv); } catch {}
+  try { setBounds(bv); } catch {}
 }
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
@@ -864,11 +1278,11 @@ function activateTab(id) {
 function createTab(url, activate = true) {
   const id = ++nextId;
   const bv = new BrowserView({
-    backgroundColor: '#ffffff',
+    backgroundColor: '#080808',
     webPreferences: {
       nodeIntegration:  false,
       contextIsolation: true,
-      sandbox:          false,
+      sandbox:          true,
       partition:        'persist:main',
       preload:          path.join(__dirname, 'preload.js'),
       webSecurity: true,
@@ -890,14 +1304,77 @@ function createTab(url, activate = true) {
   // Without this, video/audio can pause at the media pipeline level regardless of
   // any JS-level visibility overrides.
   wc.setBackgroundThrottling(false);
-  if (settings.spoofUserAgent) wc.setUserAgent(SPOOF_UA);
+  wc.setUserAgent(SPOOF_UA);
 
+  // Auth provider domains that use popup-based OAuth flows.
+  // Returning { action: 'allow' } lets Electron create a real popup window so the
+  // parent page can hold onto the window reference and detect when login completes.
+  const _oauthDomains = [
+    'accounts.google.com', 'google.com', 'googleusercontent.com',
+    'login.microsoftonline.com', 'appleid.apple.com',
+    'facebook.com', 'discord.com',
+  ];
   wc.setWindowOpenHandler(({ url: u }) => {
-    // Block dangerous schemes from being opened as new tabs
+    // Block dangerous schemes
     if (/^(javascript|vbscript|file):/i.test(u)) return { action: 'deny' };
+    // Allow native popup for OAuth providers so the auth flow can complete.
+    // Also allow about:blank popups — many OAuth flows open about:blank first,
+    // then navigate to the auth URL from JS.
+    const isBlank = !u || u === 'about:blank';
+    let isAuth = false;
+    if (!isBlank) {
+      try {
+        const host = new URL(u).hostname;
+        isAuth = _oauthDomains.some(d => host === d || host.endsWith('.' + d));
+      } catch {}
+    }
+    if (isAuth || isBlank) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 500, height: 650,
+          autoHideMenuBar: true,
+          webPreferences: {
+            partition: 'persist:main',
+            contextIsolation: true,
+            nodeIntegration: false,
+            preload: path.join(__dirname, 'preload.js'),
+          },
+        },
+      };
+    }
     createTab(u, true);
     return { action: 'deny' };
   });
+
+  // Apply UA spoofing to OAuth popup windows.
+  // IMPORTANT: Do NOT add a will-navigate guard here — OAuth flows redirect the
+  // popup to the original site's callback URL (e.g. example.com/oauth/callback)
+  // to pass the auth code. Intercepting that navigation closes the popup before
+  // the parent page can read the result, permanently breaking login.
+  wc.on('did-create-window', (popup) => {
+    const pwc = popup.webContents;
+    pwc.setUserAgent(SPOOF_UA);
+    pwc.setBackgroundThrottling(false);
+    popup.setMenuBarVisibility(false);
+    // Inject Google UA fix at the earliest moment (before page scripts) + on later events.
+    pwc.on('did-commit-navigation', (_, navUrl) => {
+      if (navUrl && _GOOGLE_RE.test(navUrl)) pwc.executeJavaScript(GOOGLE_UA_FIX).catch(() => {});
+    });
+    pwc.on('dom-ready', () => _injectGoogleUAFix(pwc));
+    pwc.on('did-navigate', () => _injectGoogleUAFix(pwc));
+    pwc.on('did-navigate-in-page', () => _injectGoogleUAFix(pwc));
+  });
+
+  // Inject Google UA fix at the EARLIEST possible moment (did-commit-navigation fires
+  // before page scripts run — earlier than dom-ready) so Google never sees Electron.
+  wc.on('did-commit-navigation', (_, navUrl) => {
+    if (navUrl && _GOOGLE_RE.test(navUrl)) wc.executeJavaScript(GOOGLE_UA_FIX).catch(() => {});
+  });
+  // Belt-and-suspenders: also inject on later events to cover SPA navigations.
+  wc.on('dom-ready', () => _injectGoogleUAFix(wc));
+  wc.on('did-navigate', () => _injectGoogleUAFix(wc));
+  wc.on('did-navigate-in-page', () => _injectGoogleUAFix(wc));
 
   // ── Right-click context menu ───────────────────────────────────────────────
   wc.on('context-menu', (_, p) => {
@@ -998,12 +1475,10 @@ function createTab(url, activate = true) {
     send('tab:update', tabData(tab));
     if (id === activeId) send('nav:state', navData(tab));
     addHistory(tab.url, tab.title);
-    // Inject YouTube ad skipper
-    if (/youtube\.com/i.test(tab.url) && settings.adblockEnabled !== false) {
-      wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
-    }
     // Inject floating PiP button for any page that might have video
+    // Always clear any stale guard first so re-navigation gets a fresh inject.
     if (tab.url && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
+      wc.executeJavaScript('window._rawPipInjected=false;window._rawPipV3=false;').catch(()=>{});
       wc.executeJavaScript(VIDEO_PIP_INJECT).catch(() => {});
     }
     // Suppress double-scrollbar: some sites set overflow on both <html> and <body>,
@@ -1140,8 +1615,8 @@ function createTab(url, activate = true) {
     tab.url = normalizeUrl(u);
     send('tab:update', tabData(tab));
     if (id === activeId) send('nav:state', navData(tab));
-    // Re-inject ad skipper on YouTube SPA navigation (video-to-video)
-    if (/youtube\.com/i.test(u) && settings.adblockEnabled !== false) {
+    // Re-inject yt-ad add-on on YouTube SPA navigation if user has it enabled
+    if (/youtube\.com/i.test(u) && settings.extensions?.['yt-ad']) {
       wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
     }
   });
@@ -1218,37 +1693,42 @@ function setupSession(ses) {
   ses.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, cb) => {
     const h = { ...details.requestHeaders };
 
-    // For whitelisted domains (Spotify, TikTok, etc.) — only spoof UA, leave all
-    // other headers intact. DRM license servers validate Referer/Origin headers;
-    // stripping them breaks Widevine license acquisition.
+    // Helper: apply full Chrome UA spoof to headers object
+    function _applyUA(headers) {
+      headers['User-Agent'] = SPOOF_UA;
+      headers['Sec-CH-UA'] = SPOOF_UA_HINTS;
+      headers['Sec-CH-UA-Mobile'] = '?0';
+      headers['Sec-CH-UA-Platform'] = '"Windows"';
+      headers['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
+      headers['Sec-CH-UA-Arch'] = '"x86"';
+      headers['Sec-CH-UA-Bitness'] = '"64"';
+      headers['Sec-CH-UA-Full-Version'] = '"120.0.6099.234"';
+      headers['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="120.0.6099.234", "Google Chrome";v="120.0.6099.234"';
+    }
+
+    // For whitelisted domains (Google, Spotify, TikTok, etc.) — spoof UA and return
+    // immediately, leaving all other headers (Referer, Origin, Sec-Fetch-*) intact.
+    // CRITICAL: This must apply even when the request comes from a popup/OAuth window
+    // (which has no matching tab entry). Without this, Sec-CH-UA for Google sign-in
+    // popup windows shows Electron's real brands, triggering "not secure browser".
+    let isWhitelisted = false;
     try {
       const host = new URL(details.url).hostname.toLowerCase().replace(/^www\./, '');
-      if (BUILTIN_WHITELIST.some(d => host === d || host.endsWith('.' + d))) {
-        if (settings.spoofUserAgent) {
-          h['User-Agent'] = SPOOF_UA;
-          h['Sec-CH-UA'] = SPOOF_UA_HINTS;
-          h['Sec-CH-UA-Mobile'] = '?0';
-          h['Sec-CH-UA-Platform'] = '"Windows"';
-          h['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
-          h['Sec-CH-UA-Arch'] = '"x86"';
-          h['Sec-CH-UA-Bitness'] = '"64"';
-          h['Sec-CH-UA-Full-Version-List'] = '"Not A(Brand";v="99.0.0.0", "Google Chrome";v="136.0.7103.116", "Chromium";v="136.0.7103.116"';
-        }
-        return cb({ requestHeaders: h });
-      }
+      isWhitelisted = BUILTIN_WHITELIST.some(d => host === d || host.endsWith('.' + d));
     } catch {}
 
-    if (settings.doNotTrack)    { h['DNT'] = '1'; h['Sec-GPC'] = '1'; }
-    if (settings.spoofUserAgent) {
-      h['User-Agent'] = SPOOF_UA;
-      h['Sec-CH-UA'] = SPOOF_UA_HINTS;
-      h['Sec-CH-UA-Mobile'] = '?0';
-      h['Sec-CH-UA-Platform'] = '"Windows"';
-      h['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
-      h['Sec-CH-UA-Arch'] = '"x86"';
-      h['Sec-CH-UA-Bitness'] = '"64"';
-      h['Sec-CH-UA-Full-Version-List'] = '"Not A(Brand";v="99.0.0.0", "Google Chrome";v="136.0.7103.116", "Chromium";v="136.0.7103.116"';
+    if (isWhitelisted) {
+      _applyUA(h);
+      return cb({ requestHeaders: h });
     }
+
+    // For non-whitelisted requests from popup windows / unknown webContents
+    // (no matching BV tab) — skip all header modifications to avoid breaking them.
+    const tab = [...tabMap.values()].find(t => t.bv?.webContents?.id === details.webContentsId);
+    if (!tab) return cb({});
+
+    if (settings.doNotTrack)    { h['DNT'] = '1'; h['Sec-GPC'] = '1'; }
+    _applyUA(h);
 
     // Strip cross-origin Referer to origin-only — prevents full URLs containing
     // tokens, session IDs, or personal data from leaking to third-party servers.
@@ -1273,8 +1753,60 @@ function setupSession(ses) {
   // Set session-level UA so DRM license requests (Widevine/Spotify) also use spoofed UA
   ses.setUserAgent(SPOOF_UA);
 
-  // Deny tracking-risk permissions; allow safe ones
-  const _deniedPerms = new Set(['geolocation', 'notifications', 'sensors', 'background-sync', 'payment-handler', 'idle-detection', 'periodic-background-sync', 'nfc', 'bluetooth', 'camera', 'microphone', 'midi']);
+  // ── Strip CSP for bypass domains — required for preload main-world spoofing ──
+  // accounts.google.com and other sign-in providers set strict Content-Security-Policy
+  // headers that block inline <script> injections. Our preload.js spoofing must run in
+  // the page's main JS world (contextIsolation:true forces it to use <script> injection).
+  // Without stripping CSP, Google's page blocks our script and keeps seeing Electron's
+  // real navigator.userAgentData.brands, triggering the "app may not be secure" error.
+  const _cspBypassDomains = [
+    'google.com','googleapis.com','googleusercontent.com','gstatic.com','gmail.com',
+    'accounts.google.com','youtube.com','youtu.be',
+    'microsoft.com','live.com','microsoftonline.com',
+    'apple.com','appleid.apple.com',
+    'facebook.com','instagram.com','fbcdn.net',
+    'spotify.com','scdn.co','tiktok.com','tiktokv.com',
+  ];
+  ses.webRequest.onHeadersReceived({ urls: ['*://*/*'] }, (details, cb) => {
+    const h = {};
+    try {
+      const host = new URL(details.url).hostname.toLowerCase().replace(/^www\./, '');
+      const isBypass = _cspBypassDomains.some(d => host === d || host.endsWith('.' + d));
+      for (const [k, v] of Object.entries(details.responseHeaders || {})) {
+        const lk = k.toLowerCase();
+        // Always strip COOP/COEP from every site — in a single-user browser these
+        // headers serve no purpose and actively BREAK OAuth flows: when a Google/GitHub
+        // login popup navigates to the callback URL on the original site, that site's
+        // COOP:same-origin header severs window.opener so the parent page never gets
+        // the auth code, permanently breaking Sign-in-with-Google/GitHub etc.
+        if (lk === 'cross-origin-opener-policy' ||
+            lk === 'cross-origin-embedder-policy') {
+          continue;
+        }
+        // For auth/bypass domains also strip CSP, X-Frame-Options, Permissions-Policy,
+        // and CORP so our preload spoofing injection works and login forms can submit.
+        if (isBypass && (
+            lk === 'content-security-policy' ||
+            lk === 'content-security-policy-report-only' ||
+            lk === 'x-frame-options' ||
+            lk === 'permissions-policy' ||
+            lk === 'cross-origin-resource-policy')) {
+          continue;
+        }
+        h[k] = v;
+      }
+    } catch {
+      return cb({});
+    }
+    cb({ responseHeaders: h });
+  });
+
+  // Deny tracking-risk permissions; allow safe ones.
+  // NOTE: 'notifications' is deliberately NOT denied — Google's login detection
+  // checks Notification.permission at the native level, and 'denied' is a strong
+  // signal that this is an embedded webview, not a real browser. Notifications
+  // are still blocked visually (our JS stubs return 'default'/'prompt').
+  const _deniedPerms = new Set(['geolocation', 'sensors', 'background-sync', 'payment-handler', 'idle-detection', 'periodic-background-sync', 'nfc', 'bluetooth', 'camera', 'microphone', 'midi', 'publickey-credentials-create', 'publickey-credentials-get']);
   ses.setPermissionRequestHandler((_, permission, callback) => {
     // When geo spoofing is enabled, allow geolocation — our JS serves fake coords
     if (permission === 'geolocation' && settings.geoEnabled) { callback(true); return; }
@@ -1351,6 +1883,31 @@ app.whenReady().then(() => {
   win.once('ready-to-show', () => {
     setupSession(session.fromPartition('persist:main'));
     setupSession(session.fromPartition('incognito')); // set up blocking/UA for private tabs
+    // Explicitly set the UA on defaultSession at the session level so the underlying
+    // Chromium UA string (used by Fetch, XHR, service workers) is also spoofed.
+    session.defaultSession.setUserAgent(SPOOF_UA);
+    // Clear Google service workers — they run in a separate context where our JS
+    // overrides don't apply, so they can report real Electron identity to Google.
+    const mainSes = session.fromPartition('persist:main');
+    ['https://accounts.google.com','https://www.google.com','https://myaccount.google.com',
+     'https://mail.google.com','https://www.youtube.com','https://play.google.com'].forEach(origin => {
+      mainSes.clearStorageData({ storages: ['serviceworkers'], origin }).catch(() => {});
+    });
+    // Belt-and-suspenders: apply the FULL CH-UA header set to defaultSession so every
+    // request (service workers, preflight, non-partitioned oauth) looks like Chrome.
+    session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, cb) => {
+      const h = { ...details.requestHeaders };
+      h['User-Agent']                  = SPOOF_UA;
+      h['Sec-CH-UA']                   = SPOOF_UA_HINTS;
+      h['Sec-CH-UA-Mobile']            = '?0';
+      h['Sec-CH-UA-Platform']          = '"Windows"';
+      h['Sec-CH-UA-Platform-Version']  = '"10.0.0"';
+      h['Sec-CH-UA-Arch']              = '"x86"';
+      h['Sec-CH-UA-Bitness']           = '"64"';
+      h['Sec-CH-UA-Full-Version']      = '"120.0.6099.234"';
+      h['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="120.0.6099.234", "Google Chrome";v="120.0.6099.234"';
+      cb({ requestHeaders: h });
+    });
     win.show();
     createTab('newtab', true);
     // Open URL passed on command line (RAW launched as default browser / open-with handler)
@@ -1434,6 +1991,18 @@ ipcMain.on('tab:new', (_, url) => {
   createTab(safe);
 });
 ipcMain.on('tab:switch',    (_, id)  => activateTab(id));
+// ── Native tab context menu — renders above BrowserViews, no BV parking needed ──
+ipcMain.on('tab:ctx', (_, { tabId, pinned }) => {
+  const t = tabMap.get(tabId);
+  if (!t) return;
+  Menu.buildFromTemplate([
+    { label: t.pinned ? 'Unpin Tab' : 'Pin Tab', click: () => { t.pinned = !t.pinned; send('tab:update', tabData(t)); send('tabs:reorder', [...tabMap.values()].map(tabData)); } },
+    { label: 'Duplicate Tab', click: () => { createTab(t.url); } },
+    { type: 'separator' },
+    { label: 'Close Tab', click: () => { closeTab(tabId); } },
+  ]).popup({ window: win });
+});
+
 ipcMain.on('tab:close',     (_, id)  => closeTab(id));
 ipcMain.on('tab:duplicate', (_, id)  => { const t = tabMap.get(id); if (t) createTab(t.url); });
 ipcMain.on('tab:pin',  (_, id) => {
@@ -1598,11 +2167,14 @@ const PERSISTENT_MEDIA_GUARD_JS = `(function(){
       return new _OrigIO(function(entries, obs) {
         if (window._rbPanelOpen) {
           entries = entries.map(function(e) {
+            var r = e.boundingClientRect;
             return {
-              boundingClientRect: e.boundingClientRect,
+              boundingClientRect: r,
               intersectionRatio:  1,
-              intersectionRect:   e.boundingClientRect,
+              intersectionRect:   r,
               isIntersecting:     true,
+              isVisible:          true,
+              contentRect:        r,
               rootBounds:         e.rootBounds,
               target:             e.target,
               time:               e.time
@@ -1623,10 +2195,23 @@ const PERSISTENT_MEDIA_GUARD_JS = `(function(){
     return _origPause.call(this);
   };
 
+  // Wrap HTMLAudioElement.pause: same guard for audio-only players (Spotify, music).
+  var _origAudioPause = HTMLAudioElement.prototype.pause;
+  HTMLAudioElement.prototype.pause = function() {
+    if (window._rbPanelOpen) return;
+    return _origAudioPause.call(this);
+  };
+
   // Suppress AbortError from interrupted play() calls that race with blocked pauses.
   var _origPlay = HTMLVideoElement.prototype.play;
   HTMLVideoElement.prototype.play = function() {
     var p = _origPlay.call(this);
+    if (p && p.catch) p.catch(function() {});
+    return p;
+  };
+  var _origAudioPlay = HTMLAudioElement.prototype.play;
+  HTMLAudioElement.prototype.play = function() {
+    var p = _origAudioPlay.call(this);
     if (p && p.catch) p.catch(function() {});
     return p;
   };
@@ -1646,27 +2231,84 @@ const PERSISTENT_MEDIA_GUARD_JS = `(function(){
 const PANEL_KEEP_ALIVE_JS = `(function(){
   window._rbPanelOpen = true;
 
-  // Snapshot the REAL viewport dimensions right now (before BV is moved).
-  // We'll override innerWidth/innerHeight to return these while the panel is open,
-  // so TikTok/YouTube virtual scrollers never see the 2×2 park size.
-  window._rbSavedW = window.innerWidth;
-  window._rbSavedH = window.innerHeight;
-  try {
-    Object.defineProperty(window, 'innerWidth',  { get: function(){ return window._rbSavedW; }, configurable: true });
-    Object.defineProperty(window, 'innerHeight', { get: function(){ return window._rbSavedH; }, configurable: true });
-  } catch(e) {}
+  // Guard video.pause() immediately — covers the case where PERSISTENT_MEDIA_GUARD_JS
+  // was not yet injected (page still loading when user opens a panel).
+  if (!HTMLVideoElement.prototype._rbPauseWrapped) {
+    HTMLVideoElement.prototype._rbPauseWrapped = true;
+    var _p0 = HTMLVideoElement.prototype.pause;
+    HTMLVideoElement.prototype.pause = function () {
+      if (window._rbPanelOpen) return;
+      return _p0.call(this);
+    };
+  }
+  // Guard audio.pause() — covers Spotify, music players, and any audio-only streams.
+  if (!HTMLAudioElement.prototype._rbPauseWrapped) {
+    HTMLAudioElement.prototype._rbPauseWrapped = true;
+    var _a0 = HTMLAudioElement.prototype.pause;
+    HTMLAudioElement.prototype.pause = function () {
+      if (window._rbPanelOpen) return;
+      return _a0.call(this);
+    };
+  }
 
-  // Override visibility API — players read these to decide whether to pause
-  Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
-  Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+  // Save real viewport dimensions BEFORE the BV is parked at 2x2.
+  window._rbSavedW  = window.innerWidth;
+  window._rbSavedH  = window.innerHeight;
+  window._rbSavedCW = document.documentElement.clientWidth  || window._rbSavedW;
+  window._rbSavedCH = document.documentElement.clientHeight || window._rbSavedH;
 
-  // Override hasFocus — YouTube and others call this directly
+  function _def(obj, prop, val) {
+    try { Object.defineProperty(obj, prop, { get: function(){ return val; }, configurable: true }); } catch(e) {}
+  }
+
+  // 1. innerWidth / innerHeight (YouTube, most players)
+  _def(window, 'innerWidth',  window._rbSavedW);
+  _def(window, 'innerHeight', window._rbSavedH);
+
+  // 2. document.documentElement.clientWidth/clientHeight (TikTok virtual scroll)
+  _def(document.documentElement, 'clientWidth',  window._rbSavedCW);
+  _def(document.documentElement, 'clientHeight', window._rbSavedCH);
+
+  // 3. visualViewport API (TikTok, Instagram Reels)
+  if (window.visualViewport) {
+    _def(window.visualViewport, 'width',      window._rbSavedW);
+    _def(window.visualViewport, 'height',     window._rbSavedH);
+    _def(window.visualViewport, 'scale',      1);
+    _def(window.visualViewport, 'offsetTop',  0);
+    _def(window.visualViewport, 'offsetLeft', 0);
+  }
+
+  // 4. Wrap ResizeObserver — callbacks fire with real 2x2 sizes and cause
+  //    TikTok to unmount the current video and rebuild the scroll layout.
+  //    Returning without calling the original callback prevents that reflow.
+  if (window.ResizeObserver && !window._rbOrigRO) {
+    window._rbOrigRO = window.ResizeObserver;
+    function _PatchedRO(cb) {
+      var _patched = function(entries, obs) {
+        if (window._rbPanelOpen) return; // suppress while panel is open
+        cb.call(this, entries, obs);
+      };
+      return new window._rbOrigRO(_patched);
+    }
+    _PatchedRO.prototype = window._rbOrigRO.prototype;
+    window.ResizeObserver = _PatchedRO;
+  }
+
+  // 5. Block resize event so virtual scrollers don't recalculate grid layout.
+  if (!window._rbResizeBlock) {
+    window._rbResizeBlock = function(e) { e.stopImmediatePropagation(); };
+    window.addEventListener('resize', window._rbResizeBlock, true);
+  }
+
+  // 6. Visibility / focus API
+  _def(document, 'hidden',          false);
+  _def(document, 'visibilityState', 'visible');
   if (!window._rbOrigHasFocus) {
     window._rbOrigHasFocus = document.hasFocus.bind(document);
     document.hasFocus = function() { return true; };
   }
 
-  // Block events that signal the page is going to the background
+  // 7. Block events that signal the page is going to the background.
   if (!window._rbVCBlock) {
     window._rbVCBlock = function(e) { e.stopImmediatePropagation(); };
     document.addEventListener('visibilitychange', window._rbVCBlock, true);
@@ -1678,31 +2320,51 @@ const PANEL_KEEP_ALIVE_JS = `(function(){
 const PANEL_RESTORE_ALIVE_JS = `(function(){
   window._rbPanelOpen = false;
 
-  // Restore innerWidth/innerHeight overrides — delete property so the browser's
-  // native getter takes over again, then fire a real resize so virtual scrollers
-  // (TikTok, YouTube, etc.) rebuild their layout with the actual dimensions.
+  // 1. Restore innerWidth / innerHeight
   try { delete window.innerWidth;  } catch {}
   try { delete window.innerHeight; } catch {}
   delete window._rbSavedW; delete window._rbSavedH;
-  // Defer resize by one task so that if a new panel opens immediately (which
-  // sets _rbPanelOpen=true via PANEL_KEEP_ALIVE_JS queued right after this),
-  // the resize guard is already up and blocks the re-layout — preventing the
-  // brief _rbPanelOpen=false window from pausing videos during panel switches.
+
+  // 2. Restore document.documentElement.clientWidth/clientHeight
+  try { delete document.documentElement.clientWidth;  } catch {}
+  try { delete document.documentElement.clientHeight; } catch {}
+  delete window._rbSavedCW; delete window._rbSavedCH;
+
+  // 3. Restore visualViewport
+  if (window.visualViewport) {
+    try { delete window.visualViewport.width;      } catch {}
+    try { delete window.visualViewport.height;     } catch {}
+    try { delete window.visualViewport.scale;      } catch {}
+    try { delete window.visualViewport.offsetTop;  } catch {}
+    try { delete window.visualViewport.offsetLeft; } catch {}
+  }
+
+  // 4. Restore ResizeObserver
+  if (window._rbOrigRO) {
+    window.ResizeObserver = window._rbOrigRO;
+    delete window._rbOrigRO;
+  }
+
+  // 5. Remove resize blocker, then fire real resize so layouts rebuild.
+  if (window._rbResizeBlock) {
+    window.removeEventListener('resize', window._rbResizeBlock, true);
+    delete window._rbResizeBlock;
+  }
   setTimeout(function() {
     try { if (!window._rbPanelOpen) window.dispatchEvent(new Event('resize')); } catch {}
   }, 0);
 
-  // Restore visibility API
+  // 6. Restore visibility API
   try { delete document.hidden; } catch {}
   try { delete document.visibilityState; } catch {}
 
-  // Restore hasFocus
+  // 7. Restore hasFocus
   if (window._rbOrigHasFocus) {
     document.hasFocus = window._rbOrigHasFocus;
     delete window._rbOrigHasFocus;
   }
 
-  // Remove event blockers
+  // 8. Remove event blockers
   if (window._rbVCBlock) {
     document.removeEventListener('visibilitychange', window._rbVCBlock, true);
     window.removeEventListener('blur',     window._rbVCBlock, true);
@@ -1806,34 +2468,43 @@ async function _openPanel(tab) {
   await wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
   if (!panelOpen) return;
 
-  // Step 2: Capture snapshot at full bounds (guard is now up — safe).
-  if (!tab.snapshot) {
-    try {
-      const img = await wc.capturePage();
-      tab.snapshot = img.toDataURL();
-    } catch {}
-  }
+  // Step 2: Always capture a fresh snapshot at full bounds (guard is up — safe).
+  // Never use a cached snapshot: stale screenshots make the website look blank/wrong.
+  try {
+    const img = await wc.capturePage();
+    if (img) tab.snapshot = img.toDataURL();
+  } catch {}
   if (!panelOpen) return;
 
-  // Step 3: Park BV as a 2×2px square at the top-left corner of the window.
-  // This corner is fully covered by the nav bar (--chrome-h = 82px), so the
-  // user never sees it. Crucially, 2×2 pixels ARE within the OS window paint
-  // region — the GPU compositor keeps the RenderWidget frame sink alive, so
-  // video/audio never suspends. Contrast with y=winH (off-screen): Windows
-  // does not paint off-screen pixels, which triggers WasHidden() and freezes
-  // media at the native level before any JS override can act.
-  try { win.addBrowserView(bv); } catch {}
-  bv.setBounds({ x: 0, y: 0, width: 2, height: 2 });
+  // Step 3: Park BV fully off-screen at full size.
+  // incrementCapturerCount(size) in _parkBV keeps the renderer + video decoder
+  // active at full resolution off-screen so capturePage() returns live frames.
+  _parkBV(bv);
 
-  // Step 4: Show full-area snapshot — inset:0 covers entire content area.
-  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
-
-  // Step 5: Refresh cache silently while panel is open.
-  setTimeout(() => {
-    if (panelOpen && !wc.isDestroyed()) {
-      wc.capturePage().then(img => { tab.snapshot = img.toDataURL(); }).catch(() => {});
+  // Step 4: Live snapshot loop — streams the off-screen render buffer to the panel.
+  // Back-to-back async captures (16ms yield) self-regulate to the fastest achievable
+  // frame rate (~25-35fps in practice) vs the old fixed 120ms interval (~6fps).
+  // Resize to half-resolution BEFORE JPEG encoding — 4x fewer pixels = 4x faster
+  // encode + 4x smaller IPC payload, which is what makes the video look smooth.
+  const [_w, _h] = win.getContentSize();
+  const _bvH = Math.max(_h - CHROME_H, 1);
+  // Store truthy marker — set to null by panel:hide to stop the loop.
+  tab._mediaKeepAlive = true;
+  (async () => {
+    while (panelOpen && !wc.isDestroyed() && tab._mediaKeepAlive) {
+      try {
+        const frame = await wc.capturePage();
+        if (frame && panelOpen && tab._mediaKeepAlive) {
+          send('panel:snapshot', 'data:image/jpeg;base64,' +
+            frame.toJPEG(75).toString('base64'));
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 16));
     }
-  }, 600);
+  })();
+
+  // Step 5: Show initial snapshot immediately (captured before parking at Step 2).
+  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
 }
 
 ipcMain.on('panel:show', () => {
@@ -1876,15 +2547,39 @@ ipcMain.on('panel:clip', (_, x) => {
   }
 });
 
-ipcMain.on('panel:hide', () => {
+// ── Omnibox dropdown — instant BV park/restore (no async screenshot) ────────
+// _openPanel is async (capturePage before parking) which means the BV covers
+// the suggestion list for ~300ms. These dedicated handlers park/restore
+// synchronously so the dropdown is immediately visible above the BV.
+ipcMain.on('omni:drop:show', () => {
+  if (panelOpen) return; // panel already parked the BV — don't double-increment
+  const tab = tabMap.get(activeId);
+  if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+  _parkBV(tab.bv);
+});
+ipcMain.on('omni:drop:hide', () => {
+  if (panelOpen) return; // panel will restore the BV when it closes — don't decrement early
+  const tab = tabMap.get(activeId);
+  if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+  _unparkBV(tab.bv);
+});
+
+ipcMain.on('panel:hide', async () => {
   panelOpen = false;
   _panelSeq = 0;    // invalidate any pending async panel:show:fast chains
   panelClipX = 0;   // always restore full BV width
   const tab = tabMap.get(activeId);
+  // Clear the media keep-alive interval from _openPanel
+  if (tab?._mediaKeepAlive) { tab._mediaKeepAlive = null; } // stops the async capture loop
   if (tab?.bv && tab.url !== 'newtab') {
-    // Re-add BV if it was removed (snapshot mode), then restore full-width bounds
-    try { win.addBrowserView(tab.bv); } catch {}
-    try { setBounds(tab.bv); } catch {}
+    // Remove the blanker CSS BEFORE restoring BV bounds — ensures the website is
+    // fully visible (no dark flash) when the BV resizes back to full size.
+    if (tab._blankerKey) {
+      await tab.bv.webContents.removeInsertedCSS(tab._blankerKey).catch(() => {});
+      tab._blankerKey = null;
+    }
+    // Unpark: decrement capturer count then restore full-width bounds
+    _unparkBV(tab.bv);
     // Restore visibility and resume any media that was playing
     tab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
     // Ensure media resumes playing if it was interrupted by BV detach
@@ -1898,28 +2593,28 @@ ipcMain.on('panel:hide', () => {
   }
   send('panel:snapshot:clear');
 });
-// ── Sidebar add-link modal — park BV (2×2) so the modal overlay receives clicks ─
-// BrowserViews always render above BrowserWindow DOM regardless of z-index.
-// We park the BV as a 2×2 square behind the nav bar (same as _openPanel) so it
-// can't eat mouse events. The 2×2 approach keeps the GPU compositor frame-sink
-// alive so video/audio never suspends — unlike y=winH which takes the BV
-// off-screen and triggers WasHidden() at the native level.
-ipcMain.on('sidebar:modal:open', () => {
-  // Delegate to _openPanel which handles PANEL_KEEP_ALIVE_JS, screenshot, and
-  // the 2×2 park in the correct order.
-  panelOpen = true;
-  _openPanel(tabMap.get(activeId));
+
+// ── Sidebar add-link modal ──────────────────────────────────────────────────
+// Must capture a screenshot and show it before parking the BV, otherwise the
+// user sees the wallpaper/background instead of the website they were on.
+ipcMain.on('sidebar:modal:open', async () => {
+  const tab = tabMap.get(activeId);
+  if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+  const wc = tab.bv.webContents;
+  // Capture screenshot at current full bounds
+  try {
+    const img = await wc.capturePage();
+    if (img) tab.snapshot = img.toDataURL();
+  } catch {}
+  // Park, then show the snapshot behind the modal
+  _parkBV(tab.bv);
+  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
 });
 ipcMain.on('sidebar:modal:close', () => {
-  panelOpen = false;
-  _panelSeq = 0;
-  panelClipX = 0;
   const tab = tabMap.get(activeId);
   if (tab?.bv && tab.url !== 'newtab') {
     try { if (tab.bv.webContents.isDestroyed()) return; } catch { return; }
-    try { win.addBrowserView(tab.bv); } catch {}
-    try { setBounds(tab.bv); } catch {}
-    tab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
+    _unparkBV(tab.bv);
   }
   send('panel:snapshot:clear');
 });
@@ -1942,14 +2637,20 @@ ipcMain.on('snip:start', () => {
   const seq = ++_panelSeq;
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab') { send('snip:ready', null); return; }
-  tab.bv.webContents.capturePage().then(img => {
-    if (!panelOpen || _panelSeq !== seq) return;  // stale — cancel or new panel won the race
-    try { win.removeBrowserView(tab.bv); } catch {}
-    send('snip:ready', img.toDataURL());
-  }).catch(() => {
+  const _sbv = tab.bv;
+  const _swc = _sbv.webContents;
+  // Inject keep-alive guard FIRST so video never pauses during capture or park.
+  _swc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {}).finally(() => {
     if (!panelOpen || _panelSeq !== seq) return;
-    try { win.removeBrowserView(tab.bv); } catch {}
-    send('snip:ready', null);
+    _swc.capturePage().then(img => {
+      if (!panelOpen || _panelSeq !== seq) return;
+      _parkBV(_sbv);
+      send('snip:ready', img.toDataURL());
+    }).catch(() => {
+      if (!panelOpen || _panelSeq !== seq) return;
+      _parkBV(_sbv);
+      send('snip:ready', null);
+    });
   });
 });
 ipcMain.on('snip:cancel', () => {
@@ -2563,7 +3264,7 @@ function igCreateTab(url = 'newtab', activate = true) {
     webPreferences: {
       nodeIntegration:  false,
       contextIsolation: true,
-      sandbox:          false,
+      sandbox:          true,
       partition:        'incognito',
       preload:          path.join(__dirname, 'preload.js'),
       webSecurity:      true,
@@ -2574,11 +3275,13 @@ function igCreateTab(url = 'newtab', activate = true) {
   igTabMap.set(id, tab);
   const wc = bv.webContents;
   wc.setBackgroundThrottling(false);
-  if (settings.spoofUserAgent) wc.setUserAgent(SPOOF_UA);
+  wc.setUserAgent(SPOOF_UA);
   wc.setWindowOpenHandler(({ url: u }) => {
     if (/^(javascript|vbscript|file):/i.test(u)) return { action: 'deny' };
     igCreateTab(u, true); return { action: 'deny' };
   });
+  // Inject Google UA fix on every page load in incognito (email → password → 2FA)
+  wc.on('dom-ready', () => _injectGoogleUAFix(wc));
   const norm = u => (u && u !== 'about:blank') ? u : '';
   wc.on('page-title-updated', (_, t) => {
     tab.title = t;
@@ -2593,11 +3296,13 @@ function igCreateTab(url = 'newtab', activate = true) {
     tab.url = norm(u) || tab.url; tab.favicon = null;
     sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: tab.loading, favicon: null });
     if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+    _injectGoogleUAFix(wc);
   });
   wc.on('did-navigate-in-page', (_, u) => {
     tab.url = norm(u) || tab.url;
     sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: tab.loading, favicon: tab.favicon });
     if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
+    _injectGoogleUAFix(wc);
   });
   wc.on('page-favicon-updated', (_, favs) => {
     tab.favicon = favs[0] || null;
@@ -2608,8 +3313,13 @@ function igCreateTab(url = 'newtab', activate = true) {
     tab.url = norm(wc.getURL()) || tab.url;
     sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: false, favicon: tab.favicon });
     if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
-    if (/youtube\.com/i.test(tab.url) && settings.adblockEnabled !== false) wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
+    if (/youtube\.com/i.test(tab.url) && settings.extensions?.['yt-ad']) wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
     wc.insertCSS('html::-webkit-scrollbar{display:none!important}html{scrollbar-width:none!important}', { cssOrigin:'user' }).catch(() => {});
+    // Inject floating PiP button — same as main browser
+    if (tab.url && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
+      wc.executeJavaScript('window._rawPipInjected=false;window._rawPipV3=false;').catch(()=>{});
+      wc.executeJavaScript(VIDEO_PIP_INJECT).catch(() => {});
+    }
   });
   sendIg('ig:tab:add', { id, url: tab.url, title: tab.title, loading: false, favicon: null });
   if (url !== 'newtab') {
@@ -2634,6 +3344,8 @@ ipcMain.on('incognito:open', () => {
   incognitoWin.once('ready-to-show', () => {
     incognitoWin.show();
     if (win && !win.isDestroyed()) win.webContents.send('incognito:state', true);
+    // Send current theme/accent so incognito window can match
+    sendIg('ig:settings', { theme: settings.theme || 'dark', accentColor: settings.accentColor });
     igCreateTab('newtab', true);
   });
   incognitoWin.on('resize', () => {
@@ -2679,6 +3391,57 @@ ipcMain.on('ig:win:maximize', () => {
   incognitoWin.isMaximized() ? incognitoWin.unmaximize() : incognitoWin.maximize();
 });
 ipcMain.on('ig:win:close',   () => { incognitoWin?.close(); });
+ipcMain.on('ig:win:moveBy',  (_, { dx, dy }) => {
+  if (!incognitoWin || incognitoWin.isDestroyed()) return;
+  const [x, y] = incognitoWin.getPosition();
+  incognitoWin.setPosition(Math.round(x + dx), Math.round(y + dy));
+});
+
+ipcMain.on('ig:pip:start', () => {
+  const tab = igTabMap.get(igActiveId);
+  if (!tab?.bv) { sendIg('ig:toast', 'No active tab'); return; }
+  tab.bv.webContents.executeJavaScript(`
+    (function(){
+      var v=document.querySelector('video');
+      if(!v){return 'no-video';}
+      if(document.pictureInPictureElement){document.exitPictureInPicture().catch(function(){});}
+      else{v.requestPictureInPicture().catch(function(e){console.warn('[RAW Incognito] PiP:',e.message);});}
+    })()
+  `).catch(() => {});
+});
+
+// ── IPC: Main-browser PiP — same method as incognito, userGesture propagated from toolbar click ──
+ipcMain.on('bv:pip:start', () => {
+  const tab = tabMap.get(activeId);
+  if (!tab?.bv) return;
+  tab.bv.webContents.executeJavaScript(`
+    (function(){
+      // Best-video selection: prefer playing, largest on screen
+      var vw=window.innerWidth, vh=window.innerHeight;
+      var best=null, bestScore=-1;
+      document.querySelectorAll('video').forEach(function(v){
+        var r=v.getBoundingClientRect();
+        if(r.width<80||r.height<50)return;
+        if(r.right<0||r.bottom<0||r.left>vw||r.top>vh)return;
+        var score=(!v.paused?3000:0)+(v.duration||0)*10+(r.width*r.height/1e4);
+        if(score>bestScore){bestScore=score;best=v;}
+      });
+      // YouTube fallback
+      if(!best) best=document.querySelector('#movie_player video,.html5-video-player video');
+      // Generic fallback
+      if(!best) best=document.querySelector('video');
+      if(!best)return;
+      try{best.disablePictureInPicture=false;}catch(e){}
+      if(document.pictureInPictureElement){
+        document.exitPictureInPicture().catch(function(){});
+      } else {
+        best.requestPictureInPicture().catch(function(e){
+          console.warn('[RAW PiP]',e.message);
+        });
+      }
+    })()
+  `, true /* userGesture — propagated from toolbar button click via IPC */).catch(() => {});
+});
 
 // ── IPC: Autofill bridge ──────────────────────────────────────────────────────
 ipcMain.on('autofill:query', (_, data) => {
@@ -2689,6 +3452,10 @@ ipcMain.on('autofill:fill', (_, data) => {
   // Forward fill credentials back to the active tab's preload
   const tab = tabMap.get(activeId);
   if (tab && tab.bv) tab.bv.webContents.send('autofill:fill', data);
+});
+ipcMain.on('autofill:save-prompt', (_, data) => {
+  // Forward save-password prompt from active tab to renderer
+  send('autofill:save-prompt', data);
 });
 
 // ── IPC: Picture-in-Picture ───────────────────────────────────────────────────
@@ -2987,3 +3754,20 @@ ipcMain.on('ytdlp:cancel', (_, id) => {
   const proc = ytdlpProcs.get(id);
   if (proc) { proc.kill(); ytdlpProcs.delete(id); }
 });
+
+// ── Auto update checker ───────────────────────────────────────────────────────
+const CURRENT_VERSION = '1.0.4';
+ipcMain.handle('check-update', () => new Promise((resolve) => {
+  const url = 'https://raw.githubusercontent.com/sharp4real/rawbrowser/refs/heads/main/version';
+  const req = https.get(url, { timeout: 8000, headers: { 'User-Agent': SPOOF_UA } }, (res) => {
+    let data = '';
+    res.on('data', chunk => { data += chunk; });
+    res.on('end', () => {
+      const match = data.match(/version=([^\s\n\r]+)/);
+      const remote = match ? match[1].trim() : null;
+      resolve({ remote, current: CURRENT_VERSION, outdated: remote !== null && remote !== CURRENT_VERSION });
+    });
+  });
+  req.on('error', () => resolve({ remote: null, current: CURRENT_VERSION, outdated: false }));
+  req.on('timeout', () => { req.destroy(); resolve({ remote: null, current: CURRENT_VERSION, outdated: false }); });
+}));

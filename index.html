@@ -10,6 +10,7 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
+  /* ── Elevation palette ── */
   --bg0:  #080808;
   --bg1:  #0c0c0c;
   --bg2:  #111111;
@@ -17,28 +18,39 @@
   --bg4:  #202020;
   --bg5:  #2a2a2a;
   --bg6:  #333333;
+  /* ── Line / border system ── */
   --ln:   rgba(255,255,255,.06);
   --ln2:  rgba(255,255,255,.10);
   --ln3:  rgba(255,255,255,.16);
+  /* ── Text hierarchy ── */
   --t0:   rgba(255,255,255,.92);
   --t1:   rgba(255,255,255,.65);
   --t2:   rgba(255,255,255,.35);
   --t3:   rgba(255,255,255,.15);
   --t4:   rgba(255,255,255,.07);
+  /* ── Accent ── */
   --acc:  #00d4c8;
   --acc2: #00bdb0;
   --acc-g: rgba(0,212,200,.12);
   --acc-f: rgba(0,212,200,.06);
   --acc-raw: 0,212,200;
+  /* ── Semantic colours ── */
   --red:  #ff5f57;
   --grn:  #28c840;
   --ylw:  #ffbd2e;
   --amb:  #ffb74d;
-  --f: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* ── Typography ── */
+  --f: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* ── Layout ── */
   --chrome-h: 82px;
   --tab-h: 34px;
   --nav-h: 48px;
   --radius: 8px;
+  /* ── Shadows ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
+  --shadow-lg:  0 16px 48px rgba(0,0,0,.7), 0 4px 16px rgba(0,0,0,.4);
+  --shadow-xl:  0 24px 64px rgba(0,0,0,.85), 0 8px 24px rgba(0,0,0,.5);
   color-scheme: dark;
 }
 
@@ -125,6 +137,17 @@ body.theme-light .panel-section { color: var(--t3); }
 body.theme-light .pi-u, body.theme-light .pi-time { color: var(--t3); }
 body.theme-light .panel-empty { color: var(--t3); }
 body.theme-light .panel-search input { background: var(--bg3); color: var(--t0); border-color: var(--ln2); }
+/* Extensions panel toolbar popup — light mode text */
+body.theme-light .ext-desc { color: var(--t2); }
+/* Extensions store overlay — light mode text */
+body.theme-light #ext-store-subtitle      { color: var(--t2); }
+body.theme-light .ext-cat                 { color: var(--t1); }
+body.theme-light .ext-section-label       { color: var(--t2); }
+body.theme-light .ext-card-cat            { color: var(--t2); }
+body.theme-light .ext-card-desc           { color: var(--t2); }
+body.theme-light .ext-featured-desc       { color: var(--t1); }
+body.theme-light .ext-card                { background: var(--bg2); }
+body.theme-light .ext-card:hover          { background: var(--bg3); }
 /* Context menu */
 body.theme-light .ctx  { background: var(--bg2); border: 1px solid var(--ln2); box-shadow: 0 6px 24px rgba(0,0,0,.14); }
 body.theme-light .d-item { color: var(--t0); }
@@ -237,16 +260,13 @@ html, body {
   display: flex;
   flex-direction: column;
   -webkit-app-region: drag;
-  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.03) inset,
+    0 2px 8px rgba(0,0,0,.55),
+    0 4px 20px rgba(0,0,0,.35);
 }
 
-#chrome::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--acc) 35%, var(--acc2) 65%, transparent 100%);
-  opacity: .5;
-  pointer-events: none; z-index: 1;
-}
+#chrome::before { display: none; }
 
 /* Interactive elements */
 #chrome button,
@@ -332,18 +352,20 @@ body.platform-darwin #mac-spacer { display: block; }
   -webkit-app-region: no-drag;
   transition: background 0.1s;
 }
-.tab:hover { background: rgba(255,255,255,.04); }
+.tab:hover { background: rgba(255,255,255,.055); }
 .tab.active {
   background: var(--bg2);
-  border-color: var(--ln);
+  border-color: var(--ln2);
   border-bottom-color: var(--bg2);
   z-index: 2;
+  box-shadow: 0 -1px 6px rgba(0,0,0,.25) inset;
 }
 .tab.active::before {
   content: '';
-  position: absolute; top: 0; left: 6px; right: 6px; height: 2px;
-  background: linear-gradient(90deg, var(--acc), var(--acc2));
-  border-radius: 0 0 2px 2px;
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--acc) 25%, var(--acc2) 75%, transparent);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 0 8px rgba(var(--acc-raw), .5);
 }
 .tab.pinned { flex: 0 0 32px; min-width: 32px; max-width: 32px; padding: 0; justify-content: center; gap: 0; }
 .tab.pinned .tab-title, .tab.pinned .tab-close, .tab.pinned .tab-audio { display: none; }
@@ -366,7 +388,7 @@ body.platform-darwin #mac-spacer { display: block; }
   transition: color .12s, background .12s;
   -webkit-app-region: no-drag;
 }
-#btn-new-tab:hover { color: var(--t1); background: rgba(255,255,255,.06); }
+#btn-new-tab:hover { color: var(--t0); background: rgba(255,255,255,.08); box-shadow: 0 0 0 1px var(--ln2); }
 #btn-new-tab:active { opacity: .7; }
 
 #tab-row-spacer {
@@ -420,8 +442,9 @@ body.platform-linux #win-controls { display: flex; }
   overflow: hidden; 
   text-overflow: ellipsis;
   letter-spacing: -.01em;
+  transition: color .1s;
 }
-.tab.active .tab-title { color: var(--t0); }
+.tab.active .tab-title { color: var(--t0); font-weight: 450; }
 
 .tab-close {
   width: 14px; height: 14px; flex-shrink: 0;
@@ -511,6 +534,8 @@ body.platform-linux #win-controls { display: flex; }
 .media-mute-btn svg { display: block; pointer-events: none; }
 #media-empty { padding: 28px 16px; text-align: center; color: var(--t3); font-size: 12px; line-height: 1.5; }
 
+/* btn-pip — highlights teal when pip is active */
+#btn-pip.pip-active { color: var(--acc); }
 /* btn-media speaker icon — waves pulse when audio is playing (no accent colour change) */
 #btn-media .wv-s { opacity: .45; }
 #btn-media .wv-l { opacity: .25; }
@@ -538,10 +563,11 @@ body.platform-linux #win-controls { display: flex; }
   grid-template-columns: max-content 1fr max-content;
   align-items: center;
   padding: 0 4px;
-  border-top: 1px solid var(--ln);
+  border-top: 1px solid var(--ln2);
   background: var(--bg2);
   flex-shrink: 0;
   -webkit-app-region: drag;
+  box-shadow: 0 1px 0 var(--ln) inset;
 }
 #nav-left  { justify-self: start; }
 #nav-right { justify-self: end; }
@@ -556,13 +582,13 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   color: var(--t2); position: relative;
-  transition: background .12s, color .12s;
+  transition: background .12s, color .12s, box-shadow .12s;
   -webkit-app-region: no-drag;
 }
-.ib:hover  { background: var(--bg4); color: var(--t1); }
-.ib:active { background: var(--bg5); }
+.ib:hover  { background: var(--bg4); color: var(--t0); box-shadow: 0 0 0 1px var(--ln2); }
+.ib:active { background: var(--bg5); box-shadow: none; }
 .ib:disabled { opacity: .2; pointer-events: none; }
-.ib.active-icon { color: var(--acc) !important; }
+.ib.active-icon { color: var(--acc) !important; background: var(--acc-f); }
 .ib svg { display: block; pointer-events: none; }
 
 .vsep { width: 1px; height: 13px; background: var(--ln2); flex-shrink: 0; margin: 0 3px; }
@@ -583,11 +609,11 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   color: var(--t2); position: relative;
-  transition: background .12s, color .12s;
+  transition: background .12s, color .12s, box-shadow .12s;
   -webkit-app-region: no-drag;
 }
-#btn-reload:hover  { background: var(--bg4); color: var(--t1); }
-#btn-reload:active { background: var(--bg5); }
+#btn-reload:hover  { background: var(--bg4); color: var(--t0); box-shadow: 0 0 0 1px var(--ln2); }
+#btn-reload:active { background: var(--bg5); box-shadow: none; }
 #btn-reload svg { display: block; pointer-events: none; }
 
 /* Omnibox — fills space between left/right button clusters */
@@ -641,15 +667,15 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   outline: none;
   caret-color: var(--acc);
   letter-spacing: -.01em;
-  transition: border-color .15s, background .15s, box-shadow .15s;
+  transition: border-color .18s, background .18s, box-shadow .18s;
   -webkit-app-region: no-drag;
   flex-shrink: 0;
 }
 #omnibox::placeholder { color: var(--t3); }
 #omnibox:focus {
-  border-color: rgba(0,212,200,.32);
-  background: rgba(0,212,200,.025);
-  box-shadow: 0 0 0 2.5px var(--acc-g);
+  border-color: rgba(var(--acc-raw),.4);
+  background: var(--bg3);
+  box-shadow: 0 0 0 2.5px rgba(var(--acc-raw),.12);
 }
 
 /* Omnibox suggestion dropdown */
@@ -1261,6 +1287,27 @@ body.theme-light #nav-row {
 .af-user { font-size: 12.5px; color: var(--t0); font-weight: 500; }
 .af-dom  { font-size: 10.5px; color: var(--t3); }
 
+/* SAVE PASSWORD TOAST */
+.spw-toast {
+  position: fixed; bottom: 22px; right: 22px; z-index: 200001;
+  background: var(--bg2); border: 1px solid var(--ln2);
+  border-radius: 10px; box-shadow: 0 6px 30px rgba(0,0,0,.7);
+  min-width: 240px; max-width: 300px;
+  transform: translateY(16px); opacity: 0; pointer-events: none;
+  transition: transform .2s, opacity .2s;
+}
+.spw-toast.spw-show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.spw-hdr { display: flex; align-items: center; justify-content: space-between; padding: 9px 10px 3px; }
+.spw-title { font-size: 11px; font-weight: 700; color: var(--t2); letter-spacing: .04em; text-transform: uppercase; }
+.spw-meta { padding: 3px 12px 8px; }
+.spw-meta-domain { font-size: 12px; font-weight: 600; color: var(--t0); }
+.spw-meta-user   { font-size: 11px; color: var(--t3); margin-top: 1px; }
+.spw-btns { display: flex; gap: 6px; padding: 4px 10px 10px; }
+.spw-btn { flex: 1; padding: 6px 0; border-radius: 6px; border: 1px solid var(--ln2); background: var(--bg3); color: var(--t2); font-size: 12px; font-weight: 500; cursor: pointer; transition: background .12s, color .12s; }
+.spw-btn:hover { background: var(--bg4); color: var(--t0); }
+.spw-btn.spw-btn-acc { background: var(--acc,#0891b2); border-color: transparent; color: #fff; }
+.spw-btn.spw-btn-acc:hover { filter: brightness(1.15); }
+
 /* INCOGNITO FAB */
 #incognito-fab {
   position: fixed; bottom: 18px; right: 18px; z-index: 99998;
@@ -1298,16 +1345,34 @@ body.theme-light #nav-row {
 /* IGNORE INTRO OVERLAY */
 #ignite-intro {
   position: fixed; inset: 0; z-index: 2000000;
-  background: #06040f;
+  background: rgba(6,4,18,.82);
+  backdrop-filter: blur(18px) saturate(.6);
+  -webkit-backdrop-filter: blur(18px) saturate(.6);
   display: flex; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .5s;
+  opacity: 0; pointer-events: none; transition: opacity .4s;
 }
 #ignite-intro.show { opacity: 1; pointer-events: auto; }
-.ig-step { display: flex; flex-direction: column; align-items: center; max-width: 540px; width: 100%; padding: 24px 32px; }
-.ig-intro-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(168,85,247,.7); margin-bottom: 14px; }
-.ig-intro-h1 { font-size: 46px; font-weight: 800; color: #fff; letter-spacing: -.03em; line-height: 1.05; margin-bottom: 8px; text-align: center; }
-.ig-intro-h1 span { background: linear-gradient(135deg,#a855f7,#6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.ig-intro-sub { font-size: 15px; color: rgba(200,180,255,.55); margin-bottom: 36px; text-align: center; }
+.ig-step {
+  display: flex; flex-direction: column; align-items: center;
+  max-width: 500px; width: calc(100% - 48px); padding: 36px 36px 32px;
+  background: rgba(12,6,30,.95);
+  border: 1px solid rgba(168,85,247,.25);
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(0,0,0,.75), 0 0 0 1px rgba(168,85,247,.08), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.ig-intro-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(168,85,247,.65); margin-bottom: 12px; }
+.ig-intro-h1 { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -.04em; line-height: 1.05; margin-bottom: 8px; text-align: center; }
+.ig-intro-h1 span { background: linear-gradient(135deg,#a855f7,#6366f1); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.ig-intro-sub { font-size: 14px; color: rgba(200,180,255,.5); margin-bottom: 30px; text-align: center; line-height: 1.55; }
+/* Top logo badge */
+.ig-logo-badge {
+  width: 60px; height: 60px; border-radius: 18px; margin-bottom: 20px; flex-shrink: 0;
+  background: linear-gradient(135deg,rgba(124,58,237,.35),rgba(99,102,241,.2));
+  border: 1px solid rgba(168,85,247,.35);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 30px rgba(168,85,247,.18);
+  color: #a855f7;
+}
 /* Monitor animation */
 .ig-scene { position: relative; width: 220px; height: 150px; margin-bottom: 32px; }
 .ig-monitor {
@@ -1380,9 +1445,10 @@ body.theme-light #nav-row {
 /* PANEL DROPDOWNS */
 .panel {
   position: fixed;
-  background: var(--bg2); border: 1px solid var(--ln2);
+  background: var(--bg2);
+  border: 1px solid var(--ln2);
   border-radius: 12px;
-  box-shadow: 0 16px 50px rgba(0,0,0,.8), 0 0 0 1px rgba(0,212,200,.04);
+  box-shadow: 0 20px 60px rgba(0,0,0,.85), 0 4px 14px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
   /* Below #chrome (100001) but above #overlay (99000) */
   z-index: 100000;
   overflow: hidden;
@@ -1421,10 +1487,10 @@ body.theme-light #nav-row {
   display: none;
   position: fixed;
   top: var(--chrome-h);
-  right: 0;
+  left: 0;  /* Will be set by JS to match panel start position */
   bottom: 0;
-  width: 0;
-  background: var(--bg1);
+  width: 0;  /* Will be set by JS to fill to window edge */
+  background: var(--bg0);
   z-index: 90000;
 }
 #panel-rail.on { display: block; }
@@ -1588,7 +1654,7 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
   letter-spacing: -.03em; flex: 1;
 }
 
-/* ── EXTENSION STORE ─────────────────────────────────────────────────── */
+/* ── EXTENSION STORE (Chrome Web Store style) ─────────────────────────── */
 #ext-store-overlay {
   display: none; position: fixed; inset: 0;
   background: var(--bg0); z-index: 999999;
@@ -1597,45 +1663,131 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 }
 #ext-store-overlay.on { display: flex; opacity: 1; }
 #ext-store-header {
-  display: flex; align-items: center; gap: 14px;
-  padding: 20px 28px 18px; border-bottom: 1px solid var(--ln);
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 20px 12px; border-bottom: 1px solid var(--ln);
   background: var(--bg1); flex-shrink: 0; -webkit-app-region: drag;
 }
 #ext-store-header > * { -webkit-app-region: no-drag; }
 #ext-store-back {
   width: 30px; height: 30px; border: none; background: transparent;
   border-radius: 6px; cursor: pointer; color: var(--t2);
-  display: flex; align-items: center; justify-content: center; transition: background .1s, color .1s;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s; flex-shrink: 0;
 }
 #ext-store-back:hover { background: var(--bg4); color: var(--t1); }
 .ext-store-header-icon {
-  width: 40px; height: 40px; flex-shrink: 0;
+  width: 34px; height: 34px; flex-shrink: 0;
   background: linear-gradient(135deg, rgba(0,212,200,.2), rgba(0,180,170,.08));
-  border: 1px solid rgba(0,212,200,.3); border-radius: 12px;
+  border: 1px solid rgba(0,212,200,.3); border-radius: 10px;
   display: flex; align-items: center; justify-content: center; color: var(--acc);
 }
-.ext-store-header-info { flex: 1; min-width: 0; }
-#ext-store-title { font-size: 15px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; }
-#ext-store-subtitle { font-size: 11.5px; color: var(--t4); margin-top: 2px; }
-#ext-store-body { flex: 1; overflow-y: auto; padding: 16px 24px 32px; }
+.ext-store-header-info { min-width: 0; }
+#ext-store-title { font-size: 13.5px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; line-height: 1; }
+#ext-store-subtitle { font-size: 10.5px; color: var(--t4); margin-top: 2px; }
+.ext-active-badge {
+  display: inline-block; background: rgba(0,212,200,.18); color: var(--acc);
+  border: 1px solid rgba(0,212,200,.32); border-radius: 5px;
+  font-size: 9.5px; font-weight: 700; padding: 1px 6px;
+  letter-spacing: .04em; vertical-align: middle; margin-left: 4px;
+}
+#ext-store-search-wrap {
+  flex: 1; max-width: 300px; margin-left: auto;
+  position: relative; display: flex; align-items: center;
+}
+.ext-search-icon { position: absolute; left: 9px; color: var(--t4); pointer-events: none; flex-shrink: 0; }
+#ext-store-search {
+  width: 100%; height: 31px; border-radius: 8px;
+  background: var(--bg3); border: 1px solid var(--ln);
+  color: var(--t0); font-size: 12px; padding: 0 10px 0 30px;
+  outline: none; transition: border-color .15s;
+}
+#ext-store-search:focus { border-color: var(--acc); }
+#ext-store-search::placeholder { color: var(--t4); }
+
+#ext-store-body { flex: 1; overflow-y: auto; padding: 0 0 40px; }
 #ext-store-body::-webkit-scrollbar { width: 4px; }
 #ext-store-body::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 2px; }
-#ext-list { display: flex; flex-direction: column; }
-.ext-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 11px 10px; border-radius: 10px;
-  transition: background .12s; cursor: default;
+
+/* Category pills */
+#ext-cats {
+  display: flex; gap: 6px; padding: 14px 20px 0;
+  overflow-x: auto; flex-shrink: 0;
 }
-.ext-row:hover { background: var(--bg2); }
-.ext-row.active { background: rgba(0,212,200,.06); }
-.ext-row + .ext-row { border-top: 1px solid rgba(255,255,255,.04); }
-.ext-row-icon {
-  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+#ext-cats::-webkit-scrollbar { display: none; }
+.ext-cat {
+  padding: 5px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  background: var(--bg3); color: var(--t2); border: 1px solid transparent;
+  transition: all .15s;
+}
+.ext-cat:hover { color: var(--t1); background: var(--bg4); }
+.ext-cat.active { background: var(--acc-f); color: var(--acc); border-color: var(--acc-g); font-weight: 700; }
+
+/* Featured banner */
+#ext-featured {
+  margin: 14px 20px 0; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(120deg, rgba(0,212,200,.1) 0%, rgba(0,130,130,.05) 100%);
+  border: 1px solid rgba(0,212,200,.2); padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px; cursor: default;
+  transition: border-color .15s;
+}
+#ext-featured.active { border-color: rgba(0,212,200,.45); background: linear-gradient(120deg, rgba(0,212,200,.15) 0%, rgba(0,130,130,.08) 100%); }
+#ext-featured:hover { border-color: rgba(0,212,200,.35); }
+.ext-featured-icon {
+  width: 50px; height: 50px; flex-shrink: 0; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(0,212,200,.25), rgba(0,160,150,.1));
+  border: 1px solid rgba(0,212,200,.3); color: var(--acc);
+}
+.ext-featured-info { flex: 1; min-width: 0; }
+.ext-featured-tag { font-size: 9.5px; font-weight: 700; color: var(--acc); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 3px; }
+.ext-featured-name { font-size: 15px; font-weight: 700; color: var(--t0); letter-spacing: -.02em; }
+.ext-featured-desc { font-size: 11.5px; color: var(--t3); margin-top: 3px; line-height: 1.45; }
+.ext-feat-btn {
+  padding: 7px 18px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; transition: all .15s; flex-shrink: 0;
+  background: var(--acc); color: #000;
+}
+.ext-feat-btn:hover { filter: brightness(1.12); }
+.ext-feat-btn.enabled { background: rgba(0,212,200,.15); color: var(--acc); border: 1px solid rgba(0,212,200,.35); }
+
+/* Section label */
+.ext-section-label {
+  font-size: 10.5px; font-weight: 700; color: var(--t4);
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 18px 20px 8px;
+}
+#ext-no-results {
+  display: none; text-align: center; padding: 40px 20px;
+  color: var(--t4); font-size: 13px;
+}
+
+/* Card grid */
+#ext-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; padding: 0 20px 6px;
+}
+.ext-card {
+  background: var(--bg1); border: 1px solid var(--ln); border-radius: 13px;
+  padding: 14px 13px 11px; cursor: default;
+  transition: border-color .15s, background .15s, transform .15s, box-shadow .15s;
+  display: flex; flex-direction: column; gap: 7px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.28); will-change: transform;
+}
+.ext-card:hover {
+  border-color: rgba(0,212,200,.25); background: var(--bg2);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.42), 0 0 0 1px rgba(0,212,200,.08);
+}
+.ext-card.active { border-color: rgba(0,212,200,.38); background: rgba(0,212,200,.04); }
+.ext-card.active:hover { border-color: rgba(0,212,200,.55); }
+.ext-card-top { display: flex; align-items: flex-start; gap: 10px; }
+.ext-card-icon {
+  width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
   border: 1px solid transparent; display: flex; align-items: center; justify-content: center;
   transition: filter .15s;
 }
-.ext-row.active .ext-row-icon { filter: brightness(1.2); }
+.ext-card.active .ext-card-icon { filter: brightness(1.2); }
 .ic-purple { background: linear-gradient(145deg,rgba(120,60,240,.28),rgba(70,20,160,.18)); border-color: rgba(120,60,240,.28); color: #a07af0; }
 .ic-blue   { background: linear-gradient(145deg,rgba(40,120,240,.28),rgba(20,60,200,.18)); border-color: rgba(40,120,240,.28); color: #60a8f8; }
 .ic-green  { background: linear-gradient(145deg,rgba(20,200,80,.28),rgba(10,140,50,.18));  border-color: rgba(20,200,80,.28);  color: #40d470; }
@@ -1644,17 +1796,96 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .ic-amber  { background: linear-gradient(145deg,rgba(240,180,20,.28),rgba(200,130,10,.18)); border-color: rgba(240,180,20,.28); color: #f0c030; }
 .ic-red    { background: linear-gradient(145deg,rgba(240,60,60,.28),rgba(180,20,20,.18));  border-color: rgba(240,60,60,.28);  color: #f07070; }
 .ic-teal   { background: linear-gradient(145deg,rgba(0,212,200,.28),rgba(0,160,150,.18));  border-color: rgba(0,212,200,.28);  color: var(--acc); }
-.ext-row-info { flex: 1; min-width: 0; }
-.ext-row-name { font-size: 13px; font-weight: 600; color: var(--t0); }
-.ext-row-desc { font-size: 11.5px; color: var(--t4); margin-top: 2px; }
-.ext-row-status {
-  font-size: 10px; font-weight: 600; letter-spacing: .02em;
-  padding: 2px 8px; border-radius: 5px; flex-shrink: 0;
-  color: var(--t4); border: 1px solid var(--ln); background: transparent;
-  transition: all .2s;
+.ic-pink   { background: linear-gradient(145deg,rgba(236,72,153,.28),rgba(190,30,110,.18)); border-color: rgba(236,72,153,.28); color: #f472b6; }
+.ic-indigo { background: linear-gradient(145deg,rgba(99,102,241,.28),rgba(67,56,202,.18)); border-color: rgba(99,102,241,.28); color: #818cf8; }
+.ext-card-meta { flex: 1; min-width: 0; }
+.ext-card-name { font-size: 12.5px; font-weight: 600; color: var(--t0); margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-card-cat { font-size: 10px; color: var(--t4); font-weight: 500; }
+.ext-badge-new {
+  display: inline-block; font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  padding: 1.5px 5px; border-radius: 4px; text-transform: uppercase;
+  background: rgba(0,212,200,.18); color: var(--acc); border: 1px solid rgba(0,212,200,.3);
+  margin-left: 5px; vertical-align: middle; line-height: 1.5;
 }
-.ext-row.active .ext-row-status {
+.ext-card-desc { font-size: 11px; color: var(--t4); line-height: 1.5; flex: 1; }
+.ext-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 3px;
+}
+.ext-card-status {
+  display: none !important;
+}
+.ext-card.active .ext-card-status {
   color: var(--acc); background: rgba(0,212,200,.12); border-color: rgba(0,212,200,.4);
+}
+
+/* ── UPDATE POPUP ──────────────────────────────────────────────────────── */
+#update-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65);
+  z-index: 10000000; backdrop-filter: blur(4px);
+  display: none; opacity: 0; transition: opacity .25s;
+}
+#update-backdrop.on { display: block; opacity: 1; }
+#update-popup {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(.94);
+  z-index: 10000001;
+  width: 380px; max-width: calc(100vw - 40px);
+  background: var(--bg1); border: 1px solid var(--ln);
+  border-radius: 18px; padding: 32px 28px 26px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+  display: none; opacity: 0;
+  transition: opacity .25s, transform .25s;
+  text-align: center;
+}
+#update-popup.on { display: block; opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.upd-state { display: none; }
+.upd-state.active { display: block; }
+.upd-icon {
+  width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 18px;
+  background: linear-gradient(135deg, rgba(240,90,60,.2), rgba(200,40,40,.12));
+  border: 1px solid rgba(240,90,60,.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #f06050;
+}
+.upd-title {
+  font-size: 17px; font-weight: 700; color: var(--t0);
+  letter-spacing: -.03em; margin-bottom: 10px; line-height: 1.25;
+}
+.upd-body {
+  font-size: 12.5px; color: var(--t3); line-height: 1.6;
+  margin-bottom: 22px;
+}
+.upd-btn-primary {
+  display: block; width: 100%; padding: 11px 20px;
+  background: var(--acc); color: #000;
+  border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: filter .15s; margin-bottom: 10px;
+  letter-spacing: -.01em;
+}
+.upd-btn-primary:hover { filter: brightness(1.12); }
+.upd-btn-primary.danger {
+  background: linear-gradient(135deg, #e03030, #c02020);
+  color: #fff;
+}
+.upd-btn-skip {
+  display: block; width: 100%; padding: 9px 20px;
+  background: transparent; color: var(--t3);
+  border: 1px solid var(--ln); border-radius: 10px;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.upd-btn-skip:hover { background: var(--bg3); color: var(--t1); }
+.upd-final-icon {
+  width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 16px;
+  background: rgba(0,212,200,.12); border: 1px solid rgba(0,212,200,.25);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--acc);
+}
+/* Grid responsive at wider widths */
+@media (min-width: 560px) {
+  #ext-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 #settings-body {
@@ -1877,7 +2108,7 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .persona-card:hover { border-color: rgba(0,212,200,.3); background: var(--acc-f); }
 .persona-card.selected { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.03); }
 .persona-card.active { border-color: var(--acc); background: var(--acc-f); box-shadow: 0 0 0 1px rgba(0,212,200,.2); }
-.persona-name { font-size: 12px; font-weight: 500; color: var(--t0); }
+.persona-name { font-size: 12px; font-weight: 500; color: var(--t0); display: flex; align-items: center; gap: 5px; }
 .persona-desc { font-size: 10.5px; color: var(--t2); margin-top: 2px; line-height: 1.5; }
 .poison-status { 
   margin: 0 10px 10px; padding: 9px 12px; border-radius: 7px; 
@@ -1888,6 +2119,149 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .poison-st-val { font-size: 11.5px; font-weight: 500; color: var(--t0); margin-top: 2px; }
 .poison-tog-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; }
 .poison-tog-lbl { font-size: 11.5px; font-weight: 500; color: var(--t1); }
+
+/* Custom persona creator */
+.persona-custom-wrap { border-top: 1px solid var(--ln); padding: 8px 10px 10px; position: relative; }
+.persona-custom-hd { display: flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; color: var(--t2); cursor: pointer; padding: 2px 0; user-select: none; transition: color .12s; }
+.persona-custom-hd:hover { color: var(--t1); }
+.persona-custom-hd svg { flex-shrink: 0; transition: transform .15s; }
+.persona-custom-hd.open svg { transform: rotate(45deg); }
+.persona-custom-form { display: none; flex-direction: column; gap: 6px; margin-top: 8px; }
+.persona-custom-form.open { display: flex; }
+
+/* Create Persona button */
+.persona-create-btn {
+  width: 100%; height: 30px;
+  background: var(--acc-g); border: 1px solid rgba(var(--acc-raw),.18);
+  border-radius: 8px; color: var(--acc); font-family: var(--f); font-size: 11.5px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .13s, border-color .13s;
+}
+.persona-create-btn:hover { background: rgba(var(--acc-raw),.18); border-color: rgba(var(--acc-raw),.28); }
+
+/* Persona popup (shown on subsequent clicks) */
+.persona-popup {
+  position: absolute; left: 10px; right: 10px;
+  background: var(--bg2); border: 1px solid var(--ln2); border-radius: 10px;
+  padding: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 7px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.3);
+  animation: popupIn .18s cubic-bezier(.16,1,.3,1);
+}
+.persona-popup-arrow {
+  position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+  width: 9px; height: 5px; overflow: visible;
+}
+.persona-popup-arrow::before {
+  content: ''; position: absolute;
+  top: -4px; left: 50%; transform: translateX(-50%);
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-bottom: 5px solid var(--ln2);
+}
+.persona-popup-arrow::after {
+  content: ''; position: absolute;
+  top: -3px; left: 50%; transform: translateX(-50%);
+  border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 4px solid var(--bg2);
+}
+@keyframes popupIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.persona-popup-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.persona-popup-title { font-size: 12px; font-weight: 600; color: var(--t0); }
+.persona-popup-close {
+  width: 18px; height: 18px; border: none; background: transparent; cursor: pointer;
+  color: var(--t3); display: flex; align-items: center; justify-content: center; border-radius: 4px;
+  font-size: 14px; transition: background .1s, color .1s; padding: 0;
+}
+.persona-popup-close:hover { background: rgba(255,255,255,.06); color: var(--t1); }
+
+/* Full-screen persona setup overlay (first time only) */
+#persona-setup-overlay {
+  position: fixed; inset: 0; z-index: 100002;
+  background: var(--bg0); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: personaSetupIn .35s cubic-bezier(.16,1,.3,1);
+}
+#persona-setup-overlay.exit { animation: personaSetupOut .28s cubic-bezier(.4,0,1,1) forwards; pointer-events: none; }
+@keyframes personaSetupIn  { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+@keyframes personaSetupOut { to   { opacity:0; transform:scale(.97); } }
+.persona-setup-card {
+  background: var(--bg1); border: 1px solid var(--ln2); border-radius: 18px;
+  padding: 32px 28px; max-width: 380px; width: 100%;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  display: flex; flex-direction: column; gap: 0;
+}
+.persona-setup-icon {
+  width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 20px;
+  background: var(--acc-g); border: 1px solid rgba(var(--acc-raw),.22);
+  display: flex; align-items: center; justify-content: center; color: var(--acc);
+}
+.persona-setup-title { font-size: 21px; font-weight: 700; color: var(--t0); letter-spacing: -.3px; text-align: center; margin-bottom: 7px; }
+.persona-setup-sub { font-size: 12.5px; color: var(--t2); text-align: center; line-height: 1.6; margin-bottom: 24px; }
+.persona-setup-label { font-size: 11px; color: var(--t2); font-weight: 500; margin-bottom: 5px; }
+.persona-setup-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.persona-setup-input {
+  width: 100%; height: 36px; background: var(--bg3); border: 1px solid var(--ln2); border-radius: 8px;
+  padding: 0 11px; font-family: var(--f); font-size: 12.5px; color: var(--t0);
+  outline: none; caret-color: var(--acc);
+}
+.persona-setup-input:focus { border-color: rgba(var(--acc-raw),.35); }
+.persona-setup-kw {
+  width: 100%; background: var(--bg3); border: 1px solid var(--ln2); border-radius: 8px;
+  padding: 8px 11px; font-family: var(--f); font-size: 12px; color: var(--t0);
+  outline: none; resize: none; height: 80px; caret-color: var(--acc); line-height: 1.5;
+}
+.persona-setup-kw:focus { border-color: rgba(var(--acc-raw),.35); }
+.persona-setup-examples {
+  font-size: 10.5px; color: var(--t3); line-height: 1.7; margin-top: 3px;
+}
+.persona-setup-cta {
+  width: 100%; height: 38px; margin-top: 6px;
+  background: var(--acc-g); border: 1px solid rgba(var(--acc-raw),.28);
+  border-radius: 10px; color: var(--acc); font-family: var(--f); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .13s;
+}
+.persona-setup-cta:hover { background: rgba(var(--acc-raw),.22); }
+.persona-setup-skip { font-size: 11px; color: var(--t3); text-align: center; margin-top: 12px; cursor: pointer; border: none; background: none; font-family: var(--f); transition: color .12s; }
+.persona-setup-skip:hover { color: var(--t2); }
+.persona-setup-err { font-size: 11.5px; color: #f87171; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); border-radius: 7px; padding: 7px 10px; display: none; margin-top: -4px; }
+.persona-setup-err.show { display: block; }
+/* Activating phase */
+#persona-setup-activating { display: none; flex-direction: column; align-items: center; gap: 0; }
+#persona-setup-activating.show { display: flex; animation: personaSetupIn .3s cubic-bezier(.16,1,.3,1); }
+.psa-spinner {
+  width: 56px; height: 56px; border-radius: 50%; margin-bottom: 22px;
+  border: 2px solid rgba(var(--acc-raw),.12); border-top-color: var(--acc);
+  animation: psaSpin .9s linear infinite;
+}
+@keyframes psaSpin { to { transform: rotate(360deg); } }
+.psa-title { font-size: 18px; font-weight: 700; color: var(--t0); letter-spacing: -.3px; margin-bottom: 6px; }
+.psa-sub { font-size: 12px; color: var(--t2); margin-bottom: 28px; text-align: center; }
+.psa-steps { display: flex; flex-direction: column; gap: 9px; width: 100%; }
+.psa-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 9px;
+  border: 1px solid var(--ln); background: var(--bg3);
+  font-size: 12px; color: var(--t2);
+  opacity: 0; transform: translateX(-8px);
+  transition: opacity .35s, transform .35s, color .3s, border-color .3s, background .3s;
+}
+.psa-step.in { opacity: 1; transform: none; }
+.psa-step.done { color: var(--t0); border-color: rgba(var(--acc-raw),.2); background: var(--acc-g); }
+.psa-step-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.psa-step-icon svg { display: none; }
+.psa-step-icon .icon-spin { display: block; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(var(--acc-raw),.2); border-top-color: var(--acc); animation: psaSpin .7s linear infinite; }
+.psa-step.done .icon-spin { display: none; }
+.psa-step.done .icon-check { display: block; }
+.psa-step-txt strong { display: block; font-weight: 600; color: inherit; font-size: 12px; }
+.psa-step-txt span { font-size: 10.5px; color: var(--t3); }
+.persona-custom-inp { width: 100%; height: 28px; background: var(--bg3); border: 1px solid var(--ln2); border-radius: 6px; padding: 0 9px; font-family: var(--f); font-size: 11.5px; color: var(--t0); outline: none; caret-color: var(--acc); }
+.persona-custom-inp:focus { border-color: rgba(var(--acc-raw),.35); }
+.persona-custom-kw { width: 100%; background: var(--bg3); border: 1px solid var(--ln2); border-radius: 6px; padding: 6px 9px; font-family: var(--f); font-size: 11.5px; color: var(--t0); outline: none; resize: vertical; min-height: 62px; caret-color: var(--acc); line-height: 1.5; }
+.persona-custom-kw:focus { border-color: rgba(var(--acc-raw),.35); }
+.persona-custom-save { height: 26px; background: var(--acc-g); border: 1px solid rgba(var(--acc-raw),.2); border-radius: 6px; color: var(--acc); font-family: var(--f); font-size: 11px; font-weight: 500; cursor: pointer; width: 100%; transition: background .12s; }
+.persona-custom-save:hover { background: rgba(var(--acc-raw),.18); }
+.persona-card-del { margin-left: auto; flex-shrink: 0; width: 15px; height: 15px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t3); border-radius: 3px; font-size: 14px; line-height: 1; padding: 0; transition: background .1s, color .1s; }
+.persona-card-del:hover { background: rgba(255,80,80,.15); color: #ff5f57; }
 
 /* MAIN DROPDOWN MENU */
 .drop {
@@ -1980,9 +2354,11 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
   box-shadow: 0 0 5px var(--acc);
 }
 .ctx {
-  position: fixed; min-width: 170px;
-  background: var(--bg2); border: 1px solid var(--ln2);
-  border-radius: 10px; box-shadow: 0 10px 36px rgba(0,0,0,.75);
+  position: fixed; min-width: 172px;
+  background: var(--bg2);
+  border: 1px solid var(--ln2);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.8), 0 2px 8px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
   z-index: 9999999; overflow: hidden;
   animation: ctxIn .15s cubic-bezier(.22,1,.36,1) both;
 }
@@ -1995,8 +2371,9 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 #newtab-layer {
   position: absolute; inset: 0; z-index: 1;
   background:
-    radial-gradient(ellipse 80% 50% at 15% -5%, rgba(0,212,200,.07) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 45% at 88% 108%, rgba(0,180,160,.05) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 55% at 12% -8%, rgba(0,212,200,.09) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 50% at 92% 110%, rgba(0,180,160,.06) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(var(--acc-raw),.03) 0%, transparent 70%),
     var(--bg0);
   display: none; 
   flex-direction: column;
@@ -2274,27 +2651,24 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 @keyframes setupFadeOut { from { opacity: 1; } to { opacity: 0; } }
 
 #setup-card {
-  background: linear-gradient(160deg, var(--bg2) 0%, var(--bg1) 100%);
-  border: 1px solid rgba(var(--acc-raw),.18);
+  background: transparent;
+  border: none;
   border-radius: 18px;
   width: 500px; max-width: 96vw;
   padding: 0;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 40px 120px rgba(0,0,0,.98), 0 0 80px rgba(var(--acc-raw),.08);
+  box-shadow: none;
   position: relative; overflow: hidden;
 }
-/* Teal glow strip at top */
+/* Teal glow strip at top — hidden for clean look */
 #setup-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent 5%, var(--acc) 40%, var(--acc2) 60%, transparent 95%);
-  z-index: 1; opacity: .9;
+  display: none;
 }
 /* Subtle radial glow */
 #setup-card::after {
   content: '';
   position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
   width: 500px; height: 200px;
-  background: radial-gradient(ellipse, rgba(var(--acc-raw),.13) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(var(--acc-raw),.10) 0%, transparent 70%);
   pointer-events: none; z-index: 0;
 }
 #setup-card-inner {
@@ -2395,6 +2769,14 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 }
 #setup-next:hover  { background: var(--acc2); box-shadow: 0 4px 26px rgba(var(--acc-raw),.52); transform: translateY(-1px); }
 #setup-next:active { transform: scale(.97) translateY(0); box-shadow: 0 1px 8px rgba(var(--acc-raw),.22); }
+
+@keyframes setupBtnIn {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#setup-controls {
+  animation: setupBtnIn .55s .42s both cubic-bezier(.22,1,.36,1);
+}
 
 /* ── Setup: new step components ─────────────────────────────────────────── */
 .setup-compare{width:100%;max-width:440px;margin-top:6px;}
@@ -2503,9 +2885,9 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 #setup-set-default-btn.done{opacity:.7;}
 .sdb-hint{font-size:10px;color:var(--t4);margin-top:5px;text-align:center;}
 /* Splash step 0 */
-.setup-splash-wrap{position:relative;width:calc(100% + 52px);margin:-18px -26px;min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:32px 26px 90px;gap:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(var(--acc-raw),.08) 0%,transparent 70%);}
+.setup-splash-wrap{position:relative;width:calc(100% + 52px);margin:-18px -26px;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:hidden;padding:48px 26px 90px;gap:0;background:transparent;}
 .splash-content-area{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:2;}
-.splash-logo{width:88px;height:88px;border-radius:24px;object-fit:contain;box-shadow:0 12px 48px rgba(var(--acc-raw),.45),0 0 0 1px rgba(var(--acc-raw),.22);animation:splashLogoUp .85s cubic-bezier(.22,1,.36,1) both;}
+.splash-logo{width:72px;height:72px;border-radius:0;object-fit:contain;animation:splashLogoUp .85s cubic-bezier(.22,1,.36,1) both;}
 @keyframes splashLogoUp{from{opacity:0;transform:translateY(52px) scale(.72);}to{opacity:1;transform:none;}}
 .splash-welcome-title{font-size:28px;font-weight:800;letter-spacing:-.07em;color:var(--t0);margin:14px 0 0;animation:splashFadeUp .6s .38s cubic-bezier(.22,1,.36,1) both;}
 .splash-welcome-sub{font-size:13px;color:var(--t3);margin:0;animation:splashFadeUp .6s .54s cubic-bezier(.22,1,.36,1) both;}
@@ -2596,10 +2978,19 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
 .dl-icon-active{background:rgba(var(--acc-raw),.08);border-color:rgba(var(--acc-raw),.22);}
 /* Extension store header icon */
 .ext-store-header-icon{background:linear-gradient(135deg,rgba(var(--acc-raw),.2),rgba(var(--acc-raw),.08));border:1px solid rgba(var(--acc-raw),.3);}
-/* Extension rows */
+/* Extension rows (legacy) */
 .ext-row.active{background:rgba(var(--acc-raw),.06);}
 .ic-teal{background:linear-gradient(145deg,rgba(var(--acc-raw),.28),rgba(var(--acc-raw),.18));border-color:rgba(var(--acc-raw),.28);color:var(--acc);}
 .ext-row.active .ext-row-status{color:var(--acc);background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.4);}
+/* Extension store card grid */
+.ext-card.active{border-color:rgba(var(--acc-raw),.38);background:rgba(var(--acc-raw),.04);}
+.ext-card.active .ext-card-status{color:var(--acc);background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.4);}
+.ext-card:hover{border-color:rgba(var(--acc-raw),.2);}
+.ext-cat.active{background:rgba(var(--acc-raw),.12);color:var(--acc);border-color:rgba(var(--acc-raw),.3);}
+#ext-featured{background:linear-gradient(120deg,rgba(var(--acc-raw),.1)0%,rgba(var(--acc-raw),.04)100%);border:1px solid rgba(var(--acc-raw),.2);}
+#ext-featured.active{border-color:rgba(var(--acc-raw),.45);background:linear-gradient(120deg,rgba(var(--acc-raw),.15)0%,rgba(var(--acc-raw),.08)100%);}
+.ext-feat-btn{background:var(--acc);color:#000;}
+.ext-feat-btn.enabled{background:rgba(var(--acc-raw),.15);color:var(--acc);border:1px solid rgba(var(--acc-raw),.35);}
 /* Settings inputs */
 .set-select:focus{border-color:rgba(var(--acc-raw),.3);}
 .set-input-text:focus{border-color:rgba(var(--acc-raw),.3);}
@@ -2700,8 +3091,9 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1L5.5 6L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <button id="btn-reload" title="Reload (Ctrl+R)">
-          <svg id="ico-reload" width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <path d="M12 6.5A5.5 5.5 0 1 1 8.5 1.7M8 1v3.5H11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg id="ico-reload" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2.5 7A4.5 4.5 0 0 1 11 4.2M11 4.2V1.5M11 4.2H8.3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M11.5 7A4.5 4.5 0 0 1 3 9.8M3 9.8v2.7M3 9.8h2.7" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
@@ -2725,15 +3117,15 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
       <div id="nav-right">
         <span id="zoom-pill" title="Reset zoom (Ctrl+0)"></span>
         <button class="ib" id="btn-hist" title="History (Ctrl+H)">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.25"/>
-            <path d="M6.5 4v3l1.8 1.2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1.5 7A5.5 5.5 0 1 0 3 3.5M1.5 7V3.5M1.5 7H5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 5v2.5l1.8 1.2" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
         <button class="ib" id="btn-dl" title="Downloads" style="position:relative">
-          <svg width="12" height="13" viewBox="0 0 12 13" fill="none">
-            <path d="M6 1v8M3 6.5L6 9.5L9 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <line x1="1" y1="12" x2="11" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1v8M4 6.5L7 9.5L10 6.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M1.5 12h11" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
           </svg>
           <span id="dl-badge" class="badge-dot" style="display:none"></span>
         </button>
@@ -2745,10 +3137,9 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           </svg>
         </button>
         <button class="ib" id="btn-poison" title="Poison Data">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M4.5 6.5c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            <circle cx="6.5" cy="6.5" r=".9" fill="currentColor"/>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M5.5 1.5h3M5.5 1.5v3.5L2.5 11a1 1 0 0 0 .9 1.5h7.2a1 1 0 0 0 .9-1.5L8.5 5V1.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 9.5h6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".5"/>
           </svg>
         </button>
         <button class="ib" id="btn-media" title="Media controls" style="display:none">
@@ -2765,6 +3156,13 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           </svg>
         </button>
         <div class="vsep"></div>
+        <button class="ib" id="btn-pip" title="Pop Out Video (Picture-in-Picture)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="2" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="7" y="6" width="5.5" height="4" rx="1" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M4.5 5.5L2.5 3.5M2.5 5.5V3.5h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <button class="ib" id="btn-ytdlp" title="Video Downloader" style="position:relative">
           <svg width="14" height="13" viewBox="0 0 14 13" fill="none">
             <rect x=".7" y=".7" width="12.6" height="8.6" rx="1.8" stroke="currentColor" stroke-width="1.25"/>
@@ -2774,10 +3172,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         </button>
         <button class="ib" id="btn-snip" title="Snip screenshot (Ctrl+Shift+S)">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="3.2" cy="3.8" r="1.7" stroke="currentColor" stroke-width="1.2"/>
-            <circle cx="3.2" cy="10.2" r="1.7" stroke="currentColor" stroke-width="1.2"/>
-            <line x1="4.7" y1="4.6" x2="12.5" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-            <line x1="4.7" y1="9.4" x2="12.5" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M1 5V2a1 1 0 0 1 1-1h3M9 1h3a1 1 0 0 1 1 1v3M13 9v3a1 1 0 0 1-1 1H9M5 13H2a1 1 0 0 1-1-1V9" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
           </svg>
         </button>
         <button class="ib" id="btn-passwords" title="Password Manager">
@@ -3065,7 +3460,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
 
 <!-- POISON DATA PANEL -->
 <div class="panel" id="panel-poison">
-  <div class="panel-head"><span class="panel-title">☠ Poison Data</span></div>
+  <div class="panel-head"><span class="panel-title">Poison Data</span></div>
   <div class="poison-scroll">
     <div class="poison-tog-row">
       <span class="poison-tog-lbl">Confuse ad profiles with garbage</span>
@@ -3083,13 +3478,32 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
       <div class="poison-st-val" id="poison-persona-name">None — pick below</div>
     </div>
     <div class="poison-personas">
-      <div class="persona-card" data-persona="boomer"><div class="persona-name">🏌️ Retired Boomer</div><div class="persona-desc">Golf, cruises, Fox News, retirement, Florida</div></div>
-      <div class="persona-card" data-persona="teen"><div class="persona-name">🎮 Gen Z Gamer</div><div class="persona-desc">Energy drinks, anime, sneakers, TikTok</div></div>
-      <div class="persona-card" data-persona="parent"><div class="persona-name">👶 Suburban Parent</div><div class="persona-desc">Minivans, school, family, meal kits</div></div>
-      <div class="persona-card" data-persona="techbro"><div class="persona-name">🚀 Bay Area Tech Bro</div><div class="persona-desc">Startups, crypto, cold brew, standing desks</div></div>
-      <div class="persona-card" data-persona="prepper"><div class="persona-name">🛖 Survivalist Prepper</div><div class="persona-desc">Off-grid, guns, bunkers, homesteading</div></div>
-      <div class="persona-card" data-persona="luxury"><div class="persona-name">💎 Luxury Shopper</div><div class="persona-desc">Yachts, Rolex, private jets, 5-star hotels</div></div>
+      <div class="persona-card" data-persona="boomer"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><path d="M3.5 1v11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M3.5 1.5l6 2-6 2.5" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" stroke-linecap="round"/><path d="M2 12h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>Retiree</div><div class="persona-desc">Golf, cruises, news, retirement communities</div></div>
+      <div class="persona-card" data-persona="teen"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><rect x="1.5" y="4" width="10" height="5.5" rx="2" stroke="currentColor" stroke-width="1.15"/><path d="M4.5 6.75h2M5.5 5.75v2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><circle cx="8.5" cy="6" r=".7" fill="currentColor"/><circle cx="9.5" cy="7.5" r=".7" fill="currentColor"/></svg>Gamer</div><div class="persona-desc">Gaming, anime, sneakers, streaming</div></div>
+      <div class="persona-card" data-persona="parent"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><path d="M1.5 6.5L6.5 1.5l5 5V12H8.5V9h-3v3H1.5V6.5Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/></svg>Parent</div><div class="persona-desc">School, family travel, safety, meal delivery</div></div>
+      <div class="persona-card" data-persona="techbro"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><path d="M3.5 4.5L1.5 6.5l2 2M9.5 4.5l2 2-2 2M7 3l-1.5 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Developer</div><div class="persona-desc">Startups, AI tools, SaaS, productivity</div></div>
+      <div class="persona-card" data-persona="prepper"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><path d="M6.5 1L2 3v3.5C2 9.3 4 11.2 6.5 12c2.5-.8 4.5-2.7 4.5-5.5V3L6.5 1Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/><path d="M4.5 6.5l1.5 1.5 2.5-3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>Prepper</div><div class="persona-desc">Off-grid, emergency supplies, homesteading</div></div>
+      <div class="persona-card" data-persona="luxury"><div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><path d="M6.5 11L1.5 5.5 3 2h7l1.5 3.5L6.5 11Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/><path d="M1.5 5.5h10M3 2l1.5 3.5M10 2L8.5 5.5" stroke="currentColor" stroke-width="1.05" stroke-linecap="round"/></svg>High Earner</div><div class="persona-desc">Designer brands, luxury travel, fine dining</div></div>
     </div>
+    <!-- Custom persona creator -->
+    <div class="persona-custom-wrap">
+      <button class="persona-create-btn" id="persona-create-btn">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Create Persona
+      </button>
+      <!-- Popup form (shown after first time, anchored to button) -->
+      <div class="persona-popup" id="persona-popup" style="display:none;top:36px">
+        <div class="persona-popup-arrow"></div>
+        <div class="persona-popup-hd">
+          <span class="persona-popup-title">New Persona</span>
+          <button class="persona-popup-close" id="persona-popup-close">&#x2715;</button>
+        </div>
+        <input class="persona-custom-inp" id="custom-name-inp" placeholder="Persona name…" maxlength="28" autocomplete="off" spellcheck="false">
+        <textarea class="persona-custom-kw" id="custom-kw-inp" placeholder="Interests, one per line&#10;e.g. gaming&#10;sneakers&#10;anime" spellcheck="false"></textarea>
+        <button class="persona-custom-save" id="custom-save-btn">Create Persona</button>
+      </div>
+    </div>
+    <div id="custom-persona-cards" class="poison-personas" style="padding-top:0;padding-bottom:4px"></div>
   </div>
 </div>
 
@@ -3368,194 +3782,287 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
       <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M6 1L1.5 6L6 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <div class="ext-store-header-icon">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 3a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 0 3 0V5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2v.5a1.5 1.5 0 0 0 3 0V5a2 2 0 0 1 2-2h6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 11h6M10 8v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M3 7h16M3 11h16M3 15h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="19" cy="7" r="3" fill="currentColor" opacity=".5"/></svg>
     </div>
     <div class="ext-store-header-info">
-      <div id="ext-store-title">Add-Ons</div>
-      <div id="ext-store-subtitle">Injected enhancements for every page you visit</div>
+      <div id="ext-store-title">Add-Ons Store</div>
+      <div id="ext-store-subtitle">27 injected enhancements for every site you visit</div>
+    </div>
+    <div id="ext-store-search-wrap">
+      <svg class="ext-search-icon" width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="4.2" stroke="currentColor" stroke-width="1.3"/><line x1="8.8" y1="8.8" x2="12.2" y2="12.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <input id="ext-store-search" type="text" placeholder="Search add-ons…" autocomplete="off" spellcheck="false">
     </div>
   </div>
   <div id="ext-store-body">
-    <div id="ext-list">
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-purple">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M17.5 11A6.5 6.5 0 0 1 7 16.8a6.5 6.5 0 0 0 0-11.6A6.5 6.5 0 0 1 17.5 11Z" fill="currentColor" opacity=".6"/><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg>
+    <!-- Category pills -->
+    <div id="ext-cats">
+      <button class="ext-cat active" data-cat="all">All</button>
+      <button class="ext-cat" data-cat="appearance">Appearance</button>
+      <button class="ext-cat" data-cat="productivity">Productivity</button>
+      <button class="ext-cat" data-cat="privacy">Privacy</button>
+      <button class="ext-cat" data-cat="media">Media</button>
+    </div>
+
+    <!-- Featured extension -->
+    <div id="ext-featured" data-ext="reader-mode" data-cat="productivity">
+      <div class="ext-featured-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="6" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="12" width="10" height="1.5" rx=".75" fill="currentColor" opacity=".3"/><rect x="6" y="15" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".2"/></svg>
+      </div>
+      <div class="ext-featured-info">
+        <div class="ext-featured-tag">⭐ Featured Add-On</div>
+        <div class="ext-featured-name">Reader Mode</div>
+        <div class="ext-featured-desc">Strips ads, distractions and sidebars — reformats articles into a clean, focused dark reading layout</div>
+      </div>
+      <button class="ext-feat-btn" id="ext-featured-btn">Enable</button>
+    </div>
+
+    <!-- All add-ons grid -->
+    <div class="ext-section-label">All Add-Ons</div>
+    <div id="ext-no-results">No add-ons match your search.</div>
+    <div id="ext-grid">
+
+      <div class="ext-card" data-ext="dark-mode" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-purple"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M17.5 11A6.5 6.5 0 0 1 7 16.8a6.5 6.5 0 0 0 0-11.6A6.5 6.5 0 0 1 17.5 11Z" fill="currentColor" opacity=".6"/><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Dark Mode</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Dark Mode</div>
-          <div class="ext-row-desc">Inverts page colours for night reading — preserves images and video</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="dark-mode"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Inverts page colours for night reading — preserves images and video</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="dark-mode"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-gray">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 9a3 3 0 1 1 3 5.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="16" r="1" fill="currentColor"/></svg>
+      <div class="ext-card" data-ext="grayscale" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-gray"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 9a3 3 0 1 1 3 5.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="11" cy="16" r="1" fill="currentColor"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Grayscale</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Grayscale</div>
-          <div class="ext-row-desc">Strips all colour from pages — great for focus or accessibility</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="grayscale"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Strips all colour from pages — great for focus or accessibility</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="grayscale"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-amber">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="4" fill="currentColor" opacity=".5"/><path d="M11 2v2M11 18v2M2 11h2M18 11h2M4.9 4.9l1.4 1.4M15.7 15.7l1.4 1.4M4.9 17.1l1.4-1.4M15.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <div class="ext-card" data-ext="night-filter" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-amber"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="4" fill="currentColor" opacity=".5"/><path d="M11 2v2M11 18v2M2 11h2M18 11h2M4.9 4.9l1.4 1.4M15.7 15.7l1.4 1.4M4.9 17.1l1.4-1.4M15.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Night Filter</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Night Filter</div>
-          <div class="ext-row-desc">Warm amber overlay to reduce blue light and eye strain at night</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="night-filter"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Warm amber overlay to reduce blue light and eye strain at night</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="night-filter"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-blue">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/><rect x="3" y="10" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".3"/><rect x="3" y="15" width="10" height="2.5" rx="1.25" fill="currentColor" opacity=".15"/><circle cx="17" cy="5.5" r="2.8" fill="currentColor"/></svg>
+      <div class="ext-card" data-ext="no-animations" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-blue"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/><rect x="3" y="10" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".3"/><rect x="3" y="15" width="10" height="2.5" rx="1.25" fill="currentColor" opacity=".15"/><circle cx="17" cy="5.5" r="2.8" fill="currentColor"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">No Animations</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">No Animations</div>
-          <div class="ext-row-desc">Kills all CSS animations and transitions site-wide instantly</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="no-animations"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Kills all CSS animations and transitions site-wide instantly</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="no-animations"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-green">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" stroke="currentColor" stroke-width="1.3" opacity=".5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <div class="ext-card" data-ext="font-boost" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-indigo"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/><rect x="3" y="10" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".4"/><rect x="3" y="15" width="11" height="2.5" rx="1.25" fill="currentColor" opacity=".3"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Font Boost</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Focus Mode</div>
-          <div class="ext-row-desc">Hides sidebars, banners and distractions — centres article content</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="focus-mode"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Increases body font size by ~8% and opens up line-height for easier reading</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="font-boost"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-red">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="2" y="5" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 9h8M7 13h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/><path d="M16 13l2-2-2-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="ext-card" data-ext="custom-cursor" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-teal"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M5 3l12 8-7 2-3 7-2-17Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="17" cy="11" r="3" stroke="currentColor" stroke-width="1.2" opacity=".4"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Custom Cursor</div><div class="ext-card-cat">Appearance</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">No Cookie Banners</div>
-          <div class="ext-row-desc">Hides GDPR consent popups, cookie notices and overlays</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="remove-banners"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Adds a neon teal ring around your cursor for a stylish look</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="custom-cursor"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-orange">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><polygon points="9,5.5 18,11 9,16.5" fill="currentColor" opacity=".5"/><line x1="4" y1="5" x2="4" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="5" x2="7" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="ext-card" data-ext="focus-mode" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-green"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" stroke="currentColor" stroke-width="1.3" opacity=".5"/><path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Focus Mode</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Video Speed</div>
-          <div class="ext-row-desc">Floating speed control on every video — click to cycle 0.25×–3×</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="video-speed"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Hides sidebars, banners and distractions — centres article content</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="focus-mode"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-teal">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M4 11s1.5-5 7-5 7 5 7 5-1.5 5-7 5-7-5-7-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="11" cy="11" r="2.5" fill="currentColor" opacity=".5"/></svg>
+      <div class="ext-card" data-ext="reader-mode" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-amber"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="6" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="12" width="10" height="1.5" rx=".75" fill="currentColor" opacity=".3"/><rect x="6" y="15" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".2"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Reader Mode</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Highlight Links</div>
-          <div class="ext-row-desc">Underlines all links in teal so they're always easy to spot</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="highlight-links"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Strips clutter and reformats articles into a clean, distraction-free dark layout</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="reader-mode"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon ic-teal" style="background:linear-gradient(135deg,rgba(0,212,200,.18),rgba(0,180,170,.06))">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="2" y="18" width="18" height="2.5" rx="1" fill="currentColor" opacity=".4"/><rect x="2" y="2" width="18" height="2.5" rx="1" fill="currentColor" opacity=".15"/><path d="M11 5v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".7"/></svg>
+      <div class="ext-card" data-ext="scroll-progress" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-teal"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="2" y="18" width="18" height="2.5" rx="1" fill="currentColor" opacity=".4"/><rect x="2" y="2" width="18" height="2.5" rx="1" fill="currentColor" opacity=".15"/><path d="M11 5v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".7"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Scroll Progress</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Scroll Progress</div>
-          <div class="ext-row-desc">Thin progress bar at the top shows how far through a page you've scrolled</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="scroll-progress"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Thin progress bar at the top shows how far through a page you've scrolled</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="scroll-progress"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(124,58,237,.06));color:rgba(139,92,246,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="3" y="5" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".5"/><rect x="3" y="10" width="16" height="2.5" rx="1.25" fill="currentColor" opacity=".4"/><rect x="3" y="15" width="11" height="2.5" rx="1.25" fill="currentColor" opacity=".3"/></svg>
+      <div class="ext-card" data-ext="word-count" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-green"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M4 11h14M4 7h14M4 15h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".6"/><circle cx="17" cy="15" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M17 14v2M16 15h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Word Count</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Font Boost</div>
-          <div class="ext-row-desc">Increases body font size by ~8% and opens up line-height for easier reading</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="font-boost"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Shows word count and estimated reading time in a subtle corner badge</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="word-count"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(245,158,11,.06));color:rgba(251,191,36,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="6" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="12" width="10" height="1.5" rx=".75" fill="currentColor" opacity=".3"/><rect x="6" y="15" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".2"/></svg>
+      <div class="ext-card" data-ext="smooth-scroll" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-blue"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M11 4v14M7 14l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8l4-4 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Smooth Scroll</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Reader Mode</div>
-          <div class="ext-row-desc">Strips clutter and reformats articles into a clean, distraction-free dark layout</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="reader-mode"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Enables silky smooth CSS scroll behaviour on all pages</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smooth-scroll"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(219,39,119,.06));color:rgba(236,72,153,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.3" opacity=".6"/><path d="M14.5 14.5L18 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <div class="ext-card" data-ext="smart-copy" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-indigo"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="8" y="3" width="11" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 6H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><path d="M11 8h5M11 11h5M11 14h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Smart Copy</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Image Zoom</div>
-          <div class="ext-row-desc">Click any image to expand it fullscreen — click again to dismiss</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="image-zoom"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Strips rich formatting when copying — always pastes as clean plain text</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smart-copy"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(20,184,166,.18),rgba(13,148,136,.06));color:rgba(20,184,166,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M4 11h14M4 7h14M4 15h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".6"/><circle cx="17" cy="15" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M17 14v2M16 15h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      <div class="ext-card" data-ext="hide-comments" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-red"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M3 6h16M3 10h10M3 14h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><line x1="16" y1="16" x2="22" y2="10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="16" y1="10" x2="22" y2="16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Hide Comments</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Word Count</div>
-          <div class="ext-row-desc">Shows word count and estimated reading time in a subtle badge</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="word-count"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Collapses comment sections on news sites, Reddit and blogs</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="hide-comments"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(220,38,38,.06));color:rgba(239,68,68,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M3 7h16M3 11h16M3 15h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><circle cx="18" cy="15" r="3.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/><path d="M16.5 15H19.5M18 13.5V16.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="4" y1="4" x2="18" y2="18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".4"/></svg>
+      <div class="ext-card" data-ext="link-preview" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-teal"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M9 13l-4 4M3 19l4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M11 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="16" cy="16" r="4" stroke="currentColor" stroke-width="1.3" opacity=".6"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Link Preview</div><div class="ext-card-cat">Productivity</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Anti Tracking Pixels</div>
-          <div class="ext-row-desc">Hides invisible 1×1 tracking pixels that spy on page visits</div>
-        </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="anti-tracking"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Shows full destination URL in a bottom bar when hovering over any link</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="link-preview"><span class="tog-tr"></span></label></div>
       </div>
 
-      <div class="ext-row">
-        <div class="ext-row-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(79,70,229,.06));color:rgba(99,102,241,.9)">
-          <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 8h10M6 12h10M6 16h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/><path d="M14 15l4-2-4-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="ext-card" data-ext="anti-tracking" data-cat="privacy">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-gray"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M3 7h16M3 11h16M3 15h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><circle cx="18" cy="15" r="3.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="4" x2="18" y2="18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".4"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Anti Tracking</div><div class="ext-card-cat">Privacy</div></div>
         </div>
-        <div class="ext-row-info">
-          <div class="ext-row-name">Print Clean</div>
-          <div class="ext-row-desc">Strips ads, navbars and sidebars when printing or saving as PDF</div>
+        <div class="ext-card-desc">Hides invisible 1×1 tracking pixels that spy on page visits</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="anti-tracking"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="print-clean" data-cat="privacy">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-indigo"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M6 8h10M6 12h10M6 16h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/><path d="M14 15l4-2-4-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Print Clean</div><div class="ext-card-cat">Privacy</div></div>
         </div>
-        <span class="ext-row-status">Off</span>
-        <label class="tog"><input type="checkbox" class="ext-tog" data-ext="print-clean"><span class="tog-tr"></span></label>
+        <div class="ext-card-desc">Strips ads, navbars and sidebars when printing or saving as PDF</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="print-clean"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="video-speed" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-orange"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><polygon points="9,5.5 18,11 9,16.5" fill="currentColor" opacity=".5"/><line x1="4" y1="5" x2="4" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="5" x2="7" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Video Speed</div><div class="ext-card-cat">Media</div></div>
+        </div>
+        <div class="ext-card-desc">Floating speed control on every video — click to cycle 0.25×–3×</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="video-speed"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="image-zoom" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-pink"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="11" r="4" stroke="currentColor" stroke-width="1.3" opacity=".6"/><path d="M14.5 14.5L18 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Image Zoom</div><div class="ext-card-cat">Media</div></div>
+        </div>
+        <div class="ext-card-desc">Click any image to expand it fullscreen — click again to dismiss</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="image-zoom"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="highlight-links" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-teal"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M4 11s1.5-5 7-5 7 5 7 5-1.5 5-7 5-7-5-7-5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="11" cy="11" r="2.5" fill="currentColor" opacity=".5"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Highlight Links</div><div class="ext-card-cat">Media</div></div>
+        </div>
+        <div class="ext-card-desc">Underlines all links in teal so they're always easy to spot</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="highlight-links"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="auto-scroll" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-orange"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M11 3v16M6 14l5 5 5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Auto Scroll</div><div class="ext-card-cat">Media</div></div>
+        </div>
+        <div class="ext-card-desc">Floating button to auto-scroll down — great for articles and feeds</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="auto-scroll"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="high-contrast" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-gray"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 3v8h8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".6"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">High Contrast</div><div class="ext-card-cat">Appearance <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Boosts contrast across the whole page for easier reading and accessibility</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="high-contrast"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="neon-glow" data-cat="appearance">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-teal"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M4 11h2M16 11h2M11 4v2M11 16v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".5"/><circle cx="11" cy="11" r="4.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="11" r="1.5" fill="currentColor" opacity=".6"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Neon Glow</div><div class="ext-card-cat">Appearance <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Adds a teal neon glow effect to headings and links for a futuristic look</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="neon-glow"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="pip-mode" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-blue"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="2" y="4" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="11" y="10" width="8" height="6" rx="1.5" fill="currentColor" opacity=".45"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">PiP Mode</div><div class="ext-card-cat">Media <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Pops the page video into a floating picture-in-picture window</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="pip-mode"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="yt-ad" data-cat="media">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-red"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M4 6.5C4 5.12 5.12 4 6.5 4h9C16.88 4 18 5.12 18 6.5v9c0 1.38-1.12 2.5-2.5 2.5h-9C5.12 18 4 16.88 4 15.5v-9Z" stroke="currentColor" stroke-width="1.4"/><polygon points="9.5,8.5 14.5,11 9.5,13.5" fill="currentColor" opacity=".65"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">YouTube Ad Skip</div><div class="ext-card-cat">Media</div></div>
+        </div>
+        <div class="ext-card-desc">Automatically skips and mutes YouTube ads — restores your volume and playback speed after each ad</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="yt-ad"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="sticky-notes" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-amber"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M17 13l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><path d="M6 8h8M6 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Sticky Notes</div><div class="ext-card-cat">Productivity <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Floating draggable notepad that stays on top of any page</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="sticky-notes"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="low-data" data-cat="privacy">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-green"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M3 19l6-6M3 12l8-8M10 19l9-9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><circle cx="17" cy="5" r="3" stroke="currentColor" stroke-width="1.3" opacity=".7"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Low Data Mode</div><div class="ext-card-cat">Privacy <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Hides all images and videos to save bandwidth and speed up pages</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="low-data"><span class="tog-tr"></span></label></div>
+      </div>
+
+      <div class="ext-card" data-ext="page-zoom" data-cat="productivity">
+        <div class="ext-card-top">
+          <div class="ext-card-icon ic-indigo"><svg width="16" height="16" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M13.5 13.5L19 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 9h4M9 7v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".6"/></svg></div>
+          <div class="ext-card-meta"><div class="ext-card-name">Page Zoom</div><div class="ext-card-cat">Productivity <span class="ext-badge-new">NEW</span></div></div>
+        </div>
+        <div class="ext-card-desc">Floating + / − controls to zoom in and out on any page</div>
+        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="page-zoom"><span class="tog-tr"></span></label></div>
       </div>
 
     </div>
@@ -3741,6 +4248,22 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <button class="set-btn-sm acc" id="set-refresh-filters">Refresh Now</button>
             </div>
           </div>
+
+          <div class="set-card">
+            <div class="set-card-title">Password Manager</div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Autofill Passwords</span><small>Shows a prompt when a saved login is detected</small></div>
+              <label class="tog"><input type="checkbox" id="set-autofill-enabled" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Offer to Save Passwords</span><small>Asks to save new credentials when you log in</small></div>
+              <label class="tog"><input type="checkbox" id="set-save-pw-prompt" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Manage Saved Passwords</span><small>Open the encrypted vault to view or edit logins</small></div>
+              <button class="set-btn-sm acc" id="set-manage-passwords">Open Vault</button>
+            </div>
+          </div>
         </div>
 
         <!-- Search -->
@@ -3797,8 +4320,9 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <label class="tog"><input type="checkbox" id="set-throttle-bg" checked><span class="tog-tr"></span></label>
             </div>
           </div>
-          <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--ln);border-radius:10px;font-size:11.5px;color:var(--t3);line-height:1.7">
-            ⚠ Hardware acceleration changes take effect after restarting Raw Browser. If you experience visual glitches, try disabling it.
+          <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--ln);border-radius:10px;font-size:11.5px;color:var(--t3);line-height:1.7;display:flex;align-items:flex-start;gap:8px">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M6.5 5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.5" cy="9" r=".6" fill="currentColor"/></svg>
+            Hardware acceleration changes take effect after restarting Raw Browser. If you experience visual glitches, try disabling it.
           </div>
         </div>
 
@@ -4011,15 +4535,15 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="set-card">
             <div class="set-r">
               <div class="set-r-lbl"><span>Version</span></div>
-              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.2</span>
+              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.4</span>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Built with</span></div>
-              <span style="font-size:12px;color:var(--t3)">Electron + EasyList</span>
+              <span style="font-size:12px;color:var(--t3)">Electron</span>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Privacy Level</span><small>Ad blocking, fingerprint noise, WebRTC leak protection</small></div>
-              <span style="font-size:12px;color:var(--acc)">Maximum</span>
+              <span style="font-size:12px;color:var(--acc)">Privacy-Focused</span>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Community</span><small>Get help, share feedback &amp; meet other users</small></div>
@@ -4093,34 +4617,6 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="splash-particle sp6" aria-hidden="true"></div>
           <div class="splash-particle sp7" aria-hidden="true"></div>
           <div class="splash-particle sp8" aria-hidden="true"></div>
-          <!-- Animated battle demo -->
-          <div class="battle-arena" role="img" aria-label="RAW Browser defeating a tracker">
-            <div class="ba-impact-glow" aria-hidden="true"></div>
-            <div class="ba-fighter ba-raw">
-              <img src="assets/logo.png" alt="" class="ba-logo">
-              <div class="ba-label">RAW</div>
-            </div>
-            <div class="ba-middle">
-              <div class="ba-vs">VS</div>
-              <div class="ba-zap">&#x26A1;</div>
-              <div class="ba-blocked">BLOCKED!</div>
-            </div>
-            <div class="ba-fighter ba-tracker">
-              <svg class="ba-tracker-face" viewBox="0 0 40 40" fill="none">
-                <ellipse cx="20" cy="23" rx="14" ry="10" fill="#ff3333" opacity=".92"/>
-                <ellipse cx="20" cy="20" rx="10" ry="7" fill="white"/>
-                <circle cx="20" cy="20" r="4" fill="#1a0000"/>
-                <circle cx="21.8" cy="18.5" r="1.2" fill="white"/>
-                <path d="M12 13 L9 5" stroke="#ff3333" stroke-width="1.6" stroke-linecap="round"/>
-                <circle cx="8" cy="4" r="2" fill="#ff3333"/>
-                <path d="M28 13 L31 5" stroke="#ff3333" stroke-width="1.6" stroke-linecap="round"/>
-                <circle cx="32" cy="4" r="2" fill="#ff3333"/>
-                <path d="M7 23 L2 20M7 27 L2 30" stroke="#ff3333" stroke-width="1.4" stroke-linecap="round"/>
-                <path d="M33 23 L38 20M33 27 L38 30" stroke="#ff3333" stroke-width="1.4" stroke-linecap="round"/>
-              </svg>
-              <div class="ba-label">Tracker</div>
-            </div>
-          </div>
           <div class="splash-wave-area" aria-hidden="true">
             <div class="splash-wave w1">
               <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 30C240 0 480 60 720 30C960 0 1200 60 1440 30L1440 60H0Z" fill="currentColor"/></svg>
@@ -4312,23 +4808,83 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
   }
 })();
 
-/* Page snapshot — receives live updates every ~150ms while a panel is open */
+/* ── Auto update check ─────────────────────────────────────────────────── */
+(function() {
+  function _showUpdatePopup() {
+    const bd  = $('update-backdrop');
+    const pop = $('update-popup');
+    if (!bd || !pop) return;
+    // Reset to step 1
+    document.querySelectorAll('.upd-state').forEach((s, i) => s.classList.toggle('active', i === 0));
+    bd.classList.add('on');
+    // Use rAF so display:block is painted before opacity transition kicks in
+    requestAnimationFrame(() => { pop.style.display = 'block'; requestAnimationFrame(() => pop.classList.add('on')); });
+  }
+  function _hideUpdatePopup() {
+    const bd  = $('update-backdrop');
+    const pop = $('update-popup');
+    if (!bd || !pop) return;
+    pop.classList.remove('on');
+    bd.classList.remove('on');
+    setTimeout(() => { pop.style.display = 'none'; }, 280);
+  }
+
+  // Run check after a 4-second delay so it doesn't block UI startup
+  setTimeout(async () => {
+    try {
+      const upd = await ipcRenderer.invoke('check-update');
+      if (upd && upd.outdated) _showUpdatePopup();
+    } catch(e) {}
+  }, 4000);
+
+  // Button wiring — deferred to DOMContentLoaded because the popup HTML
+  // is defined after this script block and the elements don't exist yet.
+  document.addEventListener('DOMContentLoaded', () => {
+    $('upd-update-now')?.addEventListener('click', () => {
+      ipcRenderer.send('tab:new', 'https://rawbrowser.pages.dev/auth');
+      _hideUpdatePopup();
+    });
+    $('upd-skip')?.addEventListener('click', () => {
+      // Show step 2
+      document.querySelectorAll('.upd-state').forEach((s, i) => s.classList.toggle('active', i === 1));
+    });
+    $('upd-understand')?.addEventListener('click', () => {
+      // Show step 3 then auto-dismiss after 3.5s
+      document.querySelectorAll('.upd-state').forEach((s, i) => s.classList.toggle('active', i === 2));
+      setTimeout(_hideUpdatePopup, 3500);
+    });
+    $('update-backdrop')?.addEventListener('click', () => { /* intentionally blocked — must use buttons */ });
+  });
+})();
 ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
-  // Discard stale snapshot if all panels are closed AND no tab ctx menu is open
-  if (!document.querySelector('.panel.on') && !document.getElementById('_ctx')) return;
-  // Reuse existing <img> so the browser doesn't thrash the DOM on every live-refresh frame
-  let img = snap.querySelector('img');
-  if (!img) { img = document.createElement('img'); snap.appendChild(img); }
-  img.src = dataURL;
+  // Discard stale snapshot if nothing is open that needs it
+  if (!document.querySelector('.panel.on') && !document.getElementById('_ctx') && !document.querySelector('#sb-add-modal.on')) return;
   snap.style.display = 'block';
+  // Use canvas + createImageBitmap for smooth frame updates.
+  // img.src reassignment flickers because the browser shows a blank while decoding.
+  // createImageBitmap decodes off the main thread; drawImage is atomic — the canvas
+  // shows the previous frame until the new one is fully decoded, then swaps cleanly.
+  let canvas = snap.querySelector('canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.style.cssText = 'width:100%;height:100%;display:block;';
+    snap.innerHTML = '';
+    snap.appendChild(canvas);
+  }
+  fetch(dataURL).then(r => r.blob()).then(b => createImageBitmap(b)).then(bitmap => {
+    canvas.width  = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    bitmap.close();
+  }).catch(() => {});
 });
 ipcRenderer.on('panel:snapshot:clear', () => {
   const snap = $('page-snapshot');
   if (!snap) return;
   snap.style.display = 'none';
-  snap.innerHTML = '';
+  snap.innerHTML = ''; // removes canvas so it's recreated fresh next open
 });
 
 /* IPC events */
@@ -4480,7 +5036,7 @@ function renderTabs() {
     el.addEventListener('mousedown', e => {
       if (e.button === 1) { e.preventDefault(); ipcRenderer.send('tab:close', t.id); }
     });
-    el.addEventListener('contextmenu', e => { e.preventDefault(); showTabCtx(t, e.clientX, e.clientY); });
+    el.addEventListener('contextmenu', e => { e.preventDefault(); ipcRenderer.send('tab:ctx', { tabId: t.id, pinned: t.pinned }); });
 
     const closeBtn = el.querySelector('.tab-close');
     closeBtn.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); ipcRenderer.send('tab:close', t.id); });
@@ -4504,54 +5060,6 @@ function renderTabs() {
   if (activeEl) activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
 }
 
-function showTabCtx(tab, cx, cy) {
-  document.getElementById('_ctx')?.remove();
-  // Park the BV so the context menu is fully interactive — BrowserViews render
-  // above all BrowserWindow DOM regardless of z-index, so without parking the
-  // bottom portion of the menu (which drops below the chrome bar) would be
-  // covered and unclickable. A fresh snapshot is always available because we
-  // take one immediately at did-stop-loading, so there's no visible black flash.
-  const activeTab = S.tabs.find(t => t.id === S.activeId);
-  if (activeTab && activeTab.url !== 'newtab') {
-    ipcRenderer.send('panel:show:instant');
-  }
-  const m = document.createElement('div');
-  m.id = '_ctx'; m.className = 'ctx';
-  m.style.cssText = 'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none';
-  m.innerHTML = `
-    <div class="d-item" data-a="tab:pin">${tab.pinned?'Unpin':'Pin'} Tab</div>
-    <div class="d-item" data-a="tab:dup">Duplicate Tab</div>
-    <div class="d-sep"></div>
-    <div class="d-item" data-a="tab:close">Close Tab</div>`;
-  document.body.appendChild(m);
-  // Measure actual size then position to avoid clipping
-  requestAnimationFrame(() => {
-    const mh = m.offsetHeight, mw = m.offsetWidth;
-    let top = cy + 4;
-    if (top + mh > window.innerHeight - 6) top = cy - mh - 4;
-    let left = cx;
-    if (left + mw > window.innerWidth - 6) left = window.innerWidth - mw - 6;
-    m.style.cssText = `position:fixed;top:${Math.max(top,6)}px;left:${Math.max(left,6)}px`;
-  });
-  m.querySelectorAll('.d-item[data-a]').forEach(el => {
-    el.addEventListener('click', () => {
-      dispatch(el.dataset.a, tab.id);
-      m.remove();
-      document.removeEventListener('mousedown', away);
-      // Restore BV that was parked for the snapshot
-      if (!document.querySelector('.panel.on')) ipcRenderer.send('panel:hide');
-    });
-  });
-  const away = (e) => {
-    // If click is inside the context menu, let the click handler fire first
-    if (m.contains(e.target)) return;
-    m.remove();
-    // Re-attach BV if no panel is open (dispatch already handles it via closeAllDrops)
-    if (!document.querySelector('.panel.on')) ipcRenderer.send('panel:hide');
-    document.removeEventListener('mousedown', away);
-  };
-  setTimeout(() => document.addEventListener('mousedown', away), 10);
-}
 
 /* Nav state */
 let _progTimer;
@@ -4578,8 +5086,8 @@ function applyNavState({ url, canBack, canFwd, loading, favicon, muted, zoom, bl
   const rb = $('btn-reload');
   if (ri) {
     ri.innerHTML = loading
-      ? `<path d="M2 2l9 9M11 2L2 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`
-      : `<path d="M12 6.5A5.5 5.5 0 1 1 8.5 1.7M8 1v3.5H11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+      ? `<path d="M2.5 2.5l9 9M11.5 2.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`
+      : `<path d="M2.5 7A4.5 4.5 0 0 1 11 4.2M11 4.2V1.5M11 4.2H8.3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 7A4.5 4.5 0 0 1 3 9.8M3 9.8v2.7M3 9.8h2.7" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
   if (rb) rb.title = loading ? 'Stop loading (Esc)' : 'Reload (Ctrl+R)';
 
@@ -4634,8 +5142,9 @@ function osOpenDrop() {
   _os.open = true;
   const wrap = $('omni-wrap');
   if (wrap) wrap.classList.add('sugg-open');
-  // Only detach BV when no other overlay is already managing it
-  if (!_anyOverlayOpen()) ipcRenderer.send('panel:show:quick');
+  // Use dedicated instant-park IPC — avoids the async capturePage delay in
+  // _openPanel which would leave the BV covering the dropdown for ~300ms.
+  if (!_anyOverlayOpen()) ipcRenderer.send('omni:drop:show');
 }
 function osCloseDrop() {
   if (!_os.open) return;
@@ -4647,8 +5156,7 @@ function osCloseDrop() {
     omniSugg.classList.remove('show');
     omniSugg.innerHTML = '';
   }
-  // Only re-attach BV when no other overlay is still open
-  if (!_anyOverlayOpen()) ipcRenderer.send('panel:hide');
+  if (!_anyOverlayOpen()) ipcRenderer.send('omni:drop:hide');
 }
 function osRender() {
   if (!_os.items.length || !omniSugg) { osCloseDrop(); return; }
@@ -4781,6 +5289,14 @@ if (_tabStrip) {
 }
 
 /* Media panel renderer */
+/* ── PiP: trigger via IPC so the user-gesture carries from toolbar click ── */
+$('btn-pip')?.addEventListener('click', () => {
+  ipcRenderer.send('bv:pip:start');
+});
+ipcRenderer.on('bv:pip:state', (_, inPip) => {
+  $('btn-pip')?.classList.toggle('pip-active', !!inPip);
+});
+
 function _renderMediaPanel(audioTabs) {
   const list = $('media-tabs-list');
   const btn  = $('btn-media');
@@ -5072,28 +5588,21 @@ const PANEL_MAP = {
 function positionPanel(panel, btn) {
   if (!panel || !btn) return;
   const r   = btn.getBoundingClientRect();
-  // Read width/max-height from CSS, NOT from getBoundingClientRect.
-  // bounding rect is affected by the open animation's scale transform and returns
-  // a shrunken value (~94% of real width), causing the clamp to place the panel
-  // too far right so it overflows the screen edge.
   const pw  = parseInt(panel.style.width) || parseInt(getComputedStyle(panel).width)  || 320;
   const ph  = parseInt(panel.style.maxHeight) || parseInt(getComputedStyle(panel).maxHeight) || 500;
   const margin = 8;
-  // Center the panel horizontally under the button
+  // Center the panel under the button
   let left = r.left + r.width / 2 - pw / 2;
-  // Hard-clamp to viewport
   left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
   let top = r.bottom + 4;
   const isAbove = (top + ph > window.innerHeight - 10);
   if (isAbove) top = Math.max(10, r.top - Math.min(ph, window.innerHeight - 20) - 4);
   panel.style.top  = top + 'px';
   panel.style.left = left + 'px';
-  // Snap animation origin to the button's horizontal centre so the panel
-  // always grows outward from the button rather than from its own centre
+  // Animation origin from button center
   const btnCenterX = r.left + r.width / 2;
-  const originX = Math.round(Math.max(5, Math.min(95, (btnCenterX - left) / pw * 100)));
+  const originX = Math.round(Math.max(0, Math.min(100, (btnCenterX - left) / pw * 100)));
   panel.style.transformOrigin = `${originX}% ${isAbove ? 'bottom' : 'top'}`;
-  // Flag for CSS to pick the correct slide-in direction
   if (isAbove) panel.dataset.above = '1'; else delete panel.dataset.above;
 }
 
@@ -5103,12 +5612,12 @@ function openPanel(panelId, btnId) {
   _openPanelId = panelId;
   // Pre-position BEFORE adding .on to avoid a 2-frame flash at offset (0,0)
   const _r  = btn.getBoundingClientRect();
-  // Read from inline style / getComputedStyle, never bounding rect (affected by animation)
   const _pw = parseInt(panel.style.width) || parseInt(getComputedStyle(panel).width) || 320;
   const _mg = 8;
+  // Center panel under the button
   let _left = _r.left + _r.width / 2 - _pw / 2;
   _left = Math.max(_mg, Math.min(_left, window.innerWidth - _pw - _mg));
-  const _originX = Math.round(Math.max(5, Math.min(95, (_r.left + _r.width / 2 - _left) / _pw * 100)));
+  const _originX = Math.round(Math.max(0, Math.min(100, (_r.left + _r.width / 2 - _left) / _pw * 100)));
   panel.style.left = _left + 'px';
   panel.style.top  = (_r.bottom + 4) + 'px';
   panel.style.transformOrigin = `${_originX}% top`;
@@ -5122,11 +5631,7 @@ function openPanel(panelId, btnId) {
     if (!panel.classList.contains('on')) return;
     positionPanel(panel, btn);
   }));
-  // Park the BV as a 2×2px square hidden behind the nav bar.
-  // The BV stays ATTACHED (compositor frame sink stays live → video never suspends).
-  // The snapshot element covers the full content area so the user sees their
-  // website frozen behind the panel — no squish, no black area.
-  ipcRenderer.send('panel:show:instant');
+  ipcRenderer.send('panel:show:fast');
 }
 
 function closeAllDrops() {
@@ -5138,7 +5643,7 @@ function closeAllDrops() {
   const overlay = $('overlay');
   if (overlay) { overlay.classList.remove('on'); overlay.classList.remove('panel-active'); }
   const rail = $('panel-rail');
-  if (rail) { rail.classList.remove('on'); rail.style.width = ''; }
+  if (rail) { rail.classList.remove('on'); rail.style.width = ''; rail.style.left = ''; }
   ipcRenderer.send('panel:hide');
 }
 
@@ -5186,6 +5691,112 @@ $('btn-ext')?.addEventListener('click', e => {
   else openExtStore();
 });
 $('ext-store-back')?.addEventListener('click', closeExtStore);
+
+/* Extension Store — search, category filter, featured button */
+(function() {
+  function _syncExtCard(extKey) {
+    const tog = document.querySelector(`input.ext-tog[data-ext="${extKey}"]`);
+    return tog ? tog.checked : false;
+  }
+
+  // Search + category filter
+  function _filterStore() {
+    const query = ($('ext-store-search')?.value || '').toLowerCase().trim();
+    const cat = document.querySelector('.ext-cat.active')?.dataset.cat || 'all';
+    const cards = document.querySelectorAll('#ext-grid .ext-card');
+    let visible = 0;
+    cards.forEach(card => {
+      const name = (card.querySelector('.ext-card-name')?.textContent || '').toLowerCase();
+      const desc = (card.querySelector('.ext-card-desc')?.textContent || '').toLowerCase();
+      const cardCat = card.dataset.cat || '';
+      const matchSearch = !query || name.includes(query) || desc.includes(query);
+      const matchCat = cat === 'all' || cardCat === cat;
+      const show = matchSearch && matchCat;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    // Show/hide featured banner
+    const featured = $('ext-featured');
+    if (featured) {
+      const featCat = featured.dataset.cat || 'productivity';
+      featured.style.display = (cat === 'all' || featCat === cat) && !query ? '' : 'none';
+    }
+    const noResults = $('ext-no-results');
+    if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+  }
+
+  $('ext-store-search')?.addEventListener('input', _filterStore);
+
+  document.querySelectorAll('.ext-cat').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ext-cat').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _filterStore();
+    });
+  });
+
+  // ── Active count badge in subtitle ─────────────────────────────────────
+  function _updateActiveCount() {
+    const total = document.querySelectorAll('input.ext-tog').length;
+    const active = document.querySelectorAll('input.ext-tog:checked').length;
+    const sub = $('ext-store-subtitle');
+    if (!sub) return;
+    sub.innerHTML = total + ' built-in add-ons' +
+      (active > 0
+        ? ' &nbsp;<span class="ext-active-badge">' + active + ' active</span>'
+        : '');
+  }
+
+  // ── Featured button sync ────────────────────────────────────────────────
+  function _syncFeaturedBtn() {
+    const featEl = $('ext-featured');
+    const featBtn = $('ext-featured-btn');
+    if (!featEl || !featBtn) return;
+    const extKey = featEl.dataset.ext;
+    const tog = document.querySelector(`input.ext-tog[data-ext="${extKey}"]`);
+    if (!tog) return;
+    if (tog.checked) {
+      featBtn.textContent = 'Disable';
+      featBtn.classList.add('enabled');
+      featEl.classList.add('active');
+    } else {
+      featBtn.textContent = 'Enable';
+      featBtn.classList.remove('enabled');
+      featEl.classList.remove('active');
+    }
+  }
+
+  // Featured button — toggles the featured extension's checkbox
+  const featuredEl  = $('ext-featured');
+  const featuredBtn = $('ext-featured-btn');
+  if (featuredEl && featuredBtn) {
+    const extKey = featuredEl.dataset.ext;
+    featuredBtn.addEventListener('click', () => {
+      const tog = document.querySelector(`input.ext-tog[data-ext="${extKey}"]`);
+      if (tog) { tog.checked = !tog.checked; tog.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+  }
+
+  // Hook every ext-tog to update active count + featured btn on change
+  document.querySelectorAll('input.ext-tog').forEach(tog => {
+    tog.addEventListener('change', () => { _updateActiveCount(); _syncFeaturedBtn(); });
+  });
+
+  // Re-sync store state when it opens
+  const _origOpen = window.openExtStore;
+  window.openExtStore = function() {
+    _origOpen && _origOpen();
+    // Reset search + filter
+    const search = $('ext-store-search');
+    if (search && search.value) { search.value = ''; _filterStore(); }
+    // Sync state
+    _updateActiveCount();
+    _syncFeaturedBtn();
+  };
+  // Initial sync
+  _updateActiveCount();
+  _syncFeaturedBtn();
+})();
 
 /* ── Geo Location Panel ───────────────────────────────────────────────────── */
 (function() {
@@ -5362,11 +5973,28 @@ $('ext-store-back')?.addEventListener('click', closeExtStore);
 /* Extension toggles (in store) */
 document.querySelectorAll('.ext-tog').forEach(tog => {
   tog.addEventListener('change', () => {
-    const row = tog.closest('.ext-row');
-    const status = row?.querySelector('.ext-row-status');
+    const card = tog.closest('.ext-card');
+    const row  = tog.closest('.ext-row');
     const enabled = tog.checked;
-    row?.classList.toggle('active', enabled);
-    if (status) status.textContent = enabled ? '● On' : 'Off';
+    // Update .ext-card state
+    if (card) {
+      const status = card.querySelector('.ext-card-status');
+      card.classList.toggle('active', enabled);
+      if (status) status.textContent = enabled ? '● On' : 'Off';
+    }
+    // Update .ext-row state (legacy fallback)
+    if (row) {
+      const status = row.querySelector('.ext-row-status');
+      row.classList.toggle('active', enabled);
+      if (status) status.textContent = enabled ? '● On' : 'Off';
+    }
+    // Sync featured button if this ext is the featured one
+    const featured = document.getElementById('ext-featured');
+    if (featured && featured.dataset.ext === tog.dataset.ext) {
+      const btn = document.getElementById('ext-featured-btn');
+      if (btn) { btn.textContent = enabled ? 'Disable' : 'Enable'; btn.classList.toggle('enabled', enabled); }
+      featured.classList.toggle('active', enabled);
+    }
     ipcRenderer.send('ext:toggle', { id: tog.dataset.ext, enabled });
   });
 });
@@ -5776,7 +6404,7 @@ function renderSidebar() {
     try {
       const host = new URL(site.url).hostname;
       favEl = `<img src="https://www.google.com/s2/favicons?domain=${host}&sz=32" onerror="this.style.display='none'">`;
-    } catch { favEl = `<span class="sb-site-ph">🌐</span>`; }
+    } catch { favEl = `<span class="sb-site-ph"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block"><circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.15" opacity=".4"/><path d="M9 2c0 0-3 2.5-3 7s3 7 3 7M9 2c0 0 3 2.5 3 7s-3 7-3 7" stroke="currentColor" stroke-width="1.1" opacity=".4"/><path d="M2 9h14" stroke="currentColor" stroke-width="1.1" opacity=".4"/></svg></span>`; }
     return `<div class="sb-site" title="${esc(site.title || site.url)}" onclick="sidebarNav('${esc(site.url).replace(/'/g,"\\'")}')">${favEl}<span class="sb-rm" onclick="sidebarRm(${i},event)">×</span></div>`;
   }).join('');
 }
@@ -5793,8 +6421,6 @@ function sidebarAdd() {
   const t = S.tabs?.find(t => t.id === S.activeId);
   if (urlInp)  urlInp.value  = (t && t.url !== 'newtab') ? t.url  : '';
   if (nameInp) nameInp.value = (t && t.url !== 'newtab') ? (t.title || '') : '';
-  // Park the BV below the window so the modal overlay captures mouse events
-  // (BrowserViews always render above BrowserWindow DOM and eat clicks otherwise)
   ipcRenderer.send('sidebar:modal:open');
   modal.classList.add('on');
   setTimeout(() => urlInp?.select(), 40);
@@ -5869,7 +6495,7 @@ if (bmBtn) {
     if (!t||!t.url||t.url==='newtab') return;
     const ex = S.bookmarks.find(b=>b.url===t.url);
     if (ex) { ipcRenderer.send('bookmark:remove',ex.id); toast('Bookmark removed'); }
-    else { ipcRenderer.send('bookmark:add',{url:t.url,title:t.title,favicon:t.favicon}); toast('Bookmarked ✓','teal'); }
+    else { ipcRenderer.send('bookmark:add',{url:t.url,title:t.title,favicon:t.favicon}); toast('Bookmarked','teal'); }
   });
 }
 
@@ -6123,6 +6749,10 @@ function applySettings(s) {
   if (setUa) setUa.checked   = s.spoofUserAgent !== false;
   if (setDnt) setDnt.checked  = s.doNotTrack     !== false;
   if (setGpu) setGpu.checked  = s.hardwareAcceleration !== false;
+  const _afEl  = $('set-autofill-enabled');
+  const _spwEl = $('set-save-pw-prompt');
+  if (_afEl)  _afEl.checked  = s.autofillEnabled !== false;
+  if (_spwEl) _spwEl.checked = s.savePwPrompt    !== false;
 
   if (setEngine && s.searchEngine) setEngine.value = s.searchEngine;
   if (setHomepage && s.homepage) setHomepage.value = s.homepage;
@@ -6204,10 +6834,13 @@ function applySettings(s) {
     'tb-ig-fab':  'incognito-fab',
   };
   const tb = s.toolbar || {};
+  // Default visibility: most buttons on, passwords off (works automatically via autofill toast)
+  const _tbDefaults = { 'tb-passwords': false };
   for (const [cbId, btnId] of Object.entries(_tbMap)) {
     const cb  = $(cbId);
     const btn = $(btnId);
-    const vis = tb[cbId] !== false;
+    const defaultVis = _tbDefaults[cbId] !== undefined ? _tbDefaults[cbId] : true;
+    const vis = tb[cbId] !== undefined ? tb[cbId] !== false : defaultVis;
     if (cb)  cb.checked = vis;
     if (btn) btn.style.display = vis ? '' : 'none';
   }
@@ -6222,11 +6855,27 @@ function applySettings(s) {
   document.querySelectorAll('.ext-tog').forEach(tog => {
     const on = !!exts[tog.dataset.ext];
     tog.checked = on;
-    const row = tog.closest('.ext-row');
-    const status = row?.querySelector('.ext-row-status');
-    row?.classList.toggle('active', on);
-    if (status) status.textContent = on ? '● On' : 'Off';
+    const card = tog.closest('.ext-card');
+    const row  = tog.closest('.ext-row');
+    if (card) {
+      const status = card.querySelector('.ext-card-status');
+      card.classList.toggle('active', on);
+      if (status) status.textContent = on ? '● On' : 'Off';
+    }
+    if (row) {
+      const status = row.querySelector('.ext-row-status');
+      row.classList.toggle('active', on);
+      if (status) status.textContent = on ? '● On' : 'Off';
+    }
   });
+  // Sync featured button
+  const _feat = document.getElementById('ext-featured');
+  if (_feat) {
+    const _featOn = !!exts[_feat.dataset.ext];
+    const _featBtn = document.getElementById('ext-featured-btn');
+    if (_featBtn) { _featBtn.textContent = _featOn ? 'Disable' : 'Enable'; _featBtn.classList.toggle('enabled', _featOn); }
+    _feat.classList.toggle('active', _featOn);
+  }
 
   const selTransLang = $('sel-translate-lang');
   if (selTransLang && s.translateLang) selTransLang.value = s.translateLang;
@@ -6279,6 +6928,12 @@ if (setRmwallBtn) setRmwallBtn.addEventListener('click', () => ipcRenderer.send(
 
 const setRefreshFilters = $('set-refresh-filters');
 if (setRefreshFilters) setRefreshFilters.addEventListener('click', () => { ipcRenderer.send('adblock:refresh'); toast('Refreshing filter lists…'); });
+
+const setAutofillEnabled = $('set-autofill-enabled');
+if (setAutofillEnabled) setAutofillEnabled.addEventListener('change', function(){ ipcRenderer.send('settings:set',{autofillEnabled:this.checked}); });
+
+const setSavePwPrompt = $('set-save-pw-prompt');
+if (setSavePwPrompt) setSavePwPrompt.addEventListener('change', function(){ ipcRenderer.send('settings:set',{savePwPrompt:this.checked}); });
 
 const setCompact = $('set-compact');
 if (setCompact) {
@@ -6391,12 +7046,12 @@ if (setDiscordBtn) setDiscordBtn.addEventListener('click', () => {
 
 /* Poison Data */
 const PERSONAS = {
-  boomer:  { name:'🏌️ Retired Boomer',    interests:['golf','retirement','cruise','florida','fox news','medicare','supplements'] },
-  teen:    { name:'🎮 Gen Z Gamer',         interests:['gaming','anime','sneakers','energy drink','tiktok','pokemon','twitch'] },
-  parent:  { name:'👶 Suburban Parent',     interests:['minivan','school','family vacation','baby','meal kit','safety','suv'] },
-  techbro: { name:'🚀 Bay Area Tech Bro',   interests:['startup','crypto','productivity','standing desk','cold brew','vc','ai'] },
-  prepper: { name:'🛖 Survivalist Prepper', interests:['emergency supplies','off-grid','survival','guns','bunker','homestead','freeze dried food'] },
-  luxury:  { name:'💎 Luxury Shopper',      interests:['designer','yacht','private jet','rolex','5-star','champagne','first class'] },
+  boomer:  { name:'Retiree',      interests:['golf','retirement','cruise','Florida','news','medicare','supplements','senior living'] },
+  teen:    { name:'Gamer',         interests:['gaming','anime','sneakers','energy drink','twitch','pokemon','gaming gear'] },
+  parent:  { name:'Parent',        interests:['school','family vacation','baby','meal kit','safety','minivan','parenting'] },
+  techbro: { name:'Developer',     interests:['startup','ai tools','saas','productivity','cold brew','open source','dev tools'] },
+  prepper: { name:'Prepper',       interests:['emergency supplies','off-grid','survival','homestead','freeze dried food','water purification'] },
+  luxury:  { name:'High Earner',   interests:['designer','yacht','private jet','rolex','5-star hotel','champagne','first class'] },
 };
 
 let poisonInterval = null;
@@ -6427,6 +7082,7 @@ function updatePoisonUI() {
     el.classList.toggle('selected', !S.poisonActive && el.dataset.persona === S.poisonPersona);
   });
   if (btnPoison) btnPoison.classList.toggle('active-icon', S.poisonActive);
+  if (typeof _renderCustomPersonaCards === 'function') _renderCustomPersonaCards();
 }
 
 function startPoisoning() {
@@ -6452,7 +7108,7 @@ if (togPoison) {
   togPoison.addEventListener('change', function() {
     if (this.checked && !S.poisonPersona) { toast('Select a persona first', 'err'); this.checked = false; return; }
     S.poisonActive = this.checked;
-    if (S.poisonActive) { startPoisoning(); toast(`☠ Poisoning as ${PERSONAS[S.poisonPersona].name}`, 'teal'); }
+    if (S.poisonActive) { startPoisoning(); toast(`Poisoning as ${PERSONAS[S.poisonPersona].name}`, 'teal'); }
     else { stopPoisoning(); toast('Poison disabled'); }
     savePoisonState(); updatePoisonUI();
   });
@@ -6476,6 +7132,240 @@ document.querySelectorAll('.persona-card').forEach(card => card.addEventListener
   if (S.poisonActive) startPoisoning();
   toast(`Persona: ${PERSONAS[S.poisonPersona].name}`);
 }));
+
+/* ── Custom personas ─────────────────────────────────────────────────────── */
+let _renderCustomPersonaCards = null;
+(function initCustomPersonas() {
+  function loadCustom() { try { return JSON.parse(localStorage.getItem('raw-custom-personas')||'[]'); } catch { return []; } }
+  function saveCustom() {
+    const arr = Object.entries(PERSONAS).filter(([,v]) => v.custom).map(([k,v]) => ({ key:k, name:v.name, interests:v.interests }));
+    try { localStorage.setItem('raw-custom-personas', JSON.stringify(arr)); } catch {}
+  }
+
+  // Load saved custom personas into PERSONAS
+  loadCustom().forEach(p => { PERSONAS[p.key] = { name: p.name, interests: p.interests, custom: true }; });
+
+  _renderCustomPersonaCards = function renderCustomCards() {
+    const container = $('custom-persona-cards');
+    if (!container) return;
+    const keys = Object.keys(PERSONAS).filter(k => PERSONAS[k].custom);
+    container.innerHTML = keys.map(k => {
+      const p = PERSONAS[k];
+      const isActive = S.poisonActive && S.poisonPersona === k;
+      const isSel = !S.poisonActive && S.poisonPersona === k;
+      return `<div class="persona-card${isActive?' active':isSel?' selected':''}" data-persona="${k}">`+
+        `<div class="persona-name"><svg width="12" height="12" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;color:var(--acc);opacity:.7"><circle cx="6.5" cy="4" r="2" stroke="currentColor" stroke-width="1.15"/><path d="M2 12c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg>`+
+        `${esc(p.name)}<button class="persona-card-del" data-key="${k}" title="Delete">\u00d7</button></div>`+
+        `<div class="persona-desc">${esc(p.interests.slice(0,6).join(', '))}</div></div>`;
+    }).join('');
+    container.querySelectorAll('.persona-card').forEach(card => card.addEventListener('click', e => {
+      if (e.target.closest('.persona-card-del')) return;
+      S.poisonPersona = card.dataset.persona; savePoisonState(); updatePoisonUI();
+      if (S.poisonActive) startPoisoning();
+      toast(`Persona: ${PERSONAS[S.poisonPersona].name}`);
+    }));
+    container.querySelectorAll('.persona-card-del').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const k = btn.dataset.key;
+      if (S.poisonPersona === k) { S.poisonPersona = null; savePoisonState(); updatePoisonUI(); }
+      delete PERSONAS[k];
+      saveCustom(); _renderCustomPersonaCards();
+    }));
+  };
+
+  _renderCustomPersonaCards();
+
+  // ── Helper: create persona from name + keywords string ───────────────────
+  function createPersonaFromInputs(name, rawKws) {
+    const kws = rawKws.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!name) { toast('Enter a persona name', 'err'); return false; }
+    if (!kws.length) { toast('Add at least one keyword', 'err'); return false; }
+    const key = 'custom_' + Date.now();
+    PERSONAS[key] = { name, interests: kws, custom: true };
+    saveCustom(); _renderCustomPersonaCards();
+    toast(`Persona "${name}" created`, 'teal');
+    return true;
+  }
+
+  // ── Setup overlay (first-time) ────────────────────────────────────────────
+  function runPersonaSetupActivation(personaKey) {
+    console.log('[Persona] runPersonaSetupActivation called with key=', personaKey);
+    const formPhase = $('persona-setup-form-phase');
+    const actPhase  = $('persona-setup-activating');
+    if (!formPhase || !actPhase) return;
+
+    // Swap phases
+    formPhase.style.display = 'none';
+    actPhase.classList.add('show');
+
+    const steps = ['psa-step-1','psa-step-2','psa-step-3','psa-step-4'];
+    const delays = [0, 480, 920, 1380]; // stagger each step in
+    const donePause = 420; // time each step stays "loading" before going done
+
+    steps.forEach((id, i) => {
+      const el = $(id);
+      if (!el) return;
+      // Slide in
+      setTimeout(() => el.classList.add('in'), delays[i]);
+      // Mark done
+      setTimeout(() => el.classList.add('done'), delays[i] + donePause);
+    });
+
+    // After all steps done, activate persona then dismiss
+    const totalMs = delays[steps.length - 1] + donePause + 420;
+    setTimeout(() => {
+      // Actually activate the persona
+      S.poisonPersona = personaKey;
+      S.poisonActive  = true;
+      savePoisonState();
+      startPoisoning();
+      updatePoisonUI();
+
+      const overlay = $('persona-setup-overlay');
+      if (overlay) {
+        overlay.classList.add('exit');
+        setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('exit'); }, 290);
+      }
+      try { localStorage.setItem('raw-persona-setup-seen', '1'); } catch {}
+      toast(`Persona "${PERSONAS[personaKey].name}" is active`, 'teal');
+    }, totalMs);
+  }
+
+  function dismissPersonaSetup(save) {
+    console.log('[Persona] dismissPersonaSetup called with save=', save);
+    if (save) {
+      const nameEl = $('setup-name-inp');
+      const kwEl   = $('setup-kw-inp');
+      const nameErrEl = $('setup-name-err');
+      const kwErrEl   = $('setup-kw-err');
+      const name = (nameEl?.value || '').trim();
+      const kws  = (kwEl?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+      // Inline validation — toasts are behind the overlay
+      let valid = true;
+      if (nameErrEl) nameErrEl.classList.remove('show');
+      if (kwErrEl)   kwErrEl.classList.remove('show');
+      if (!name)      { if (nameErrEl) nameErrEl.classList.add('show'); nameEl?.focus(); valid = false; }
+      if (!kws.length){ if (kwErrEl)   kwErrEl.classList.add('show');   if (valid) kwEl?.focus();   valid = false; }
+      if (!valid) return;
+
+      const key = 'custom_' + Date.now();
+      PERSONAS[key] = { name, interests: kws, custom: true };
+      saveCustom();
+      if (nameEl) nameEl.value = '';
+      if (kwEl)   kwEl.value   = '';
+      // Run animated activation phase
+      runPersonaSetupActivation(key);
+    } else {
+      const overlay = $('persona-setup-overlay');
+      if (overlay) {
+        overlay.classList.add('exit');
+        setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('exit'); }, 290);
+      }
+      try { localStorage.setItem('raw-persona-setup-seen', '1'); } catch {}
+    }
+  }
+
+  // Defer button listener attachment until overlay HTML is fully ready
+  setTimeout(() => {
+    const setupSaveBtn = $('persona-setup-save');
+    const setupSkipBtn = $('persona-setup-skip');
+    if (setupSaveBtn) {
+      setupSaveBtn.addEventListener('click', () => dismissPersonaSetup(true));
+      console.log('[Persona] Setup save button listener attached');
+    }
+    if (setupSkipBtn) {
+      setupSkipBtn.addEventListener('click', () => dismissPersonaSetup(false));
+      console.log('[Persona] Setup skip button listener attached');
+    }
+  }, 100);
+
+  // Enter key in setup name field → focus textarea
+  setTimeout(() => {
+    const setupNameInp = $('setup-name-inp');
+    if (setupNameInp) setupNameInp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); $('setup-kw-inp')?.focus(); }
+    });
+  }, 100);
+
+  // ── Create Persona button & popup ─────────────────────────────────────────
+  setTimeout(() => {
+    const createBtn = $('persona-create-btn');
+    const popup     = $('persona-popup');
+    const popupClose = $('persona-popup-close');
+
+  function openPopup() {
+    if (!popup) return;
+    popup.style.display = 'flex';
+    setTimeout(() => $('custom-name-inp')?.focus(), 50);
+  }
+  function closePopup() {
+    if (!popup) return;
+    popup.style.display = 'none';
+    if ($('custom-name-inp')) $('custom-name-inp').value = '';
+    if ($('custom-kw-inp'))   $('custom-kw-inp').value   = '';
+  }
+
+  if (createBtn) {
+    createBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const seen = localStorage.getItem('raw-persona-setup-seen');
+      if (!seen) {
+        // First time: show full setup overlay — close the panel so it doesn't show through
+        const overlay = $('persona-setup-overlay');
+        if (overlay) {
+          // Reset to form phase in case it was in activating state
+          const fp = $('persona-setup-form-phase');
+          const ap = $('persona-setup-activating');
+          if (fp) fp.style.display = '';
+          if (ap) { ap.classList.remove('show'); document.querySelectorAll('.psa-step').forEach(s => s.classList.remove('in','done')); }
+          overlay.style.display = 'flex';
+        }
+        // Close the poison panel so it's not visible behind the overlay
+        const panel = $('panel-poison');
+        if (panel) { panel.classList.remove('on'); }
+        const rail = $('panel-rail');
+        if (rail) rail.classList.remove('on');
+        const ov = $('overlay');
+        if (ov) ov.classList.remove('on');
+      } else {
+        // Subsequent times: toggle popup
+        if (popup && popup.style.display !== 'none') closePopup();
+        else openPopup();
+      }
+    });
+  }
+
+  if (popupClose) popupClose.addEventListener('click', e => { e.stopPropagation(); closePopup(); });
+
+  // Close popup when clicking outside
+  document.addEventListener('click', e => {
+    if (popup && popup.style.display !== 'none') {
+      if (!popup.contains(e.target) && e.target !== createBtn && !createBtn?.contains(e.target)) {
+        closePopup();
+      }
+    }
+  });
+
+  // Save from popup
+  const saveBtn = $('custom-save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const nameInp = $('custom-name-inp');
+      const kwInp   = $('custom-kw-inp');
+      const name = (nameInp?.value || '').trim();
+      const kws  = kwInp?.value || '';
+      if (createPersonaFromInputs(name, kws)) closePopup();
+    });
+  }
+
+  // Enter in popup name → tab to textarea
+  const popupNameInp = $('custom-name-inp');
+  if (popupNameInp) popupNameInp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); $('custom-kw-inp')?.focus(); }
+  });
+  }, 100); // Close setTimeout
+})();
 
 /* Find */
 const findBar = $('find-bar'), findInput = $('find-input');
@@ -6917,6 +7807,7 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
 
   ipcRenderer.on('autofill:query', function(_, data) {
     if (!_key) return;
+    if (S.settings && S.settings.autofillEnabled === false) return;
     const nd = _normDomain(data.domain);
     const matches = _entries.filter(function(e) {
       const ed = _normDomain(e.domain);
@@ -6942,6 +7833,58 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
     toast.classList.add('af-show');
     clearTimeout(toast._afTimer);
     toast._afTimer = setTimeout(function(){ toast.classList.remove('af-show'); }, 7000);
+  });
+
+  // ── Save-prompt ───────────────────────────────────────────────────────────────
+  var _spwPending = null;
+
+  async function _savePending() {
+    if (!_spwPending) return;
+    const { domain, username, password } = _spwPending;
+    _spwPending = null;
+    // Vault must be unlocked
+    if (!_key) {
+      // Open the vault panel so user can unlock, then data will be in _autofillPending
+      _autofillPending = domain;
+      openPanel('panel-passwords', 'btn-passwords');
+      _onPanelOpen();
+      ipcRenderer.send('toast','Unlock your vault to save the password','teal');
+      return;
+    }
+    // Check for duplicate (same domain + username)
+    const nd = _normDomain(domain);
+    const dup = _entries.find(function(e) {
+      return _normDomain(e.domain) === nd && e.username === username;
+    });
+    if (dup) {
+      // Update existing entry silently
+      dup.password = password;
+      dup.updated  = Date.now();
+    } else {
+      _entries.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+        domain: nd, username, password, note: '', updated: Date.now(),
+      });
+    }
+    await _saveVault();
+    ipcRenderer.send('toast', dup ? 'Password updated' : 'Password saved', 'teal');
+  }
+
+  ipcRenderer.on('autofill:save-prompt', function(_, data) {
+    if (!data || !data.domain || !data.username || !data.password) return;
+    if (S.settings && S.settings.savePwPrompt === false) return;
+    // Skip domains the user has dismissed in this session
+    const nd    = _normDomain(data.domain);
+    const toast = document.getElementById('save-pw-toast');
+    if (!toast) return;
+    _spwPending = data;
+    const domEl  = document.getElementById('spw-domain');
+    const userEl = document.getElementById('spw-user');
+    if (domEl)  domEl.textContent  = nd;
+    if (userEl) userEl.textContent = data.username;
+    toast.classList.add('spw-show');
+    clearTimeout(toast._spwTimer);
+    toast._spwTimer = setTimeout(function(){ toast.classList.remove('spw-show'); _spwPending = null; }, 12000);
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────────
@@ -6996,6 +7939,25 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
     const dm = document.getElementById('autofill-dismiss');
     const at = document.getElementById('autofill-toast');
     if (dm && at) dm.addEventListener('click', function(){ at.classList.remove('af-show'); });
+
+    // Save-prompt buttons
+    const spwToast   = document.getElementById('save-pw-toast');
+    const spwSave    = document.getElementById('spw-save');
+    const spwSkip    = document.getElementById('spw-skip');
+    const spwDismiss = document.getElementById('spw-dismiss');
+    function _hideSpw() { if (spwToast) spwToast.classList.remove('spw-show'); _spwPending = null; }
+    if (spwSave)    spwSave.addEventListener('click',    function() { _savePending(); _hideSpw(); });
+    if (spwSkip)    spwSkip.addEventListener('click',    _hideSpw);
+    if (spwDismiss) spwDismiss.addEventListener('click', _hideSpw);
+
+    // Settings: "Manage Vault" button
+    const manageBtn = document.getElementById('set-manage-passwords');
+    if (manageBtn) manageBtn.addEventListener('click', function() {
+      // Close settings panel and open password panel
+      if (typeof closeAllDrops === 'function') closeAllDrops();
+      if (typeof openPanel === 'function') openPanel('panel-passwords', 'btn-passwords');
+      _onPanelOpen();
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
@@ -7177,7 +8139,7 @@ ipcRenderer.on('ytdlp:done', (_, { id, outPath, title }) => {
   const j = ytdlpJobs.find(x => x.id === id);
   if (j) { j.state = 'done'; j.percent = 100; j.outPath = outPath; if (title) j.title = title; }
   ytdlpRenderJobs();
-  toast('Download complete ✓', 'teal');
+  toast('Download complete', 'teal');
 });
 ipcRenderer.on('ytdlp:error', (_, { id, error }) => {
   const j = ytdlpJobs.find(x => x.id === id);
@@ -7310,12 +8272,13 @@ if (btnYtdlp) {
 
   /* ── Extension items ── */
   const EXT_ITEMS = [
-    { key:'remove-banners', name:'Remove Banners', desc:'Hides cookie popups & notices',      icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3.5" width="12" height="5" rx="1" stroke="currentColor" stroke-width="1.15"/><line x1="11.5" y1="1.5" x2="2.5" y2="12.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', def:true  },
     { key:'video-speed',    name:'Video Speed',    desc:'Speed controls on any video',        icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5a6 6 0 1 1 10 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7 9.5L10.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="9.5" r="1.1" fill="currentColor"/></svg>', def:false },
     { key:'dark-mode',      name:'Dark Mode',      desc:'Invert page to dark',                icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 8.5A5.5 5.5 0 0 1 5.5 3 5.5 5.5 0 1 0 11 8.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>', def:false },
     { key:'focus-mode',     name:'Focus Mode',     desc:'Hide distracting page elements',     icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.8" stroke="currentColor" stroke-width="1.2"/><path d="M7 1v2.5M7 10.5V13M1 7h2.5M10.5 7H13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>', def:false },
     { key:'no-animations',  name:'No Animations',  desc:'Disable page animations instantly',  icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7.5c1-2.5 2-2.5 3 0 1 2.5 2 2.5 3 0 1-2.5 2-2.5 3 0" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" opacity=".6"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', def:false },
     { key:'night-filter',   name:'Night Filter',   desc:'Warm red-tinted screen overlay',     icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7c1.8-3.2 3.8-4.5 6-4.5S11.2 3.8 13 7c-1.8 3.2-3.8 4.5-6 4.5S2.8 10.2 1 7Z" stroke="currentColor" stroke-width="1.15"/><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.1"/></svg>', def:false },
+    { key:'scroll-progress', name:'Scroll Progress', desc:'Thin progress bar at top of every page', icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="12" height="1.8" rx=".9" fill="currentColor" opacity=".2"/><rect x="1" y="4" width="7" height="1.8" rx=".9" fill="currentColor" opacity=".85"/><line x1="1" y1="7.5" x2="9" y2="7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".4"/><line x1="1" y1="9.5" x2="6" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".4"/></svg>', def:false },
+    { key:'yt-ad',          name:'YouTube Ad Skip', desc:'Auto-skips YouTube ads',               icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 4.5C2.5 3.67 3.17 3 4 3h6C10.83 3 11.5 3.67 11.5 4.5v5c0 .83-.67 1.5-1.5 1.5H4C3.17 11 2.5 10.33 2.5 9.5v-5Z" stroke="currentColor" stroke-width="1.1"/><polygon points="6,5.5 9.5,7 6,8.5" fill="currentColor" opacity=".65"/></svg>', def:false },
   ];
 
   /* ── State ── */
@@ -7457,7 +8420,7 @@ if (btnYtdlp) {
   if (btnDefault) {
     ipcRenderer.invoke('browser:is-default').then(isDefault => {
       if (isDefault) {
-        btnDefault.innerHTML = '✓ Already your default browser';
+        btnDefault.innerHTML = 'Already your default browser';
         btnDefault.disabled = true; btnDefault.classList.add('done');
       }
     }).catch(() => {});
@@ -7507,10 +8470,10 @@ if (btnYtdlp) {
     document.querySelectorAll('.ext-tog').forEach(tog => {
       const on = !!_extState[tog.dataset.ext];
       tog.checked = on;
+      const card   = tog.closest('.ext-card');
       const row    = tog.closest('.ext-row');
-      const status = row && row.querySelector('.ext-row-status');
-      if (row)    row.classList.toggle('active', on);
-      if (status) status.textContent = on ? '● On' : 'Off';
+      if (card) { card.classList.toggle('active', on); const s = card.querySelector('.ext-card-status'); if (s) s.textContent = on ? '● On' : 'Off'; }
+      if (row)  { row.classList.toggle('active', on);  const s = row.querySelector('.ext-row-status');   if (s) s.textContent = on ? '● On' : 'Off'; }
     });
 
     localStorage.setItem('setup-complete', '1');
@@ -7542,36 +8505,26 @@ if (btnYtdlp) {
 <div id="ignite-intro">
   <!-- Step 1: Welcome + animation -->
   <div class="ig-step" id="ig-intro-s1">
-    <div class="ig-intro-eyebrow">RAW Browser</div>
-    <div class="ig-intro-h1">Welcome to<br><span>Ignore</span></div>
-    <div class="ig-intro-sub">A private window that leaves no trace.</div>
-    <div class="ig-scene">
-      <div class="ig-monitor">
-        <div class="ig-monitor-content">
-          <div class="ig-mc-line"></div>
-          <div class="ig-mc-line"></div>
-          <div class="ig-mc-line"></div>
-          <div class="ig-mc-line"></div>
-        </div>
-        <div class="ig-shield-overlay">
-          <svg class="ig-shield-lock" width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect x="5" y="15" width="22" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M10 15V11a6 6 0 0 1 12 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="16" cy="22" r="2.2" fill="currentColor" opacity=".7"/>
-          </svg>
-          <div class="ig-shield-label">Protected</div>
-        </div>
-      </div>
-      <div class="ig-monitor-stand"></div>
-      <div class="ig-monitor-base"></div>
-      <!-- Person silhouette -->
-      <svg class="ig-person" width="28" height="40" viewBox="0 0 28 40" fill="none">
-        <circle cx="14" cy="7" r="5.5" stroke="rgba(168,85,247,.35)" stroke-width="1.5"/>
-        <path d="M4 38c0-8 4-14 10-14s10 6 10 14" stroke="rgba(168,85,247,.35)" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Logo badge -->
+    <div class="ig-logo-badge">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M7 14V9a7 7 0 0 1 14 0v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <rect x="4" y="14" width="20" height="12" rx="3" stroke="currentColor" stroke-width="1.9"/>
+        <circle cx="14" cy="20" r="2" fill="currentColor" opacity=".75"/>
       </svg>
     </div>
+    <div class="ig-intro-eyebrow">RAW Browser</div>
+    <div class="ig-intro-h1"><span>Ignore</span> Mode</div>
+    <div class="ig-intro-sub">A private window that leaves no trace — no history, no cookies, and no session data saved.</div>
+    <!-- Feature pills -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:28px;">
+      <span style="padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.22);color:rgba(200,160,255,.75);">No History</span>
+      <span style="padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.22);color:rgba(200,160,255,.75);">No Cookies</span>
+      <span style="padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.22);color:rgba(200,160,255,.75);">Isolated Session</span>
+      <span style="padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.22);color:rgba(200,160,255,.75);">Trackers Blocked</span>
+    </div>
     <div class="ig-dots"><div class="ig-dot on"></div><div class="ig-dot"></div></div>
-    <button class="ig-cta-btn" id="ig-ready-btn">I&apos;m Ready &rarr;</button>
+    <button class="ig-cta-btn" id="ig-ready-btn">Continue &rarr;</button>
   </div>
   <!-- Step 2: Info -->
   <div class="ig-step" id="ig-intro-s2" style="display:none">
@@ -7632,6 +8585,22 @@ if (btnYtdlp) {
     <button id="autofill-dismiss" class="af-dismiss">&#x2715;</button>
   </div>
   <div id="autofill-list" class="af-list"></div>
+</div>
+
+<!-- SAVE PASSWORD TOAST -->
+<div id="save-pw-toast" class="spw-toast">
+  <div class="spw-hdr">
+    <span class="spw-title">Save Password?</span>
+    <button id="spw-dismiss" class="af-dismiss">&#x2715;</button>
+  </div>
+  <div class="spw-meta">
+    <div class="spw-meta-domain" id="spw-domain"></div>
+    <div class="spw-meta-user"   id="spw-user"></div>
+  </div>
+  <div class="spw-btns">
+    <button id="spw-save" class="spw-btn spw-btn-acc">Save</button>
+    <button id="spw-skip" class="spw-btn">Not now</button>
+  </div>
 </div>
 
 <!-- INCOGNITO FAB -->
@@ -7719,6 +8688,112 @@ if (btnYtdlp) {
   });
 })();
 </script>
+
+<!-- ── Persona first-time setup overlay ────────────────────────────────── -->
+<div id="persona-setup-overlay" style="display:none">
+  <div class="persona-setup-card">
+
+    <!-- Phase 1: Build form -->
+    <div id="persona-setup-form-phase">
+      <div class="persona-setup-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="9" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M5 24c0-5 4-8 9-8s9 3 9 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M20 4v6M17 7h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="persona-setup-title">Build Your Persona</div>
+      <div class="persona-setup-sub">Create a custom identity to shape how algorithms and advertisers see you. Give it a name and a set of interests.</div>
+      <div class="persona-setup-group">
+        <div class="persona-setup-label">Persona Name</div>
+        <input class="persona-setup-input" id="setup-name-inp" placeholder="e.g. Sneakerhead, Crypto Bro, Outdoor Adventurer…" maxlength="28" autocomplete="off" spellcheck="false">
+        <div class="persona-setup-err" id="setup-name-err">Please enter a name for your persona.</div>
+      </div>
+      <div class="persona-setup-group">
+        <div class="persona-setup-label">Interests &amp; Keywords</div>
+        <textarea class="persona-setup-kw" id="setup-kw-inp" placeholder="One interest per line&#10;e.g. sneakers&#10;streetwear&#10;basketball" spellcheck="false"></textarea>
+        <div class="persona-setup-err" id="setup-kw-err">Add at least one interest or keyword.</div>
+        <div class="persona-setup-examples">RAW quietly injects these signals into your browsing to retrain what algorithms think about you.</div>
+      </div>
+      <button class="persona-setup-cta" id="persona-setup-save">Create &amp; Activate Persona</button>
+      <button class="persona-setup-skip" id="persona-setup-skip">Skip for now</button>
+    </div>
+
+    <!-- Phase 2: Activating animation -->
+    <div id="persona-setup-activating">
+      <div class="psa-spinner"></div>
+      <div class="psa-title">Activating your persona…</div>
+      <div class="psa-sub">RAW is preparing your identity and arming the data poison signals.</div>
+      <div class="psa-steps">
+        <div class="psa-step" id="psa-step-1">
+          <div class="psa-step-icon">
+            <div class="icon-spin"></div>
+            <svg class="icon-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="psa-step-txt"><strong>Persona created</strong><span>Your identity profile has been saved locally.</span></div>
+        </div>
+        <div class="psa-step" id="psa-step-2">
+          <div class="psa-step-icon">
+            <div class="icon-spin"></div>
+            <svg class="icon-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="psa-step-txt"><strong>Signals armed</strong><span>Interest keywords loaded into the poison engine.</span></div>
+        </div>
+        <div class="psa-step" id="psa-step-3">
+          <div class="psa-step-icon">
+            <div class="icon-spin"></div>
+            <svg class="icon-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="psa-step-txt"><strong>Poison enabled</strong><span>RAW will now subtly push these signals to advertisers while you browse.</span></div>
+        </div>
+        <div class="psa-step" id="psa-step-4">
+          <div class="psa-step-icon">
+            <div class="icon-spin"></div>
+            <svg class="icon-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="var(--acc)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="psa-step-txt"><strong>All systems active</strong><span>Your persona is live. Advertisers are seeing what you want them to see.</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- UPDATE POPUP -->
+<div id="update-backdrop"></div>
+<div id="update-popup">
+
+  <!-- Step 1: Outdated notice -->
+  <div class="upd-state active" id="upd-state-1">
+    <div class="upd-icon">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3L2 22h22L13 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13 10v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="13" cy="19" r="1.1" fill="currentColor"/></svg>
+    </div>
+    <div class="upd-title">Your version is outdated!</div>
+    <div class="upd-body">This means your version will not receive security updates and important features.</div>
+    <button class="upd-btn-primary" id="upd-update-now">Update Now</button>
+    <button class="upd-btn-skip" id="upd-skip">Skip For Now</button>
+  </div>
+
+  <!-- Step 2: Are you sure? -->
+  <div class="upd-state" id="upd-state-2">
+    <div class="upd-icon" style="background:rgba(240,160,30,.15);border-color:rgba(240,160,30,.3);color:#f0a030;">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M13 8v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="13" cy="18" r="1.1" fill="currentColor"/></svg>
+    </div>
+    <div class="upd-title">Are you sure?</div>
+    <div class="upd-body">The application needs an update.</div>
+    <button class="upd-btn-primary danger" id="upd-understand">I understand</button>
+  </div>
+
+  <!-- Step 3: Final message -->
+  <div class="upd-state" id="upd-state-3">
+    <div class="upd-final-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5 9-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="upd-title">Raw Browser respects your choice.</div>
+    <div class="upd-body">You will be reminded in settings if you need an update.</div>
+  </div>
+
+</div>
 
 </body>
 </html>

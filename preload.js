@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // Apply privacy protections before any page script runs
 (function hardenPrivacy() {
@@ -27,7 +27,7 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
       // Facebook / Instagram sign-in
       'facebook.com', 'instagram.com', 'fbcdn.net',
     ];
-    const _isBypass = _bypass.some(h => _hn === h || _hn.endsWith('.' + h));
+    const _isBypass = !_hn || _hn === 'blank' || _bypass.some(h => _hn === h || _hn.endsWith('.' + h));
 
     // ── WebRTC IP leak protection — skip for media/streaming sites ──────────
     // Chromium-level protection is set via commandLine switches in main.js.
@@ -52,59 +52,153 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
     }
 
     if (_isBypass) {
-      // Minimal spoofing only — ensure these sites see a real Chrome browser
+      // IMPORTANT: With contextIsolation: true, Object.defineProperty in preload
+      // only modifies the ISOLATED world — page scripts (Google's auth JS) run in
+      // the MAIN world and still see real Electron values. We must inject a <script>
+      // element so the code executes inside the page's main world, exactly like
+      // injectMediaGuard does below. This is the only way to spoof navigator
+      // properties so Google's login detectors actually see the spoofed values.
+      //
+      // KEY: This script includes Function.prototype.toString wrapping so Google
+      // cannot detect that our getters are custom (non-native). Without this,
+      // Google calls fn.toString() on navigator property getters and checks for
+      // "[native code]" — any custom getter would be exposed as non-native.
       try {
-        Object.defineProperty(navigator, 'webdriver',  { get: () => false, configurable: true });
-        Object.defineProperty(navigator, 'userAgent',  { get: () => _SPOOF_UA, configurable: true });
-        Object.defineProperty(navigator, 'vendor',     { get: () => 'Google Inc.', configurable: true });
-        Object.defineProperty(navigator, 'platform',   { get: () => 'Win32', configurable: true });
-        Object.defineProperty(navigator, 'language',   { get: () => 'en-US', configurable: true });
-        Object.defineProperty(navigator, 'languages',  { get: () => ['en-US', 'en'], configurable: true });
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8, configurable: true });
-        // Chrome 136 has a built-in PDF viewer — Electron doesn't, so we must spoof this
-        try { Object.defineProperty(navigator, 'pdfViewerEnabled', { get: () => true, configurable: true }); } catch {}
-        // Override userAgentData — CRITICAL: without this Electron exposes its own
-        // brands list (containing "Electron") even when the UA string says Chrome.
-        // Google and other sign-in providers read navigator.userAgentData.brands
-        // directly to detect non-Chrome browsers.
-        if ('userAgentData' in navigator) {
-          try {
-            const _bypassBrands = [
-              { brand: 'Not A(Brand', version: '99' },
-              { brand: 'Google Chrome', version: '136' },
-              { brand: 'Chromium', version: '136' },
-            ];
-            Object.defineProperty(navigator, 'userAgentData', {
-              get: () => ({
-                brands: _bypassBrands,
-                mobile: false,
-                platform: 'Windows',
-                getHighEntropyValues: () => Promise.resolve({
-                  architecture: 'x86', bitness: '64',
-                  brands: _bypassBrands,
-                  fullVersionList: [
-                    { brand: 'Google Chrome', version: '136.0.7103.116' },
-                    { brand: 'Chromium',      version: '136.0.7103.116' },
-                    { brand: 'Not A(Brand',   version: '99.0.0.0' },
-                  ],
-                  mobile: false, model: '',
-                  platform: 'Windows', platformVersion: '10.0.0',
-                  uaFullVersion: '136.0.7103.116',
-                }),
-                toJSON: () => ({ brands: _bypassBrands, mobile: false, platform: 'Windows' }),
-              }),
-              configurable: true,
-            });
-          } catch {}
+        var _bypassCode = '(function(){' +
+          'if(window._rbBypassDone)return;window._rbBypassDone=true;' +
+          /* Step 0: Function.prototype.toString stealth */
+          'var _fn=new WeakSet();' +
+          'var _origTS=Function.prototype.toString;' +
+          'var _tsProxy=function toString(){if(_fn.has(this))return"function "+(this.name||"")+"() { [native code] }";return _origTS.call(this);};' +
+          '_fn.add(_tsProxy);Function.prototype.toString=_tsProxy;' +
+          /* Step 0b: Object.getOwnPropertyDescriptor stealth */
+          'var _origGOPD=Object.getOwnPropertyDescriptor;' +
+          'var _sp=new Map();' +
+          'Object.getOwnPropertyDescriptor=function(o,p){var s=_sp.get(o);if(s&&s.has(p)){var d=_origGOPD.call(Object,Object.getPrototypeOf(o)||o,p);if(d)return d;}return _origGOPD.call(Object,o,p);};' +
+          '_fn.add(Object.getOwnPropertyDescriptor);' +
+          /* Core spoofing functions */
+          'var _UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";' +
+          'function _def(t,p,v){try{var g=function(){return v;};_fn.add(g);Object.defineProperty(t,p,{get:g,configurable:true});if(!_sp.has(t))_sp.set(t,new Set());_sp.get(t).add(p);}catch(e){}}' +
+          '_def(navigator,"webdriver",false);' +
+          '_def(navigator,"userAgent",_UA);' +
+          '_def(navigator,"vendor","Google Inc.");' +
+          '_def(navigator,"platform","Win32");' +
+          '_def(navigator,"language","en-US");' +
+          '_def(navigator,"languages",Object.freeze(["en-US","en"]));' +
+          '_def(navigator,"hardwareConcurrency",8);' +
+          '_def(navigator,"pdfViewerEnabled",true);' +
+          '_def(navigator,"cookieEnabled",true);' +
+          '_def(navigator,"onLine",true);' +
+          '_def(navigator,"maxTouchPoints",0);' +
+          '_def(navigator,"appCodeName","Mozilla");' +
+          '_def(navigator,"appName","Netscape");' +
+          '_def(navigator,"product","Gecko");' +
+          '_def(navigator,"productSub","20030107");' +
+          '_def(navigator,"appVersion","5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");' +
+          /* Plugins */
+          'try{' +
+          'var _fp={name:"PDF Viewer",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
+          'var _fp2={name:"Chrome PDF Viewer",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
+          'var _fp3={name:"Chromium PDF Viewer",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
+          'var _fp4={name:"Microsoft Edge PDF Viewer",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
+          'var _fp5={name:"WebKit built-in PDF",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
+          'var _fpl=Object.assign([_fp,_fp2,_fp3,_fp4,_fp5],{namedItem:function(n){return n.includes("PDF")?_fp:null;},item:function(i){return[_fp,_fp2,_fp3,_fp4,_fp5][i]||null;},refresh:function(){}});' +
+          '_def(navigator,"plugins",_fpl);' +
+          'var _mt=Object.assign([{type:"application/pdf",description:"PDF",enabledPlugin:_fp,suffixes:"pdf"}],{namedItem:function(t){return t==="application/pdf"?{}:null;},item:function(i){return i===0?{}:null;}});' +
+          '_def(navigator,"mimeTypes",_mt);' +
+          '}catch(e){}' +
+          /* userAgentData */
+          'var _br=[{brand:"Not_A Brand",version:"8"},{brand:"Chromium",version:"120"},{brand:"Google Chrome",version:"120"}];' +
+          'var _fvl=[{brand:"Not_A Brand",version:"8.0.0.0"},{brand:"Chromium",version:"120.0.6099.234"},{brand:"Google Chrome",version:"120.0.6099.234"}];' +
+          'var _ghev=function getHighEntropyValues(){return Promise.resolve({architecture:"x86",bitness:"64",brands:_br,fullVersionList:_fvl,mobile:false,model:"",platform:"Windows",platformVersion:"10.0.0",uaFullVersion:"120.0.6099.234",wow64:false});};' +
+          'var _tj=function toJSON(){return{brands:_br,mobile:false,platform:"Windows"};};' +
+          '_fn.add(_ghev);_fn.add(_tj);' +
+          'var _aud={brands:_br,mobile:false,platform:"Windows",getHighEntropyValues:_ghev,toJSON:_tj};' +
+          '_def(navigator,"userAgentData",_aud);' +
+          /* Headless detection */
+          'try{var _ow=window.outerWidth||window.innerWidth||1280;var _oh=window.outerHeight||window.innerHeight||720;_def(window,"outerWidth",_ow);_def(window,"outerHeight",_oh);}catch(e){}' +
+          'try{_def(screen,"availWidth",screen.width||1920);_def(screen,"availHeight",screen.height||1080);_def(screen,"availLeft",0);_def(screen,"availTop",0);}catch(e){}' +
+          /* window.chrome — delete and rebuild from scratch */
+          'try{delete window.chrome;}catch(e){}try{window.chrome=undefined;}catch(e){}' +
+          'window.chrome={};' +
+          'window.chrome.app={isInstalled:false,InstallState:{DISABLED:"disabled",INSTALLED:"installed",NOT_INSTALLED:"not_installed"},RunningState:{CANNOT_RUN:"cannot_run",READY_TO_RUN:"ready_to_run",RUNNING:"running"},getDetails:function getDetails(){return null;},getIsInstalled:function getIsInstalled(){return false;},installState:function installState(cb){if(cb)cb("not_installed");},runningState:function runningState(){return"cannot_run";}};' +
+          'window.chrome.runtime={id:undefined,connect:function connect(){return{postMessage:function(){},onMessage:{addListener:function(){}},disconnect:function(){}};},sendMessage:function sendMessage(){},onMessage:{addListener:function(){}},onConnect:{addListener:function(){}},getPlatformInfo:function getPlatformInfo(cb){if(cb)cb({os:"win",arch:"x86-64",nacl_arch:"x86-64"});return Promise.resolve({os:"win",arch:"x86-64",nacl_arch:"x86-64"});},getManifest:function getManifest(){return undefined;},getURL:function getURL(){return"";},reload:function reload(){},requestUpdateCheck:function requestUpdateCheck(cb){if(cb)cb("no_update",{});}};' +
+          'window.chrome.csi=function csi(){return{startE:Date.now(),onloadT:Date.now(),pageT:1000,tran:15};};' +
+          'window.chrome.loadTimes=function loadTimes(){return{requestTime:Date.now()/1000,startLoadTime:Date.now()/1000,commitLoadTime:Date.now()/1000,finishDocumentLoadTime:Date.now()/1000,finishLoadTime:Date.now()/1000,firstPaintTime:Date.now()/1000,firstPaintAfterLoadTime:0,navigationType:"Other",wasFetchedViaSpdy:true,wasNpnNegotiated:true,npnNegotiatedProtocol:"h2",wasAlternateProtocolAvailable:false,connectionInfo:"h2"};};' +
+          'window.chrome.storage={local:{get:function(_k,cb){if(cb)cb({});return Promise.resolve({});},set:function(_d,cb){if(cb)cb();return Promise.resolve();}},sync:{get:function(_k,cb){if(cb)cb({});return Promise.resolve({});},set:function(_d,cb){if(cb)cb();return Promise.resolve();}},onChanged:{addListener:function(){}}};' +
+          'window.chrome.webstore={onInstallStageChanged:{addListener:function(){}},onDownloadProgress:{addListener:function(){}},install:function(u,s,f){if(f)f({message:"User cancelled install"});},search:function(_,cb){if(cb)cb([]);}};' +
+          'window.chrome.i18n={getMessage:function(){return"";},getUILanguage:function(){return"en-US";},detectLanguage:function(t,cb){if(cb)cb({isReliable:false,languages:[{language:"en",percentage:100}]});}};' +
+          'window.chrome.dom={openOrClosedShadowRoot:function(){return null;}};' +
+          '_fn.add(window.chrome.app.getDetails);_fn.add(window.chrome.app.getIsInstalled);_fn.add(window.chrome.app.installState);_fn.add(window.chrome.app.runningState);' +
+          '_fn.add(window.chrome.runtime.connect);_fn.add(window.chrome.runtime.sendMessage);_fn.add(window.chrome.runtime.getPlatformInfo);_fn.add(window.chrome.runtime.getManifest);_fn.add(window.chrome.runtime.getURL);_fn.add(window.chrome.runtime.reload);_fn.add(window.chrome.runtime.requestUpdateCheck);' +
+          '_fn.add(window.chrome.csi);_fn.add(window.chrome.loadTimes);' +
+          /* WebAuthn/Passkey blocking — keep PublicKeyCredential as stub */
+          'try{var _oc=navigator.credentials;' +
+          'var _cg=function get(o){if(o&&o.publicKey)return Promise.reject(new DOMException("Not allowed","NotAllowedError"));return _oc?_oc.get.call(_oc,o):Promise.reject(new DOMException("Not allowed","NotAllowedError"));};' +
+          'var _cc=function create(o){if(o&&o.publicKey)return Promise.reject(new DOMException("Not allowed","NotAllowedError"));return _oc?_oc.create.call(_oc,o):Promise.reject(new DOMException("Not allowed","NotAllowedError"));};' +
+          '_fn.add(_cg);_fn.add(_cc);' +
+          'Object.defineProperty(navigator,"credentials",{get:function(){return{get:_cg,create:_cc,preventSilentAccess:function(){return Promise.resolve();},store:function(c){return _oc?_oc.store.call(_oc,c):Promise.resolve();}};},configurable:true});}catch(e){}' +
+          'try{if(typeof PublicKeyCredential!=="undefined"){' +
+          'var _pkc=function PublicKeyCredential(){throw new TypeError("Illegal constructor");};' +
+          '_pkc.isUserVerifyingPlatformAuthenticatorAvailable=function(){return Promise.resolve(false);};' +
+          '_pkc.isConditionalMediationAvailable=function(){return Promise.resolve(false);};' +
+          '_fn.add(_pkc);_fn.add(_pkc.isUserVerifyingPlatformAuthenticatorAvailable);_fn.add(_pkc.isConditionalMediationAvailable);' +
+          'Object.defineProperty(window,"PublicKeyCredential",{value:_pkc,configurable:true,writable:true});' +
+          '}}catch(e){}' +
+          /* Cleanup Electron globals */
+          'try{delete window.Electron;}catch(e){}' +
+          'try{delete window.__electron;}catch(e){}' +
+          'try{delete window.__electronBinding;}catch(e){}' +
+          'try{if(window.process)delete window.process;}catch(e){}' +
+          'try{if(window.require)delete window.require;}catch(e){}' +
+          'try{if(window.module)delete window.module;}catch(e){}' +
+          'try{delete window.Buffer;}catch(e){}' +
+          'try{delete window.global;}catch(e){}' +
+          'try{delete window.__dirname;}catch(e){}' +
+          'try{delete window.__filename;}catch(e){}' +
+          /* Remove non-Chrome/automation signals */
+          'try{delete window.opr;}catch(e){}' +
+          'try{delete window.opera;}catch(e){}' +
+          'try{if(navigator.brave)_def(navigator,"brave",undefined);}catch(e){}' +
+          'try{if("globalPrivacyControl" in navigator)_def(navigator,"globalPrivacyControl",false);}catch(e){}' +
+          'try{delete window.__nightmare;}catch(e){}' +
+          'try{delete window.callPhantom;}catch(e){}' +
+          'try{delete window._phantom;}catch(e){}' +
+          'try{delete window.domAutomation;}catch(e){}' +
+          'try{delete window.domAutomationController;}catch(e){}' +
+          'try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;}catch(e){}' +
+          'try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;}catch(e){}' +
+          'try{delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;}catch(e){}' +
+          'try{delete window.controllers;}catch(e){}' +
+          'try{delete window.Components;}catch(e){}' +
+          'try{delete window.mozInnerScreenX;}catch(e){}' +
+          /* Chrome-matching extras */
+          'try{if(!window.clientInformation)_def(window,"clientInformation",navigator);}catch(e){}' +
+          'try{var _hf=function hasFocus(){return true;};_fn.add(_hf);Object.defineProperty(document,"hasFocus",{value:_hf,configurable:true,writable:true});}catch(e){}' +
+          'try{if(!navigator.connection)_def(navigator,"connection",{effectiveType:"4g",rtt:50,downlink:10,saveData:false,addEventListener:function(){},removeEventListener:function(){}});}catch(e){}' +
+          'try{if(window.speechSynthesis){var _ogv=window.speechSynthesis.getVoices.bind(window.speechSynthesis);var _fv=[{voiceURI:"Google US English",name:"Google US English",lang:"en-US",localService:true,default:true},{voiceURI:"Google UK English Female",name:"Google UK English Female",lang:"en-GB",localService:false,default:false}];var _gvf=function getVoices(){var r=_ogv();return(r&&r.length)?r:_fv;};_fn.add(_gvf);window.speechSynthesis.getVoices=_gvf;}}catch(e){}' +
+          'try{if(typeof Notification!=="undefined")Object.defineProperty(Notification,"permission",{get:function(){return"default";},configurable:true});}catch(e){}' +
+          'try{if(navigator.permissions){var _origQ=navigator.permissions.query.bind(navigator.permissions);var _pqf=function query(d){if(d&&(d.name==="notifications"||d.name==="push"))return Promise.resolve({state:"prompt",status:"prompt",onchange:null});return _origQ(d);};_fn.add(_pqf);navigator.permissions.query=_pqf;}}catch(e){}' +
+          /* Block service worker registration — SW context has no overrides */
+          'try{if(navigator.serviceWorker){var _srf=function register(){return Promise.reject(new DOMException("Failed to register a ServiceWorker","SecurityError"));};_fn.add(_srf);navigator.serviceWorker.register=_srf;}}catch(e){}' +
+          '})();';
+        var _bypassScript = document.createElement('script');
+        _bypassScript.textContent = _bypassCode;
+        // Robust injection: wait for documentElement if not yet available
+        if (document.head || document.documentElement) {
+          (document.head || document.documentElement).prepend(_bypassScript);
+          _bypassScript.remove();
+        } else {
+          // Fallback: inject as soon as the document element is created
+          new MutationObserver(function(_, obs) {
+            if (document.documentElement) {
+              obs.disconnect();
+              document.documentElement.prepend(_bypassScript);
+              _bypassScript.remove();
+            }
+          }).observe(document, { childList: true });
         }
-        if (!window.chrome) window.chrome = {};
-        window.chrome.app = { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' }, RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }, getDetails: () => null, getIsInstalled: () => false, installState: (cb) => cb('not_installed'), runningState: () => 'cannot_run' };
-        window.chrome.runtime = { id: undefined, connect: () => ({ postMessage(){}, onMessage:{ addListener(){} }, disconnect(){} }), sendMessage: () => {}, onMessage: { addListener(){} }, onConnect: { addListener(){} } };
-        window.chrome.csi = () => ({ startE: Date.now(), onloadT: Date.now(), pageT: 1000, tran: 15 });
-        window.chrome.loadTimes = () => ({ requestTime: Date.now()/1000, startLoadTime: Date.now()/1000, commitLoadTime: Date.now()/1000, finishDocumentLoadTime: Date.now()/1000, finishLoadTime: Date.now()/1000, firstPaintTime: Date.now()/1000, firstPaintAfterLoadTime: 0, navigationType: 'Other', wasFetchedViaSpdy: false, wasNpnNegotiated: false, npnNegotiatedProtocol: 'unknown', wasAlternateProtocolAvailable: false, connectionInfo: 'http/1.1' });
-        // chrome.storage is accessed by extensions and sign-in helpers
-        if (!window.chrome.storage) window.chrome.storage = { local: { get: (_k, cb) => cb && cb({}), set: (_d, cb) => cb && cb() }, sync: { get: (_k, cb) => cb && cb({}), set: (_d, cb) => cb && cb() }, onChanged: { addListener: () => {} } };
-      } catch {}
+      } catch(e) {}
       return; // Don't apply full fingerprint hardening to these sites
     }
 
@@ -227,9 +321,9 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
     if ('userAgentData' in navigator) {
       try {
         const _uaBrands = [
-          { brand: 'Not A(Brand', version: '99' },
-          { brand: 'Google Chrome', version: '136' },
-          { brand: 'Chromium', version: '136' },
+          { brand: 'Not_A Brand', version: '8' },
+          { brand: 'Chromium', version: '120' },
+          { brand: 'Google Chrome', version: '120' },
         ];
         Object.defineProperty(navigator, 'userAgentData', {
           get: () => ({
@@ -239,10 +333,10 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
             getHighEntropyValues: () => Promise.resolve({
               architecture: 'x86', bitness: '64',
               brands: _uaBrands,
-              fullVersionList: [{ brand: 'Google Chrome', version: '136.0.7103.116' }, { brand: 'Chromium', version: '136.0.7103.116' }, { brand: 'Not A(Brand', version: '99.0.0.0' }],
+              fullVersionList: [{ brand: 'Not_A Brand', version: '8.0.0.0' }, { brand: 'Chromium', version: '120.0.6099.234' }, { brand: 'Google Chrome', version: '120.0.6099.234' }],
               mobile: false, model: '',
               platform: 'Windows', platformVersion: '10.0.0',
-              uaFullVersion: '136.0.7103.116',
+              uaFullVersion: '120.0.6099.234',
             }),
             toJSON: () => ({ brands: _uaBrands, mobile: false, platform: 'Windows' }),
           }),
@@ -339,6 +433,35 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
     if (p && p.catch) p.catch(function(){});
     return p;
   };
+
+  // ── Passkey / Windows Hello suppressor ────────────────────────────────────
+  // Sites call navigator.credentials.get({publicKey:...}) for WebAuthn passkeys.
+  // This triggers the Windows Hello system overlay which the user finds intrusive.
+  // We silently reject publicKey requests while letting password + identity
+  // (FedCM / Google Sign-In) requests through normally.
+  if (navigator.credentials && navigator.credentials.get) {
+    var _origCredsGet = navigator.credentials.get.bind(navigator.credentials);
+    navigator.credentials.get = function(opts) {
+      if (opts && opts.publicKey && !opts.password && !opts.identity) {
+        // Silently reject — pretend no passkey credential was found
+        return Promise.reject(
+          Object.assign(new DOMException('Not allowed by user', 'NotAllowedError'), { code: 20 })
+        );
+      }
+      return _origCredsGet(opts);
+    };
+  }
+  if (navigator.credentials && navigator.credentials.create) {
+    var _origCredsCreate = navigator.credentials.create.bind(navigator.credentials);
+    navigator.credentials.create = function(opts) {
+      if (opts && opts.publicKey) {
+        return Promise.reject(
+          Object.assign(new DOMException('Not allowed by user', 'NotAllowedError'), { code: 20 })
+        );
+      }
+      return _origCredsCreate(opts);
+    };
+  }
 })()`;
     // Insert before <head> so it runs before any other scripts
     (document.head || document.documentElement).prepend(script);
@@ -378,6 +501,29 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
     });
     _mo.observe(document.documentElement, { childList: true, subtree: true });
   }
+
+  // ── Save-password prompt: fires when user submits a login form ─────────────
+  var _lastSavePrompt = 0;
+  document.addEventListener('submit', function(e) {
+    // Throttle: don't fire more than once per 3 s
+    var now = Date.now();
+    if (now - _lastSavePrompt < 3000) return;
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    var pwInput   = form.querySelector('input[type="password"]');
+    if (!pwInput || !pwInput.value) return;
+    var userInput = form.querySelector(
+      'input[type="email"], input[type="text"], input[name*="user"], input[name*="login"],' +
+      'input[id*="user"], input[id*="email"], input[id*="name"], input[autocomplete*="username"], input[autocomplete*="email"]'
+    );
+    if (!userInput || !userInput.value) return;
+    _lastSavePrompt = now;
+    ipcRenderer.send('autofill:save-prompt', {
+      domain:   window.location.hostname,
+      username: userInput.value,
+      password: pwInput.value,
+    });
+  }, true);
 
   // Fill fields when renderer sends back credentials
   ipcRenderer.on('autofill:fill', function(_e, data) {

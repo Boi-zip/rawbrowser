@@ -29,6 +29,51 @@
   color-scheme: dark;
 }
 
+/* ── Light theme ────────────────────────────────────────────────────────── */
+body.theme-light {
+  --bg0: #d4d4d6; --bg1: #dadade; --bg2: #f3f3f5;
+  --bg3: #e6e6e8; --bg4: #c8c8ca; --bg5: #b2b2b5;
+  --ln:  rgba(0,0,0,.08); --ln2: rgba(0,0,0,.13);
+  --t0: #1c1c1e; --t1: #3a3a3c; --t2: #636366; --t3: #8e8e93;
+  --acc: #7c3aed; --acc2: #5b21b6; --acc-g: rgba(124,58,237,.1);
+  color-scheme: light;
+}
+body.theme-light html,
+body.theme-light body { background: var(--bg0); color: var(--t0); }
+body.theme-light #chrome { background: var(--bg1); border-bottom: 1px solid var(--ln2); }
+body.theme-light #nav-row { background: var(--bg2); border-top-color: var(--ln2); }
+body.theme-light .tab { background: transparent; color: var(--t2); }
+body.theme-light .tab.active { background: var(--bg2); color: var(--t0); border-color: var(--ln2); border-bottom-color: var(--bg2); }
+body.theme-light .tab:hover:not(.active) { background: var(--bg4); }
+body.theme-light .tab-title { color: var(--t2); }
+body.theme-light .tab.active .tab-title { color: var(--t0); }
+body.theme-light .ib { color: var(--t2); }
+body.theme-light .ib:hover { color: var(--t0); background: var(--bg4); }
+body.theme-light #omnibox { background: var(--bg3); color: var(--t0); border-color: var(--ln2); caret-color: var(--acc); }
+body.theme-light #omnibox::placeholder { color: var(--t3); }
+body.theme-light #omnibox:focus { background: rgba(124,58,237,.03); border-color: rgba(124,58,237,.35); box-shadow: 0 0 0 2.5px rgba(124,58,237,.13); }
+body.theme-light #newtab { background: var(--bg0); }
+body.theme-light .nt-title { color: var(--t0); }
+body.theme-light .nt-sub { color: var(--t2); }
+body.theme-light .nt-search { background: rgba(255,255,255,.72) !important; border: 1.5px solid rgba(0,0,0,.2) !important; color: var(--t0) !important; }
+body.theme-light .nt-search::placeholder { color: var(--t3) !important; }
+body.theme-light .nt-search:focus { background: rgba(255,255,255,.92) !important; border-color: rgba(124,58,237,.45) !important; box-shadow: 0 0 0 3px rgba(124,58,237,.13) !important; }
+body.theme-light .nt-pill { background: var(--bg4); border-color: var(--ln2); color: var(--t2); }
+body.theme-light #ig-setup { background: var(--bg0); }
+body.theme-light #ig-setup-title { color: var(--t0); }
+body.theme-light #ig-setup-sub { color: var(--t2); }
+body.theme-light #ig-setup-badge { color: rgba(124,58,237,.7); }
+body.theme-light .ig-feature { background: rgba(124,58,237,.05); border-color: rgba(124,58,237,.12); }
+body.theme-light .ig-feature-text strong { color: var(--t0); }
+body.theme-light .ig-feature-text span { color: var(--t2); }
+body.theme-light input, body.theme-light select, body.theme-light textarea { color-scheme: light; }
+body.theme-light #btn-new-tab { color: var(--t3); }
+body.theme-light #btn-new-tab:hover { color: var(--t1); background: rgba(0,0,0,.06); }
+body.theme-light #ig-badge { background: rgba(124,58,237,.1); border-color: rgba(124,58,237,.22); color: rgba(124,58,237,.75); }
+body.theme-light .wc-btn { color: var(--t2); }
+body.theme-light .wc-btn:hover { background: rgba(0,0,0,.08); color: var(--t1); }
+body.theme-light .tab.active::before { background: linear-gradient(90deg, #7c3aed, #5b21b6); }
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
   width: 100%; height: 100%; overflow: hidden;
@@ -339,9 +384,117 @@ html, body {
   font-size: 11px; color: var(--t2);
 }
 .nt-pill svg { color: var(--acc); opacity: .6; flex-shrink: 0; }
+
+/* ── First-time incognito setup screen ─────────────────────────────────── */
+#ig-setup {
+  position: fixed; inset: 0; z-index: 99999;
+  background: #080808;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0; -webkit-app-region: drag;
+  animation: igSetupIn .35s cubic-bezier(.16,1,.3,1);
+}
+#ig-setup.exit { animation: igSetupOut .3s cubic-bezier(.4,0,1,1) forwards; }
+@keyframes igSetupIn  { from { opacity:0; transform: scale(.97); } to { opacity:1; transform:scale(1); } }
+@keyframes igSetupOut { to   { opacity:0; transform: scale(.97); } }
+#ig-setup-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0; max-width: 340px; text-align: center;
+  -webkit-app-region: no-drag;
+}
+#ig-setup-icon {
+  width: 80px; height: 80px; border-radius: 50%; margin-bottom: 28px;
+  background: rgba(168,85,247,.09); border: 1px solid rgba(168,85,247,.22);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(168,85,247,.7);
+  box-shadow: 0 0 60px rgba(168,85,247,.12), 0 0 120px rgba(168,85,247,.04);
+}
+#ig-setup-badge {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(168,85,247,.55); margin-bottom: 12px;
+}
+#ig-setup-title {
+  font-size: 26px; font-weight: 700; color: rgba(255,255,255,.92);
+  letter-spacing: -.5px; margin-bottom: 10px; line-height: 1.2;
+}
+#ig-setup-sub {
+  font-size: 13px; color: rgba(255,255,255,.32);
+  line-height: 1.65; margin-bottom: 32px;
+}
+.ig-feature-list {
+  display: flex; flex-direction: column; gap: 11px;
+  width: 100%; margin-bottom: 36px; text-align: left;
+}
+.ig-feature {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 10px;
+  background: rgba(168,85,247,.05); border: 1px solid rgba(168,85,247,.1);
+}
+.ig-feature-icon {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  background: rgba(168,85,247,.1); display: flex; align-items: center; justify-content: center;
+  color: rgba(168,85,247,.75);
+}
+.ig-feature-text strong { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.8); margin-bottom: 1px; }
+.ig-feature-text span   { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.4; }
+#ig-setup-btn {
+  width: 100%; height: 44px; border-radius: 12px;
+  background: rgba(168,85,247,.15); border: 1px solid rgba(168,85,247,.35);
+  color: rgba(168,85,247,.9); font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: var(--f);
+  transition: background .15s, transform .1s;
+}
+#ig-setup-btn:hover { background: rgba(168,85,247,.25); }
+#ig-setup-btn:active { transform: scale(.98); }
 </style>
 </head>
 <body>
+
+<!-- First-time incognito setup overlay -->
+<div id="ig-setup">
+  <div id="ig-setup-inner">
+    <div id="ig-setup-icon">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <path d="M20 4L6 10v9C6 27.2 12 33.4 20 36c8-2.6 14-8.8 14-17V10L20 4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <circle cx="20" cy="19" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M15.5 27.5C16.8 25.5 18.3 24.5 20 24.5s3.2 1 4.5 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div id="ig-setup-badge">RAW Incognito</div>
+    <div id="ig-setup-title">Private by default.<br>Invisible by design.</div>
+    <div id="ig-setup-sub">Your activity here is completely isolated from your main browsing. Nothing is saved when you close this window.</div>
+    <div class="ig-feature-list">
+      <div class="ig-feature">
+        <div class="ig-feature-icon">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5L2 4v4.5C2 11.5 4.5 13.8 7.5 14.5c3-0.7 5.5-3 5.5-6V4L7.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5 7.5l2 2 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ig-feature-text">
+          <strong>No history saved</strong>
+          <span>Sites you visit won't appear in your history.</span>
+        </div>
+      </div>
+      <div class="ig-feature">
+        <div class="ig-feature-icon">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="6.5" width="11" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 6.5V4.5a3 3 0 1 1 6 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="ig-feature-text">
+          <strong>Isolated session</strong>
+          <span>Cookies and logins are separate from your main browser.</span>
+        </div>
+      </div>
+      <div class="ig-feature">
+        <div class="ig-feature-icon">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7.5l1.8 1.8L10.5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ig-feature-text">
+          <strong>Tracker &amp; ad blocking</strong>
+          <span>All your usual protections are active here too.</span>
+        </div>
+      </div>
+    </div>
+    <button id="ig-setup-btn" onclick="dismissIgSetup()">Get Started</button>
+  </div>
+</div>
+
 <div id="shell">
 
   <!-- CHROME -->
@@ -393,7 +546,20 @@ html, body {
           <div id="prog"></div>
         </div>
       </div>
-      <div id="nav-right"></div>
+      <div id="nav-right">
+        <button class="ib" id="btn-theme" title="Toggle light/dark mode">
+          <svg id="theme-ico" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.9 2.9l1.1 1.1M9.9 9.9l1.1 1.1M2.9 11.1l1.1-1.1M9.9 4.1l1.1-1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="ib" id="btn-pip" title="Pop out video (Picture-in-Picture)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="2" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="6.5" y="6" width="5.5" height="4" rx="1" fill="currentColor" opacity=".55"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -527,6 +693,8 @@ btnBack.addEventListener('click',   () => ipcRenderer.send('ig:nav:back'));
 btnFwd.addEventListener('click',    () => ipcRenderer.send('ig:nav:forward'));
 btnReload.addEventListener('click', () => _loading ? ipcRenderer.send('ig:nav:stop') : ipcRenderer.send('ig:nav:reload'));
 
+document.getElementById('btn-pip').addEventListener('click', () => ipcRenderer.send('ig:pip:start'));
+
 omnibox.addEventListener('keydown', e => {
   if (e.key === 'Enter')  { e.preventDefault(); navigate(omnibox.value); }
   if (e.key === 'Escape') { if (_loading) ipcRenderer.send('ig:nav:stop'); omnibox.blur(); }
@@ -551,6 +719,62 @@ document.addEventListener('keydown', e => {
 });
 
 window.addEventListener('resize', renderTabs);
+
+// IPC-based window dragging — more reliable than -webkit-app-region on Windows
+let _igDrag = false, _igSX = 0, _igSY = 0;
+const igChrome = document.getElementById('chrome');
+igChrome.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (e.target.closest('button,input,#tab-strip,.tab,#omnibox,#win-controls,#ig-badge')) return;
+  _igDrag = true; _igSX = e.screenX; _igSY = e.screenY;
+  e.preventDefault();
+});
+window.addEventListener('mousemove', e => {
+  if (!_igDrag) return;
+  const dx = e.screenX - _igSX, dy = e.screenY - _igSY;
+  _igSX = e.screenX; _igSY = e.screenY;
+  if (dx || dy) ipcRenderer.send('ig:win:moveBy', { dx, dy });
+});
+window.addEventListener('mouseup', () => { _igDrag = false; });
+
+// ── Theme toggle ────────────────────────────────────────────────────────────
+const _MOON_PATHS = '<path d="M11 7.5A4.5 4.5 0 0 1 5 2a5 5 0 1 0 6 5.5Z" fill="currentColor" opacity=".55" stroke="none"/><path d="M11 7.5A4.5 4.5 0 0 1 5 2a5 5 0 1 0 6 5.5Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" fill="none"/>';
+const _SUN_PATHS  = '<circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.9 2.9l1.1 1.1M9.9 9.9l1.1 1.1M2.9 11.1l1.1-1.1M9.9 4.1l1.1-1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>';
+
+function applyIgTheme(light) {
+  document.body.classList.toggle('theme-light', light);
+  const ico = document.getElementById('theme-ico');
+  if (ico) ico.innerHTML = light ? _MOON_PATHS : _SUN_PATHS;
+  try { localStorage.setItem('raw-ig-theme', light ? 'light' : 'dark'); } catch {}
+}
+
+try { applyIgTheme(localStorage.getItem('raw-ig-theme') === 'light'); } catch { applyIgTheme(false); }
+
+const _btnTheme = document.getElementById('btn-theme');
+if (_btnTheme) _btnTheme.addEventListener('click', () => applyIgTheme(!document.body.classList.contains('theme-light')));
+
+// Listen for theme sync from main window settings
+ipcRenderer.on('ig:settings', (_, s) => {
+  if (s && s.theme !== undefined) applyIgTheme(s.theme === 'light');
+});
+
+// ── First-time setup screen ─────────────────────────────────────────────────
+function dismissIgSetup() {
+  const el = document.getElementById('ig-setup');
+  if (!el) return;
+  el.classList.add('exit');
+  setTimeout(() => { el.style.display = 'none'; }, 310);
+  try { localStorage.setItem('raw-ig-welcomed', '1'); } catch {}
+}
+
+(function checkIgSetup() {
+  try {
+    if (localStorage.getItem('raw-ig-welcomed')) {
+      const el = document.getElementById('ig-setup');
+      if (el) el.style.display = 'none';
+    }
+  } catch {}
+})();
 </script>
 </body>
 </html>
