@@ -3791,7 +3791,7 @@ ipcMain.on('ytdlp:cancel', (_, id) => {
 });
 
 // ── Auto update checker ───────────────────────────────────────────────────────
-const CURRENT_VERSION = '1.0.4';
+const CURRENT_VERSION = '1.0.5';
 ipcMain.handle('check-update', () => new Promise((resolve) => {
   const url = 'https://raw.githubusercontent.com/sharp4real/rawbrowser/refs/heads/main/version';
   const req = https.get(url, { timeout: 8000, headers: { 'User-Agent': SPOOF_UA } }, (res) => {
