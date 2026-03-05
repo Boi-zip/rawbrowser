@@ -1176,22 +1176,22 @@ function _parkBV(bv) {
   if (!bv || bv.webContents.isDestroyed()) return;
   const [w, h] = win.getContentSize();
   const bvH = Math.max(h - CHROME_H, 1);
+  // Keep the same width the BV was rendering at so the page doesn't reflow
+  // when parked. Using full `w` when the sidebar is open would make the page
+  // re-render wider than it was, causing a layout change visible in the live
+  // capture loop (wrong aspect ratio / content shifted).
+  const bvW = sidebarOn ? Math.max(w - SIDEBAR_W, 1) : w;
   try { win.addBrowserView(bv); } catch {}
-  // incrementCapturerCount(size) is the Electron API that puts Chromium into
-  // off-screen rendering mode at the given resolution. This has two effects:
-  //   1. Prevents the renderer process from being suspended (WasHidden() is blocked)
-  //   2. Keeps the video decoder producing frames into an off-screen buffer that
-  //      capturePage() can read — even when the BV has no visible screen pixels.
-  // CRITICAL: pass the explicit size. Without it, Chromium defaults to the current
-  // surface size. If the surface is tiny or off-screen, the video decoder produces
-  // no frames (hence: audio plays, video frozen). With the correct size it renders
-  // at full resolution off-screen so capturePage() returns live video frames.
-  try { bv.webContents.incrementCapturerCount({ width: w, height: bvH }); } catch {}
-  // Move BV fully off the left edge. Zero visible pixels in the window means HTML
-  // panels are never occluded by the BV. The BV stays attached so the OS-level
-  // compositor keeps the frame sink alive. incrementCapturerCount handles renderer
-  // keep-alive; without it this would suspend the renderer (see old comment).
-  bv.setBounds({ x: -(w + 10), y: CHROME_H, width: w, height: bvH });
+  // incrementCapturerCount(size) puts Chromium into off-screen rendering mode:
+  //   1. Prevents the renderer from being suspended (WasHidden() is blocked)
+  //   2. Keeps the video decoder producing frames into an off-screen buffer so
+  //      capturePage() returns live video frames even with no visible pixels.
+  // Pass the exact visible size so the page renders at its original resolution.
+  try { bv.webContents.incrementCapturerCount({ width: bvW, height: bvH }); } catch {}
+  // Move BV fully off the left edge — zero visible pixels in the window so HTML
+  // panels render unobstructed. BV stays attached so the compositor frame sink
+  // remains alive and video/audio never pauses.
+  bv.setBounds({ x: -(w + 10), y: CHROME_H, width: bvW, height: bvH });
 }
 function _unparkBV(bv) {
   if (!bv || bv.webContents.isDestroyed()) return;
@@ -1516,7 +1516,7 @@ function createTab(url, activate = true) {
       const _doSnap = () => {
         if (!panelOpen && tab?.bv && !tab.bv.webContents.isDestroyed()) {
           tab.bv.webContents.capturePage().then(img => {
-            tab.snapshot = img.toDataURL();
+            tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
           }).catch(() => {});
         }
       };
@@ -1924,7 +1924,7 @@ app.whenReady().then(() => {
       const tab = tabMap.get(activeId);
       if (!tab?.bv || panelOpen || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
       tab.bv.webContents.capturePage().then(img => {
-        tab.snapshot = img.toDataURL();
+        tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
       }).catch(() => {});
     }, 5000);
   });
@@ -2462,46 +2462,39 @@ async function _openPanel(tab) {
   const wc = bv.webContents;
   if (wc.isDestroyed()) return;
 
-  // Step 1: Inject keep-alive JS FIRST — sets _rbPanelOpen=true immediately
-  // so IntersectionObserver / pause guards are up before any resize can fire.
-  // This MUST happen before capturePage() (which is async and leaves a window
-  // where PANEL_RESTORE_ALIVE_JS from the previous panel:hide could fire resize
-  // with _rbPanelOpen=false, causing videos to pause).
+  // Step 1: Inject keep-alive JS FIRST — sets _rbPanelOpen=true so video.pause()
+  // is blocked before any resize fires. Must precede capturePage().
   await wc.executeJavaScript(PANEL_KEEP_ALIVE_JS).catch(() => {});
   if (!panelOpen) return;
 
-  // Step 2: Always capture a fresh snapshot at full bounds (guard is up — safe).
-  // Never use a cached snapshot: stale screenshots make the website look blank/wrong.
+  // Step 2: Capture screenshot at full bounds.
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = img.toDataURL();
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
   } catch {}
   if (!panelOpen) return;
 
-  // Step 2.5: Inject a transparent blanker so the BV content is invisible when
-  // it moves off-screen — eliminates the ~200ms flicker the user would otherwise
-  // see between the BV disappearing and the snapshot rendering over it.
-  tab._blankerKey = await wc.insertCSS(
-    'html,body{opacity:0!important;transition:none!important;pointer-events:none!important}'
-  ).catch(() => null);
-  if (!panelOpen) {
-    if (tab._blankerKey) { wc.removeInsertedCSS(tab._blankerKey).catch(() => {}); tab._blankerKey = null; }
-    return;
+  // Step 3: Send snapshot to renderer and WAIT for it to confirm the canvas is
+  // drawn (IPC ACK: 'panel:snapshot:drawn'). The canvas paints silently behind
+  // the BV while the BV is still on top. Once the ACK arrives, the canvas is
+  // pixel-perfect on screen — we then park the BV and the canvas is revealed
+  // instantly with zero dark gap. No CSS blanker is needed: skipping it
+  // eliminates the BV backgroundColor (#080808) flash that caused the website
+  // to appear to "hide".
+  if (tab.snapshot) {
+    send('panel:snapshot', tab.snapshot);
+    await new Promise(resolve => {
+      const t = setTimeout(resolve, 200); // 200 ms safety fallback
+      ipcMain.once('panel:snapshot:drawn', () => { clearTimeout(t); resolve(); });
+    });
   }
+  if (!panelOpen) return;
 
-  // Step 3: Park BV fully off-screen at full size.
-  // incrementCapturerCount(size) in _parkBV keeps the renderer + video decoder
-  // active at full resolution off-screen so capturePage() returns live frames.
+  // Step 4: Park BV off-screen. Canvas already drawn → reveals immediately.
+  // incrementCapturerCount keeps video decoder running at full resolution.
   _parkBV(bv);
 
-  // Step 4: Live snapshot loop — streams the off-screen render buffer to the panel.
-  // Back-to-back async captures (16ms yield) self-regulate to the fastest achievable
-  // frame rate (~25-35fps in practice) vs the old fixed 120ms interval (~6fps).
-  // Resize to half-resolution BEFORE JPEG encoding — 4x fewer pixels = 4x faster
-  // encode + 4x smaller IPC payload, which is what makes the video look smooth.
-  const [_w, _h] = win.getContentSize();
-  const _bvH = Math.max(_h - CHROME_H, 1);
-  // Store truthy marker — set to null by panel:hide to stop the loop.
+  // Step 5: Live capture loop — streams off-screen frames so video stays live.
   tab._mediaKeepAlive = true;
   (async () => {
     while (panelOpen && !wc.isDestroyed() && tab._mediaKeepAlive) {
@@ -2515,9 +2508,6 @@ async function _openPanel(tab) {
       await new Promise(r => setTimeout(r, 16));
     }
   })();
-
-  // Step 5: Show initial snapshot immediately (captured before parking at Step 2).
-  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
 }
 
 ipcMain.on('panel:show', () => {
@@ -2581,21 +2571,16 @@ ipcMain.on('panel:hide', async () => {
   panelOpen = false;
   _panelSeq = 0;    // invalidate any pending async panel:show:fast chains
   panelClipX = 0;   // always restore full BV width
+  // Clear any pending panel:snapshot:drawn listener so it doesn't fire later
+  ipcMain.removeAllListeners('panel:snapshot:drawn');
   const tab = tabMap.get(activeId);
-  // Clear the media keep-alive interval from _openPanel
-  if (tab?._mediaKeepAlive) { tab._mediaKeepAlive = null; } // stops the async capture loop
+  if (tab?._mediaKeepAlive) { tab._mediaKeepAlive = null; } // stops the capture loop
   if (tab?.bv && tab.url !== 'newtab') {
-    // Remove the blanker CSS BEFORE restoring BV bounds — ensures the website is
-    // fully visible (no dark flash) when the BV resizes back to full size.
-    if (tab._blankerKey) {
-      await tab.bv.webContents.removeInsertedCSS(tab._blankerKey).catch(() => {});
-      tab._blankerKey = null;
-    }
     // Unpark: decrement capturer count then restore full-width bounds
     _unparkBV(tab.bv);
-    // Restore visibility and resume any media that was playing
+    // Restore visibility overrides and dispatch resize so layouts rebuild
     tab.bv.webContents.executeJavaScript(PANEL_RESTORE_ALIVE_JS).catch(() => {});
-    // Ensure media resumes playing if it was interrupted by BV detach
+    // Resume any media that was interrupted while the BV was parked
     tab.bv.webContents.executeJavaScript(`(function(){
       try{document.querySelectorAll('video,audio').forEach(function(m){
         if(m.paused&&m.readyState>0&&m.currentTime>0&&!m.ended){
@@ -2617,11 +2602,18 @@ ipcMain.on('sidebar:modal:open', async () => {
   // Capture screenshot at current full bounds
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = img.toDataURL();
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
   } catch {}
-  // Park, then show the snapshot behind the modal
+  // Send snapshot to renderer, wait for it to confirm canvas is drawn, then park.
+  // This ensures the canvas is visible the instant the BV moves offscreen.
+  if (tab.snapshot) {
+    send('panel:snapshot', tab.snapshot);
+    await new Promise(resolve => {
+      const t = setTimeout(resolve, 200);
+      ipcMain.once('panel:snapshot:drawn', () => { clearTimeout(t); resolve(); });
+    });
+  }
   _parkBV(tab.bv);
-  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
 });
 ipcMain.on('sidebar:modal:close', () => {
   const tab = tabMap.get(activeId);
@@ -2835,37 +2827,65 @@ function _findChromiumBookmarks(defaultPath) {
 }
 
 // ── Windows: register as default browser in system Default Apps ───────────────
+// Follows the exact same registry structure that Chrome/Edge use so Windows
+// 10/11 recognises Raw Browser in Settings › Default Apps.
+//
+// Structure (all under HKCU so no admin required):
+//   HKCU\Software\Classes\RawBrowserHTML           ← ProgID (URL + file handler)
+//   HKCU\Software\Clients\StartMenuInternet\Raw Browser   ← StartMenuInternet tree
+//   HKCU\Software\RegisteredApplications           ← makes it appear in Default Apps UI
 function _registerWindowsDefaultBrowser() {
   if (process.platform !== 'win32') return;
   try {
     const { execSync } = require('child_process');
     const exePath = app.getPath('exe');
-    const appId   = 'RawBrowserURL';
-    const clsPath = `HKCU\\Software\\Classes\\${appId}`;
-    const capPath = `HKCU\\Software\\Raw Browser\\Capabilities`;
-    const reg = (key, name, val) => {
+    const progID  = 'RawBrowserHTML'; // single ProgID for both URL + file types (mirrors ChromeHTML)
+    const appKey  = `Software\\Clients\\StartMenuInternet\\Raw Browser`;
+    const capKey  = `${appKey}\\Capabilities`;
+    const clsKey  = `Software\\Classes\\${progID}`;
+
+    const regSZ = (hive, key, name, val) => {
       const escaped = String(val).replace(/"/g, '\\"');
-      const cmd = name === ''
-        ? `reg add "${key}" /ve /t REG_SZ /d "${escaped}" /f`
-        : `reg add "${key}" /v "${name}" /t REG_SZ /d "${escaped}" /f`;
-      execSync(cmd, { windowsHide: true, stdio: 'ignore' });
+      const n = name === '' ? '/ve' : `/v "${name}"`;
+      execSync(`reg add "${hive}\\${key}" ${n} /t REG_SZ /d "${escaped}" /f`,
+               { windowsHide: true, stdio: 'ignore' });
     };
-    // ProgID — what the OS invokes when opening http/https links
-    reg(clsPath, '', 'Raw Browser URL');
-    reg(clsPath, 'URL Protocol', '');
-    reg(`${clsPath}\\DefaultIcon`, '', `${exePath},0`);
-    reg(`${clsPath}\\shell\\open\\command`, '', `"${exePath}" "%1"`);
-    // Capabilities — makes the app appear in Settings › Default Apps
-    reg(capPath, 'ApplicationName', 'Raw Browser');
-    reg(capPath, 'ApplicationIcon', `${exePath},0`);
-    reg(capPath, 'ApplicationDescription', 'Privacy-first browser — built-in ad blocking, no tracking');
-    reg(`${capPath}\\URLAssociations`, 'http',  appId);
-    reg(`${capPath}\\URLAssociations`, 'https', appId);
-    reg(`${capPath}\\URLAssociations`, 'ftp',   appId);
-    reg(`${capPath}\\FileAssociations`, '.html', appId);
-    reg(`${capPath}\\FileAssociations`, '.htm',  appId);
-    // RegisteredApplications — the key that makes Windows list it in Default Apps
-    reg('HKCU\\Software\\RegisteredApplications', 'Raw Browser', capPath);
+    const regDW = (hive, key, name, val) => {
+      execSync(`reg add "${hive}\\${key}" /v "${name}" /t REG_DWORD /d "${val}" /f`,
+               { windowsHide: true, stdio: 'ignore' });
+    };
+
+    // ── ProgID — describes how to open URLs and HTML files ──────────────────
+    regSZ('HKCU', clsKey, '', 'Raw Browser HTML Document');
+    regSZ('HKCU', `${clsKey}\\DefaultIcon`, '', `"${exePath}",0`);
+    regSZ('HKCU', `${clsKey}\\shell\\open\\command`, '', `"${exePath}" "%1"`);
+    // Mark as a URL handler for http + https
+    regSZ('HKCU', clsKey, 'URL Protocol', '');
+
+    // ── StartMenuInternet tree — required so Windows lists the app ───────────
+    regSZ('HKCU', appKey, '', 'Raw Browser');
+    regSZ('HKCU', `${appKey}\\DefaultIcon`, '', `"${exePath}",0`);
+    regSZ('HKCU', `${appKey}\\shell\\open\\command`, '', `"${exePath}"`);
+    regDW('HKCU', `${appKey}\\InstallInfo`, 'IconsVisible', 1);
+    regSZ('HKCU', `${appKey}\\StartMenu`, '', 'Raw Browser');
+
+    // ── Capabilities — what Windows reads from RegisteredApplications ────────
+    regSZ('HKCU', capKey, 'ApplicationName', 'Raw Browser');
+    regSZ('HKCU', capKey, 'ApplicationIcon', `"${exePath}",0`);
+    regSZ('HKCU', capKey, 'ApplicationDescription', 'Privacy-first browser — built-in ad blocking, no tracking');
+    // URL associations
+    regSZ('HKCU', `${capKey}\\URLAssociations`, 'ftp',   progID);
+    regSZ('HKCU', `${capKey}\\URLAssociations`, 'http',  progID);
+    regSZ('HKCU', `${capKey}\\URLAssociations`, 'https', progID);
+    // File associations
+    regSZ('HKCU', `${capKey}\\FileAssociations`, '.htm',   progID);
+    regSZ('HKCU', `${capKey}\\FileAssociations`, '.html',  progID);
+    regSZ('HKCU', `${capKey}\\FileAssociations`, '.xhtml', progID);
+    regSZ('HKCU', `${capKey}\\FileAssociations`, '.pdf',   progID);
+
+    // ── RegisteredApplications — the entry that makes it appear in Default Apps
+    // Value must be the path WITHOUT the HKCU\ prefix
+    regSZ('HKCU', 'Software\\RegisteredApplications', 'Raw Browser', capKey);
   } catch { /* fail silently — restricted environments */ }
 }
 

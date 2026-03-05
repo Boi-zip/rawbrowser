@@ -850,11 +850,18 @@ body.has-sidebar #overlay { left: var(--sidebar-w); }
   pointer-events: none;
 }
 
-/* Page snapshot */
+/* Page snapshot — sits exactly over the BV content area.
+   #page-snapshot lives inside #body which already starts below the chrome
+   via flex layout, so top:0 aligns it to the top of the content area.
+   Using top:var(--chrome-h) here would double-offset it by CHROME_H pixels,
+   creating an 82px wallpaper strip and squashing the screenshot below it. */
 #page-snapshot {
-  position: absolute; inset: 0; z-index: 10;
-  display: none; 
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  display: none;
   pointer-events: none;
+  background: var(--bg0); /* solid fallback — no wallpaper bleed-through on any timing gap */
 }
 #page-snapshot img { width: 100%; height: 100%; display: block; object-fit: fill; }
 
@@ -4535,7 +4542,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="set-card">
             <div class="set-r">
               <div class="set-r-lbl"><span>Version</span></div>
-              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.4</span>
+              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.5</span>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Built with</span></div>
@@ -4856,16 +4863,16 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
     $('update-backdrop')?.addEventListener('click', () => { /* intentionally blocked — must use buttons */ });
   });
 })();
+// One-shot flag: send 'panel:snapshot:drawn' ACK to main process only for
+// the initial snapshot (before BV is parked). Main process waits for this
+// before parking so the canvas is visible the instant the BV moves offscreen.
+let _snapDrawnSent = false;
 ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
   // Discard stale snapshot if nothing is open that needs it
   if (!document.querySelector('.panel.on') && !document.getElementById('_ctx') && !document.querySelector('#sb-add-modal.on')) return;
-  snap.style.display = 'block';
-  // Use canvas + createImageBitmap for smooth frame updates.
-  // img.src reassignment flickers because the browser shows a blank while decoding.
-  // createImageBitmap decodes off the main thread; drawImage is atomic — the canvas
-  // shows the previous frame until the new one is fully decoded, then swaps cleanly.
+  // Use canvas for smooth, flicker-free frame swaps.
   let canvas = snap.querySelector('canvas');
   if (!canvas) {
     canvas = document.createElement('canvas');
@@ -4873,14 +4880,28 @@ ipcRenderer.on('panel:snapshot', (_, dataURL) => {
     snap.innerHTML = '';
     snap.appendChild(canvas);
   }
-  fetch(dataURL).then(r => r.blob()).then(b => createImageBitmap(b)).then(bitmap => {
-    canvas.width  = bitmap.width;
-    canvas.height = bitmap.height;
-    canvas.getContext('2d').drawImage(bitmap, 0, 0);
-    bitmap.close();
-  }).catch(() => {});
+  const img = new Image();
+  img.onload = () => {
+    if (img.naturalWidth === 0 || img.naturalHeight === 0) return;
+    if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+    }
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    snap.style.display = 'block';
+    // Notify main process AFTER the next compositor frame so the canvas pixels
+    // are guaranteed to be on-screen before the BV is parked. Without rAF the
+    // ACK can arrive at main before the GPU compositor commits the canvas paint,
+    // causing one dark frame between the BV departing and the canvas appearing.
+    if (!_snapDrawnSent) {
+      _snapDrawnSent = true;
+      requestAnimationFrame(() => ipcRenderer.send('panel:snapshot:drawn'));
+    }
+  };
+  img.src = dataURL;
 });
 ipcRenderer.on('panel:snapshot:clear', () => {
+  _snapDrawnSent = false; // reset for next panel open
   const snap = $('page-snapshot');
   if (!snap) return;
   snap.style.display = 'none';
