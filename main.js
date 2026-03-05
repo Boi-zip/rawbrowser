@@ -1210,6 +1210,8 @@ function normalizeUrl(raw) {
 function resolveUrl(raw) {
   if (!raw || raw === 'newtab') return 'newtab';
   const engine = settings.searchEngine || 'https://duckduckgo.com/?q=';
+  // Allow file:// URLs and bare paths pointing to local html/xhtml/pdf files
+  if (/\.(html?|xhtml|pdf)$/i.test(raw) && !/^(javascript|vbscript|data):/i.test(raw)) return raw;
   // Security: never navigate to dangerous schemes — treat as search queries
   if (/^(javascript|vbscript|data|file):/i.test(raw)) return engine + encodeURIComponent(raw);
   if (/^(https?|ftp):\/\//i.test(raw))   return raw;
@@ -2476,6 +2478,17 @@ async function _openPanel(tab) {
   } catch {}
   if (!panelOpen) return;
 
+  // Step 2.5: Inject a transparent blanker so the BV content is invisible when
+  // it moves off-screen — eliminates the ~200ms flicker the user would otherwise
+  // see between the BV disappearing and the snapshot rendering over it.
+  tab._blankerKey = await wc.insertCSS(
+    'html,body{opacity:0!important;transition:none!important;pointer-events:none!important}'
+  ).catch(() => null);
+  if (!panelOpen) {
+    if (tab._blankerKey) { wc.removeInsertedCSS(tab._blankerKey).catch(() => {}); tab._blankerKey = null; }
+    return;
+  }
+
   // Step 3: Park BV fully off-screen at full size.
   // incrementCapturerCount(size) in _parkBV keeps the renderer + video decoder
   // active at full resolution off-screen so capturePage() returns live frames.
@@ -3225,6 +3238,8 @@ const IG_TOP = 82; // tab-row 34 + nav-row 48
 const IG_SEARCH = 'https://www.startpage.com/search?q=';
 function igResolveUrl(raw) {
   if (!raw || raw === 'newtab') return 'newtab';
+  // Allow file:// URLs and bare paths pointing to local html/xhtml/pdf files
+  if (/\.(html?|xhtml|pdf)$/i.test(raw) && !/^(javascript|vbscript|data):/i.test(raw)) return raw;
   if (/^(javascript|vbscript|data|file):/i.test(raw)) return IG_SEARCH + encodeURIComponent(raw);
   if (/^(https?|ftp):\/\//i.test(raw)) return raw;
   if (/^(about:|view-source:)/i.test(raw)) return raw;
