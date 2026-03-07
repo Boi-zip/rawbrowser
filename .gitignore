@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 
+asset.zip
+
 # Build output
 dist/
 out/
