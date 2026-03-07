@@ -107,9 +107,13 @@ const BLOCK_DOMAINS = new Set([
   'metrika.yandex.ru', 'an.yandex.ru', 'yabs.yandex.ru',
   'mail.yandex.ru', 'carambola.ru',
 
-  // ── Chinese Telemetry ──
+  // ── Chinese / ByteDance Telemetry ──
   'cnzz.com', 'umeng.com', 'alog.umengcloud.com',
   'mmstat.com', 'alipayobjects.com',
+  'snssdk.com', 'bdurl.net',
+  'toblog.ctobsnssdk.com', 'byteodg.com',
+  'bytedance.com', 'byteimg.com', 'bytefcdn.com',
+  'toutiao.com', 'ixigua.com',
 
   // ── Push Notification Spam ──
   'pushcrew.com', 'onesignal.com', 'pushengage.com',
@@ -179,6 +183,79 @@ const BLOCK_DOMAINS = new Set([
   'shareaholic.com', 'socialspark.com', 'blogads.com',
   'adsonar.com', 'advertising.com', 'atwola.com',
   'advertising.aol.com',
+
+  // ── Google tracking (not needed for auth — explicitly blockable) ──
+  'google-analytics.com', 'ssl.google-analytics.com',
+  'googletagmanager.com', 'googletagservices.com', 'adservice.google.com',
+  'pagead2.googlesyndication.com', 'tpc.googlesyndication.com',
+  'imasdk.googleapis.com', 'fundingchoicesmessages.google.com',
+  'stats.g.doubleclick.net', 'cm.g.doubleclick.net',
+  '2mdn.net', 'googleadapis.com',
+
+  // ── Ad verification / brand safety ──
+  'doubleverify.com', 'cdn.doubleverify.com', 'pub.doubleverify.com',
+  'integralads.com', 'pixel.adsafeprotected.com', 'adsafeprotected.com',
+  'moatads.com', 'z.moatads.com', 'px.moatads.com',
+  'confiant.com', 'cdn.confiant.com',
+
+  // ── Legacy ad networks still active ──
+  'zedo.com', 'yieldmanager.com', 'tribalfusion.com',
+  'eyeblaster.com', 'mediaplex.com', 'sizmek.com', 'pointroll.com',
+  'eyereturn.com', 'specificclick.net', 'adbutter.net',
+  'buysellads.com', 'carbonads.com', 'servedby.flashtalking.com',
+  'flashtalking.com', 'serving-sys.com', 'bs.serving-sys.com',
+  'atdmt.com', 'atlas-analytics.com',
+
+  // ── Quantcast ──
+  'quantcast.com', 'quantserve.com', 'pixel.quantserve.com',
+  'choice.quantcast.com',
+
+  // ── ID syncing / audience ──
+  'ib.adnxs.com', 'secure.adnxs.com', 'nym1.ib.adnxs.com',
+  'usermatch.krxd.net', 'sync.mathtag.com', 'match.adsrvr.org',
+  'cm.adform.net', 'sync.tidaltv.com', 'px.adhigh.net',
+  'acdn.adnxs.com', 'cdn.adnxs.com',
+
+  // ── Affiliate / conversion tracking ──
+  'impact.com', 'impactradius.com', 'pxf.io',
+  'awin1.com', 'awin.com', 'commission-junction.com', 'cj.com',
+  'shareasale.com', 'linksynergy.com', 'rakuten.com',
+  'tradedoubler.com', 'affiliatewindow.com', 'zanox.com',
+
+  // ── Modern trackers (2023-2025) ──
+  'vercel-insights.com', 'va.vercel-insights.com',
+  'clarity.ms', 'c.clarity.ms',
+  'cdn.cookielaw.org', 'optanon.blob.core.windows.net',
+  'cdn.privacy-center.org',
+  'privacyportal.onetrust.com', 'geolocation.onetrust.com',
+  'cdn.segment.com', 'api.segment.io',
+  'cdn4.mxpnl.com', 'api.mixpanel.com',
+  'cdn.heapanalytics.com', 'heapanalytics.com',
+  'edge.fullstory.com', 'rs.fullstory.com',
+  'widget.intercom.io', 'api.intercom.io', 'nexus.intercom.io',
+  'js.sentry-cdn.com', 'browser.sentry-cdn.com', 'o0.ingest.sentry.io',
+  'cdn.lr-ingest.io', 'r.lr-ingest.io',
+  'cdn.mouseflow.com',
+  'cdn.amplitude.com', 'api.amplitude.com', 'api2.amplitude.com',
+  'cdn.rudderlabs.com', 'api.rudderlabs.com',
+  'edge.tealiumiq.com', 'collect.tealiumiq.com',
+  'px.moatads.com', 'z.moatads.com',
+  'tr.snapchat.com', 'sc-static.net',
+  'px.ads.linkedin.com', 'snap.licdn.com',
+  'ct.pinterest.com', 'ads.pinterest.com',
+  'analytics.twitter.com', 'ads.twitter.com', 'static.ads-twitter.com',
+  't.co',
+  'analytics.tiktok.com', 'log.tiktok.com',
+  'bat.bing.com', 'c.bing.com',
+  'mc.yandex.com', 'mc.yandex.ru',
+  'counter.ok.ru',
+  'cdp.customer.io', 'track.customer.io',
+  'cdn.pendo.io', 'app.pendo.io', 'data.pendo.io',
+  'cdn.walkme.com', 'ec.walkme.com',
+  'cdn.appcues.com', 'api.appcues.com',
+  'js.driftt.com', 'event.logrocket.com',
+  'analytics.posthog.com', 'us.i.posthog.com', 'eu.i.posthog.com',
+  'plausible.io',
 ]);
 
 // Regex patterns for catching tracker subdomains dynamically
@@ -215,8 +292,7 @@ const BLOCK_PATTERNS = [
 // Never block these no matter what
 const WHITELIST = new Set([
   'youtube.com', 'www.youtube.com', 'youtu.be',
-  'tiktok.com', 'www.tiktok.com',
-  'twitter.com', 'x.com', 't.co',
+  'twitter.com', 'x.com',
   'instagram.com', 'www.instagram.com',
   'facebook.com', 'www.facebook.com', 'm.facebook.com',
   'reddit.com', 'www.reddit.com', 'old.reddit.com',
@@ -250,31 +326,139 @@ function isWhitelisted(host) {
   return false;
 }
 
-function shouldBlock(url, adblockEnabled) {
+// Additional domains blocked only in Strict mode
+const STRICT_BLOCK_DOMAINS = new Set([
+  // Extended analytics
+  'matomo.cloud', 'piwik.pro', 'mouseflow.io', 'heatmap.com',
+  'convertkit.com', 'activecampaign.com', 'getresponse.com',
+  'campaign-monitor.com', 'constantcontact.com', 'mailerlite.com',
+  'sendpulse.com', 'drip.com', 'ontraport.com',
+  // Extended ad networks
+  'ads.yahoo.com', 'gemini.yahoo.com', 'oath.com', 'verizonmedia.com',
+  'yimg.com', 'storage.googleapis.com', /* used by some ad SDKs */
+  'pagead2.googlesyndication.com', 'tpc.googlesyndication.com',
+  'fundingchoicesmessages.google.com',
+  'imasdk.googleapis.com',
+  // Social tracking pixels
+  'px.ads.linkedin.com', 'snap.licdn.com', 'tr.snapchat.com',
+  'sc-static.net', 'scdn.co',
+  'ads.pinterest.com', 'ct.pinterest.com', 'trk.pinterest.com',
+  'ads-twitter.com', 'static.ads-twitter.com',
+  // TikTok analytics, ads, logging — strict mode extras
+  'ads.tiktok.com', 'business.tiktok.com',
+  'analytics.tiktok.com', 'log.tiktok.com', 'log-va.tiktok.com',
+  'log-sg.tiktok.com', 'mon.tiktok.com', 'stats.tiktok.com',
+  'event.tiktok.com', 'metrics.tiktok.com', 'monitor.tiktok.com',
+  'tracker.tiktok.com', 'snssdk.com', 'bdurl.net', 'musical.ly',
+  // More fingerprinting services
+  'cdn.iovation.com', 'mpsnare.iesnare.com', 'ci.mpsnare.iesnare.com',
+  'kochava.com', 'branch.io', 'app.link', 'stp.link',
+  // Extended push/notification spam
+  'webpushr.com', 'aimtell.com', 'subscribers.com',
+  'perfectaudience.com', 'retargetly.com', 'nexus.ensighten.com',
+  // Content recommendation / sponsored content
+  'ligatus.com', 'nativo.com', 'plista.com', 'strossle.com',
+  'teads.tv', 'teads.com', 'yieldmo.com', 'disqus.com', 'disquscdn.com',
+  // Extended session recording
+  'record.cursors.io', 'recording.userflow.com', 'sprig.com',
+  // Identity resolution / cross-site tracking
+  'liveintent.com', 'thrtle.com', 'id5-sync.com', 'id5.io',
+  'prebid.org', 'openx.org',
+  'connectid.conversant.com', 'token.rubiconproject.com',
+  'sync.rubiconproject.com', 'tap2.rubiconproject.com',
+  'dis.us.criteo.com', 'gum.criteo.com',
+  'usersync.gumgum.com', 'sync.gumgum.com',
+  'usersync.improve-digital.net', 'sync.sharethis.com',
+  // Extended fingerprinting
+  'tiqcdn.com', 'tags.tiqcdn.com',
+  'tags.bkrtx.com',
+  // E-commerce tracking
+  'track.omnisend.com', 'trk.klaviyomail.com',
+  'ct.pinterest.com', 'trk.pinterest.com',
+  'p.typekit.net', /* Adobe Fonts analytics ping */
+]);
+
+// Strict-mode URL path patterns (matching known tracking endpoints)
+const STRICT_PATH_PATTERNS = [
+  /\/track(ing|er)?\//i,
+  /\/collect\//i,
+  /\/pixel(\.gif|\.png|\.php)?\b/i,
+  /\/beacon\//i,
+  /\/analytics\//i,
+  /\/metrics\//i,
+  /\/impression\//i,
+  /\/conversion\//i,
+  /\/event(s)?\//i,
+  /[?&](utm_|fbclid|gclid|msclkid|ttclid|twclid|dclid|sscid|igshid|mc_eid|_ga|_gl)=/i,
+];
+
+function shouldBlock(url, adblockEnabled, level) {
   if (!adblockEnabled) return false;
-  
+  const strict = (level === 'strict');
+
   try {
     const urlObj = new URL(url);
-    let host = urlObj.hostname.toLowerCase().replace(/^www\./, '');
-    
-    if (isWhitelisted(host)) return false;
-    if (BLOCK_DOMAINS.has(host)) return true;
-    
-    // Check parent domains
+    const host = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+    const pathname = urlObj.pathname;
     const parts = host.split('.');
+
+    // Explicit block lists are checked BEFORE whitelist so tracker subdomains of
+    // whitelisted parent domains (e.g. imasdk.googleapis.com < googleapis.com)
+    // are still caught. A domain in BLOCK_DOMAINS always wins.
+    if (BLOCK_DOMAINS.has(host)) return true;
     for (let i = 1; i < parts.length - 1; i++) {
       if (BLOCK_DOMAINS.has(parts.slice(i).join('.'))) return true;
     }
-    
-    // Pattern matching
-    for (const pattern of BLOCK_PATTERNS) {
+
+    if (isWhitelisted(host)) return false;
+
+    // Moderate + Strict: additional domains
+    if (STRICT_BLOCK_DOMAINS.has(host)) return true;
+    for (let i = 1; i < parts.length - 1; i++) {
+      if (STRICT_BLOCK_DOMAINS.has(parts.slice(i).join('.'))) return true;
+    }
+
+    // Moderate: strong subdomain patterns (safe — won't break normal site functionality)
+    const moderatePatterns = [
+      /^ads?\d*\./i,
+      /^ad\d+\./i,
+      /\.ads?\./i,
+      /^track(ing|er)?\d*\./i,
+      /^pixel\d*\./i,
+      /^beacon\d*\./i,
+      /^telemetry\d*\./i,
+      /^analytics?\d*\./i,
+      /^collect\d*\./i,
+      /^(gtm|tag)\./i,
+      /^log(ger)?\d*\./i,
+      /^event(s)?\./i,
+      /^ping\./i,
+      /^impression\./i,
+      /^conv(ersion)?\./i,
+      /^retarget(ing)?\./i,
+      /^remarketing\./i,
+      /^dmp\./i,
+      /^segment\./i,
+      /^miner\./i,
+      /^crypto.*mine/i,
+    ];
+    for (const pattern of moderatePatterns) {
       if (pattern.test(host)) return true;
     }
+
+    // Strict-only: extra URL path patterns for tracking endpoints
+    if (strict) {
+      for (const pattern of BLOCK_PATTERNS) {
+        if (pattern.test(host)) return true;
+      }
+      for (const pattern of STRICT_PATH_PATTERNS) {
+        if (pattern.test(pathname) || pattern.test(urlObj.search)) return true;
+      }
+    }
   } catch (e) {
-    // Invalid URL - return false to avoid breaking
     return false;
   }
-  
+
   return false;
 }
 
