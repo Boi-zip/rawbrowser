@@ -32,3 +32,4 @@ bash
 npm run build:win    # Windows
 npm run build:mac    # macOS
 npm run build:linux  # Linux
+npm run build:flatpak  # Flatpak, you need flatpak & flatpak builder installed
