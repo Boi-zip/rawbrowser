@@ -202,6 +202,72 @@ body.theme-light .nt-sugg-url { color: var(--t3) !important; }
 body.theme-light .nt-sugg-div { background: var(--ln2) !important; }
 body.compact { --chrome-h: 72px; --tab-h: 30px; --nav-h: 42px; }
 body.hide-favicons .tab-fav, body.hide-favicons .tab-fav-ph { display: none !important; }
+body.hide-nt-logo #nt-logo-wrap { display: none !important; margin-bottom: 0 !important; }
+
+.tip-div { height: 1px; background: var(--ln); margin: 9px 0; }
+
+/* Wallpaper library grid */
+.lib-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
+  width: 100%; margin-top: 4px;
+}
+.lib-section-label {
+  font-size: 10px; font-weight: 700; color: var(--t3);
+  letter-spacing: .07em; text-transform: uppercase;
+  margin-bottom: 8px; margin-top: 2px; display: block;
+}
+.lib-item {
+  aspect-ratio: 16/9; border-radius: 5px; overflow: hidden; cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color .15s, transform .12s, box-shadow .15s;
+  position: relative;
+}
+.lib-item:hover { border-color: var(--acc); transform: scale(1.03); box-shadow: 0 3px 10px rgba(0,0,0,.55); }
+.lib-item.active-wp { border-color: var(--acc); box-shadow: 0 0 0 2px rgba(var(--acc-raw),.22); }
+.lib-item img, .lib-item video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.lib-item-label {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.72));
+  color: rgba(255,255,255,.88); font-size: 8px; font-weight: 600;
+  letter-spacing: .03em; padding: 8px 4px 3px;
+  text-align: center; pointer-events: none;
+  opacity: 0; transition: opacity .15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lib-item:hover .lib-item-label { opacity: 1; }
+.lib-item.active-wp .lib-item-label { opacity: 1; }
+.lib-item-live-badge {
+  position: absolute; top: 3px; right: 3px;
+  background: rgba(0,0,0,.65); color: rgba(255,255,255,.9);
+  font-size: 7px; font-weight: 700; letter-spacing: .06em;
+  padding: 1px 4px; border-radius: 3px; pointer-events: none;
+}
+.lib-item-remove {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(0,0,0,.72); border: none; cursor: pointer;
+  color: rgba(255,255,255,.88); font-size: 11px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s, background .12s;
+  padding: 0; pointer-events: all;
+}
+.lib-item:hover .lib-item-remove { opacity: 1; }
+.lib-item-remove:hover { background: rgba(220,38,38,.85); }
+
+/* Live wallpaper video element */
+#live-wallpaper {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: -1; pointer-events: none;
+  display: none;
+}
+body.has-live-wallpaper #live-wallpaper { display: block; }
+body.has-live-wallpaper { background-image: none !important; background-color: transparent !important; }
+body.has-live-wallpaper #chrome { background: var(--bg1) !important; }
+body.has-live-wallpaper #newtab-layer { background: rgba(0,0,0,.38) !important; }
+body.has-live-wallpaper .nt-search {
+  background: rgba(8,8,8,.80) !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
 
 /* Wallpaper — applied to body, chrome always stays opaque so no bleed-through */
 body.has-wallpaper {
@@ -262,8 +328,11 @@ html, body {
   -webkit-app-region: drag;
   box-shadow:
     0 1px 0 rgba(255,255,255,.03) inset,
-    0 2px 8px rgba(0,0,0,.55),
-    0 4px 20px rgba(0,0,0,.35);
+    0 2px 6px rgba(0,0,0,.5),
+    0 3px 10px rgba(0,0,0,.22);
+  /* will-change: transform removed — it disabled sub-pixel text rendering on
+     the toolbar, causing visible blurring. The sugg-drop animates on its own
+     layer via its own will-change and does not recomposite #chrome. */
 }
 
 #chrome::before { display: none; }
@@ -656,7 +725,7 @@ body.platform-darwin #nav-row { padding-left: 10px; }
   background: var(--bg3);
   border: 1px solid var(--ln);
   border-radius: 10px;
-  padding: 0 12px 0 30px;
+  padding: 0 78px 0 30px;
   font-family: var(--f);
   font-size: 12.5px;
   font-weight: 400;
@@ -1611,6 +1680,31 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .dl-act:hover { background: var(--bg4); color: var(--t1); }
 .dl-act svg { display: block; }
 
+/* Limiter Panel */
+#panel-limiter { width: 300px; }
+.lim-section { padding: 10px 14px; border-bottom: 1px solid var(--ln); }
+.lim-section:last-child { border-bottom: none; }
+.lim-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.lim-label { font-size: 11.5px; font-weight: 600; color: var(--t1); display: flex; align-items: center; gap: 6px; }
+.lim-label svg { color: var(--t3); }
+.lim-val { font-size: 11px; font-weight: 700; color: var(--acc); font-variant-numeric: tabular-nums; }
+.lim-val.off { color: var(--t3); }
+.lim-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 3px; border-radius: 2px;
+  background: var(--bg5); outline: none; cursor: pointer;
+}
+.lim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--acc);
+  box-shadow: 0 0 0 3px rgba(var(--acc-raw),.18);
+  cursor: pointer; transition: transform .1s;
+}
+.lim-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.lim-ticks { display: flex; justify-content: space-between; margin-top: 5px; }
+.lim-tick { font-size: 9.5px; color: var(--t3); }
+.lim-note { font-size: 10px; color: var(--t3); margin-top: 6px; line-height: 1.5; }
+
 /* FULL SETTINGS PAGE */
 #settings-overlay {
   display: none;
@@ -1671,130 +1765,184 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 #ext-store-overlay.on { display: flex; opacity: 1; }
 #ext-store-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 20px 12px; border-bottom: 1px solid var(--ln);
-  background: var(--bg1); flex-shrink: 0; -webkit-app-region: drag;
+  padding: 14px 20px 13px;
+  border-bottom: 1px solid var(--ln);
+  background: linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 100%);
+  flex-shrink: 0; -webkit-app-region: drag;
+  position: relative;
 }
 #ext-store-header > * { -webkit-app-region: no-drag; }
 #ext-store-back {
-  width: 30px; height: 30px; border: none; background: transparent;
-  border-radius: 6px; cursor: pointer; color: var(--t2);
+  width: 32px; height: 32px; border: none;
+  background: var(--bg3); border: 1px solid var(--ln);
+  border-radius: 8px; cursor: pointer; color: var(--t2);
   display: flex; align-items: center; justify-content: center;
-  transition: background .1s, color .1s; flex-shrink: 0;
+  transition: background .1s, color .1s, border-color .1s; flex-shrink: 0;
 }
-#ext-store-back:hover { background: var(--bg4); color: var(--t1); }
+#ext-store-back:hover { background: var(--bg4); color: var(--t1); border-color: var(--ln2); }
 .ext-store-header-icon {
-  width: 34px; height: 34px; flex-shrink: 0;
-  background: linear-gradient(135deg, rgba(0,212,200,.2), rgba(0,180,170,.08));
-  border: 1px solid rgba(0,212,200,.3); border-radius: 10px;
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(0,212,200,.22), rgba(0,180,170,.08));
+  border: 1px solid rgba(0,212,200,.32); border-radius: 10px;
   display: flex; align-items: center; justify-content: center; color: var(--acc);
+  box-shadow: 0 0 14px rgba(0,212,200,.1);
 }
 .ext-store-header-info { min-width: 0; }
-#ext-store-title { font-size: 13.5px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; line-height: 1; }
-#ext-store-subtitle { font-size: 10.5px; color: var(--t4); margin-top: 2px; }
+#ext-store-title { font-size: 14px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; line-height: 1; }
+#ext-store-subtitle { font-size: 10.5px; color: var(--t3); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
 .ext-active-badge {
-  display: inline-block; background: rgba(0,212,200,.18); color: var(--acc);
-  border: 1px solid rgba(0,212,200,.32); border-radius: 5px;
-  font-size: 9.5px; font-weight: 700; padding: 1px 6px;
-  letter-spacing: .04em; vertical-align: middle; margin-left: 4px;
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(0,212,200,.14); color: var(--acc);
+  border: 1px solid rgba(0,212,200,.28); border-radius: 5px;
+  font-size: 9.5px; font-weight: 700; padding: 1px 7px;
+  letter-spacing: .04em;
 }
 #ext-store-search-wrap {
-  flex: 1; max-width: 300px; margin-left: auto;
+  flex: 1; max-width: 280px; margin-left: auto;
   position: relative; display: flex; align-items: center;
 }
-.ext-search-icon { position: absolute; left: 9px; color: var(--t4); pointer-events: none; flex-shrink: 0; }
+.ext-search-icon { position: absolute; left: 9px; color: var(--t3); pointer-events: none; flex-shrink: 0; }
 #ext-store-search {
-  width: 100%; height: 31px; border-radius: 8px;
-  background: var(--bg3); border: 1px solid var(--ln);
+  width: 100%; height: 32px; border-radius: 9px;
+  background: var(--bg3); border: 1px solid var(--ln2);
   color: var(--t0); font-size: 12px; padding: 0 10px 0 30px;
-  outline: none; transition: border-color .15s;
+  outline: none; transition: border-color .15s, box-shadow .15s;
 }
-#ext-store-search:focus { border-color: var(--acc); }
-#ext-store-search::placeholder { color: var(--t4); }
+#ext-store-search:focus { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-g); }
+#ext-store-search::placeholder { color: var(--t3); }
 
-#ext-store-body { flex: 1; overflow-y: auto; padding: 0 0 40px; }
+#ext-store-body { flex: 1; overflow-y: auto; padding: 0 0 48px; }
 #ext-store-body::-webkit-scrollbar { width: 4px; }
 #ext-store-body::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 2px; }
 
 /* Category pills */
 #ext-cats {
-  display: flex; gap: 6px; padding: 14px 20px 0;
+  display: flex; gap: 6px; padding: 16px 20px 0;
   overflow-x: auto; flex-shrink: 0;
 }
 #ext-cats::-webkit-scrollbar { display: none; }
 .ext-cat {
-  padding: 5px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 500;
+  padding: 6px 15px; border-radius: 8px; font-size: 11px; font-weight: 600;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  background: var(--bg3); color: var(--t2); border: 1px solid transparent;
-  transition: all .15s;
+  background: var(--bg3); color: var(--t2); border: 1px solid var(--ln);
+  transition: all .15s; letter-spacing: .01em;
 }
-.ext-cat:hover { color: var(--t1); background: var(--bg4); }
-.ext-cat.active { background: var(--acc-f); color: var(--acc); border-color: var(--acc-g); font-weight: 700; }
+.ext-cat:hover { color: var(--t1); background: var(--bg4); border-color: var(--ln2); }
+.ext-cat.active {
+  background: var(--acc-f); color: var(--acc);
+  border-color: rgba(0,212,200,.35); font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(0,212,200,.12);
+}
 
 /* Featured banner */
 #ext-featured {
-  margin: 14px 20px 0; border-radius: 14px; overflow: hidden;
-  background: linear-gradient(120deg, rgba(0,212,200,.1) 0%, rgba(0,130,130,.05) 100%);
-  border: 1px solid rgba(0,212,200,.2); padding: 16px 18px;
-  display: flex; align-items: center; gap: 14px; cursor: default;
-  transition: border-color .15s;
+  margin: 16px 20px 0; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(130deg,
+    rgba(0,212,200,.13) 0%,
+    rgba(0,160,150,.06) 50%,
+    rgba(0,212,200,.04) 100%);
+  border: 1px solid rgba(0,212,200,.22);
+  padding: 20px 20px; display: flex; align-items: center; gap: 16px;
+  cursor: default; transition: border-color .15s, box-shadow .15s;
+  position: relative;
 }
-#ext-featured.active { border-color: rgba(0,212,200,.45); background: linear-gradient(120deg, rgba(0,212,200,.15) 0%, rgba(0,130,130,.08) 100%); }
-#ext-featured:hover { border-color: rgba(0,212,200,.35); }
+#ext-featured::before {
+  content: '';
+  position: absolute; top: -40px; right: -40px;
+  width: 150px; height: 150px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,212,200,.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+#ext-featured.active {
+  border-color: rgba(0,212,200,.42);
+  background: linear-gradient(130deg, rgba(0,212,200,.17) 0%, rgba(0,160,150,.09) 50%, rgba(0,212,200,.05) 100%);
+  box-shadow: 0 0 0 1px rgba(0,212,200,.1), 0 4px 20px rgba(0,212,200,.08);
+}
+#ext-featured:hover { border-color: rgba(0,212,200,.38); }
 .ext-featured-icon {
-  width: 50px; height: 50px; flex-shrink: 0; border-radius: 14px;
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, rgba(0,212,200,.25), rgba(0,160,150,.1));
-  border: 1px solid rgba(0,212,200,.3); color: var(--acc);
+  background: linear-gradient(135deg, rgba(0,212,200,.28), rgba(0,160,150,.12));
+  border: 1px solid rgba(0,212,200,.32); color: var(--acc);
+  box-shadow: 0 4px 14px rgba(0,212,200,.18);
 }
 .ext-featured-info { flex: 1; min-width: 0; }
-.ext-featured-tag { font-size: 9.5px; font-weight: 700; color: var(--acc); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 3px; }
-.ext-featured-name { font-size: 15px; font-weight: 700; color: var(--t0); letter-spacing: -.02em; }
-.ext-featured-desc { font-size: 11.5px; color: var(--t3); margin-top: 3px; line-height: 1.45; }
-.ext-feat-btn {
-  padding: 7px 18px; border-radius: 8px; font-size: 12px; font-weight: 600;
-  cursor: pointer; border: none; transition: all .15s; flex-shrink: 0;
-  background: var(--acc); color: #000;
+.ext-featured-tag {
+  font-size: 9px; font-weight: 800; color: var(--acc);
+  letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 5px;
 }
-.ext-feat-btn:hover { filter: brightness(1.12); }
-.ext-feat-btn.enabled { background: rgba(0,212,200,.15); color: var(--acc); border: 1px solid rgba(0,212,200,.35); }
+.ext-featured-name { font-size: 16px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; }
+.ext-featured-desc { font-size: 11.5px; color: var(--t2); margin-top: 4px; line-height: 1.5; }
+.ext-feat-btn {
+  padding: 8px 20px; border-radius: 9px; font-size: 12px; font-weight: 700;
+  cursor: pointer; border: none; transition: all .15s; flex-shrink: 0;
+  background: var(--acc); color: #000; letter-spacing: .01em;
+}
+.ext-feat-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.ext-feat-btn:active { transform: scale(.97); }
+.ext-feat-btn.enabled {
+  background: rgba(0,212,200,.12); color: var(--acc);
+  border: 1px solid rgba(0,212,200,.3);
+}
 
 /* Section label */
 .ext-section-label {
-  font-size: 10.5px; font-weight: 700; color: var(--t4);
-  letter-spacing: .07em; text-transform: uppercase;
-  padding: 18px 20px 8px;
+  font-size: 10px; font-weight: 800; color: var(--t3);
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 22px 20px 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ext-section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--ln);
 }
 #ext-no-results {
-  display: none; text-align: center; padding: 40px 20px;
-  color: var(--t4); font-size: 13px;
+  display: none; text-align: center; padding: 48px 20px;
+  color: var(--t3); font-size: 13px;
 }
 
 /* Card grid */
 #ext-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 12px; padding: 0 20px 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px; padding: 0 20px 6px;
+}
+@media (max-width: 680px) {
+  #ext-grid { grid-template-columns: 1fr 1fr; }
 }
 .ext-card {
-  background: var(--bg1); border: 1px solid var(--ln); border-radius: 13px;
-  padding: 14px 13px 11px; cursor: default;
-  transition: border-color .15s, background .15s, transform .15s, box-shadow .15s;
-  display: flex; flex-direction: column; gap: 7px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.28); will-change: transform;
+  background: var(--bg1); border: 1px solid var(--ln); border-radius: 14px;
+  padding: 14px 13px 12px; cursor: default;
+  transition: border-color .15s, background .15s, transform .14s, box-shadow .15s;
+  display: flex; flex-direction: column; gap: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3); will-change: transform;
+  position: relative; overflow: hidden;
+}
+.ext-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.07) 50%, transparent 100%);
+  pointer-events: none;
 }
 .ext-card:hover {
-  border-color: rgba(0,212,200,.25); background: var(--bg2);
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 16px rgba(0,0,0,.42), 0 0 0 1px rgba(0,212,200,.08);
+  border-color: rgba(0,212,200,.28); background: var(--bg2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.45), 0 0 0 1px rgba(0,212,200,.08);
 }
-.ext-card.active { border-color: rgba(0,212,200,.38); background: rgba(0,212,200,.04); }
-.ext-card.active:hover { border-color: rgba(0,212,200,.55); }
+.ext-card.active {
+  border-color: rgba(0,212,200,.42); background: rgba(0,212,200,.04);
+  box-shadow: 0 2px 10px rgba(0,212,200,.08), 0 0 0 1px rgba(0,212,200,.1);
+}
+.ext-card.active::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(0,212,200,.18) 50%, transparent 100%);
+}
+.ext-card.active:hover { border-color: rgba(0,212,200,.58); }
 .ext-card-top { display: flex; align-items: flex-start; gap: 10px; }
 .ext-card-icon {
   width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
   border: 1px solid transparent; display: flex; align-items: center; justify-content: center;
-  transition: filter .15s;
+  transition: filter .15s, box-shadow .15s;
 }
-.ext-card.active .ext-card-icon { filter: brightness(1.2); }
+.ext-card.active .ext-card-icon { filter: brightness(1.15); }
 .ic-purple { background: linear-gradient(145deg,rgba(120,60,240,.28),rgba(70,20,160,.18)); border-color: rgba(120,60,240,.28); color: #a07af0; }
 .ic-blue   { background: linear-gradient(145deg,rgba(40,120,240,.28),rgba(20,60,200,.18)); border-color: rgba(40,120,240,.28); color: #60a8f8; }
 .ic-green  { background: linear-gradient(145deg,rgba(20,200,80,.28),rgba(10,140,50,.18));  border-color: rgba(20,200,80,.28);  color: #40d470; }
@@ -1806,24 +1954,27 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .ic-pink   { background: linear-gradient(145deg,rgba(236,72,153,.28),rgba(190,30,110,.18)); border-color: rgba(236,72,153,.28); color: #f472b6; }
 .ic-indigo { background: linear-gradient(145deg,rgba(99,102,241,.28),rgba(67,56,202,.18)); border-color: rgba(99,102,241,.28); color: #818cf8; }
 .ext-card-meta { flex: 1; min-width: 0; }
-.ext-card-name { font-size: 12.5px; font-weight: 600; color: var(--t0); margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ext-card-cat { font-size: 10px; color: var(--t4); font-weight: 500; }
+.ext-card-name { font-size: 12px; font-weight: 700; color: var(--t0); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+.ext-card-cat { font-size: 9.5px; color: var(--t3); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
 .ext-badge-new {
-  display: inline-block; font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  display: inline-block; font-size: 8px; font-weight: 800; letter-spacing: .07em;
   padding: 1.5px 5px; border-radius: 4px; text-transform: uppercase;
-  background: rgba(0,212,200,.18); color: var(--acc); border: 1px solid rgba(0,212,200,.3);
+  background: rgba(0,212,200,.16); color: var(--acc); border: 1px solid rgba(0,212,200,.28);
   margin-left: 5px; vertical-align: middle; line-height: 1.5;
 }
-.ext-card-desc { font-size: 11px; color: var(--t4); line-height: 1.5; flex: 1; }
+.ext-card-desc { font-size: 10.5px; color: var(--t3); line-height: 1.55; flex: 1; }
 .ext-card-footer {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: 3px;
+  margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--ln);
 }
 .ext-card-status {
-  display: none !important;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 5px; display: none;
+  background: var(--bg3); color: var(--t3); border: 1px solid var(--ln);
 }
 .ext-card.active .ext-card-status {
-  color: var(--acc); background: rgba(0,212,200,.12); border-color: rgba(0,212,200,.4);
+  display: inline-block;
+  color: var(--acc); background: rgba(0,212,200,.1); border-color: rgba(0,212,200,.32);
 }
 
 /* ── UPDATE POPUP ──────────────────────────────────────────────────────── */
@@ -1884,6 +2035,48 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
   transition: background .15s, color .15s;
 }
 .upd-btn-skip:hover { background: var(--bg3); color: var(--t1); }
+
+/* Diagnostics turn-off confirmation popup */
+#diag-confirm-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 10000000; backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none; transition: opacity .22s;
+}
+#diag-confirm-backdrop.on { opacity: 1; pointer-events: all; }
+#diag-confirm-popup {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(.93);
+  z-index: 10000001; width: 340px; max-width: calc(100vw - 40px);
+  background: var(--bg1); border: 1px solid var(--ln);
+  border-radius: 18px; padding: 30px 24px 22px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+  display: none; opacity: 0; text-align: center;
+  transition: opacity .22s, transform .22s;
+}
+#diag-confirm-popup.on { display: block; opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.dc-state { display: none; }
+.dc-state.active { display: block; }
+.dc-emoji { font-size: 40px; margin-bottom: 10px; line-height: 1; }
+.dc-title { font-size: 17px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; margin-bottom: 8px; }
+.dc-body { font-size: 12px; color: var(--t2); line-height: 1.65; margin-bottom: 20px; }
+.dc-btn-off {
+  display: block; width: 100%; padding: 10px 20px;
+  background: var(--bg4); color: var(--t0);
+  border: 1px solid var(--ln2); border-radius: 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s; margin-bottom: 6px;
+}
+.dc-btn-off:hover { background: var(--bg5); }
+.dc-btn-keep {
+  display: block; width: 100%; padding: 7px 20px;
+  background: var(--acc); color: #000;
+  border: none; border-radius: 10px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: filter .15s;
+}
+.dc-btn-keep:hover { filter: brightness(1.1); }
+.dc-fine-print { font-size: 10px; color: var(--t3); margin-top: 8px; cursor: pointer; }
+.dc-fine-print:hover { color: var(--t2); text-decoration: underline; }
 .upd-final-icon {
   width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 16px;
   background: rgba(0,212,200,.12); border: 1px solid rgba(0,212,200,.25);
@@ -1905,9 +2098,54 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
   width: 200px;
   flex-shrink: 0;
   border-right: 1px solid var(--ln);
-  padding: 12px 8px;
+  padding: 12px 8px 0;
   overflow-y: auto;
   background: var(--bg1);
+  display: flex;
+  flex-direction: column;
+}
+#settings-nav-items { flex: 1; }
+#settings-nav-footer {
+  padding: 10px 4px 10px;
+  border-top: 1px solid var(--ln);
+  margin-top: 10px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--t3);
+  line-height: 1.8;
+}
+#settings-nav-footer span {
+  cursor: pointer;
+  transition: color .12s;
+}
+#settings-nav-footer span:hover { color: var(--t2); text-decoration: underline; }
+
+/* Update badge in About section */
+.set-upd-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px;
+  border-radius: 6px; letter-spacing: .02em;
+}
+.set-upd-badge.ok  { background: rgba(40,200,64,.12); color: #28c840; border: 1px solid rgba(40,200,64,.25); }
+.set-upd-badge.out { background: rgba(255,160,0,.15); color: #ffb020; border: 1px solid rgba(255,160,0,.3); }
+.set-upd-badge.chk { background: var(--bg3); color: var(--t3); border: 1px solid var(--ln); }
+
+/* Legal content blocks */
+.legal-body { padding: 4px 14px 14px; }
+.legal-body h3 {
+  font-size: 11px; font-weight: 700; color: var(--t2);
+  letter-spacing: .06em; text-transform: uppercase;
+  margin: 16px 0 6px;
+}
+.legal-body h3:first-child { margin-top: 4px; }
+.legal-body p {
+  font-size: 11.5px; color: var(--t2); line-height: 1.7; margin-bottom: 6px;
+}
+.legal-body ul {
+  padding-left: 16px; margin-bottom: 6px;
+}
+.legal-body ul li {
+  font-size: 11.5px; color: var(--t2); line-height: 1.65; margin-bottom: 3px;
 }
 
 .set-nav-item {
@@ -2376,7 +2614,7 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 
 /* NEWTAB EMBED LAYER */
 #newtab-layer {
-  position: absolute; inset: 0; z-index: 1;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;
   background:
     radial-gradient(ellipse 90% 55% at 12% -8%, rgba(0,212,200,.09) 0%, transparent 55%),
     radial-gradient(ellipse 65% 50% at 92% 110%, rgba(0,180,160,.06) 0%, transparent 50%),
@@ -2442,10 +2680,11 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .nt-sugg-drop {
-  display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 10;
+  display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
   background: #1a1d20; border: 1px solid rgba(255,255,255,.09);
   border-radius: 0 0 14px 14px; overflow: hidden;
   box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  will-change: opacity, transform;
 }
 .nt-sugg-drop.open { display: block; animation: _ntIn .14s ease forwards; }
 .nt-search-inner.sugg-open .nt-search {
@@ -2828,6 +3067,11 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 .setup-done-row:nth-child(3){animation-delay:.34s;}
 @keyframes doneRowIn{to{opacity:1;transform:none;}}
 .setup-done-icon{color:var(--acc);flex-shrink:0;display:flex;}.setup-done-text{font-size:12px;color:var(--t1);font-weight:500;}
+/* Setup: diagnostics step */
+.setup-diag-list{display:flex;flex-direction:column;gap:6px;width:100%;max-width:360px;margin-bottom:10px;}
+.setup-diag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;background:var(--bg3);border:1px solid var(--ln2);border-radius:10px;}
+.setup-diag-info{flex:1;min-width:0;}.setup-diag-name{font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px;}.setup-diag-desc{font-size:11px;color:var(--t3);line-height:1.45;}
+.setup-diag-notice{font-size:10.5px;color:var(--t3);line-height:1.55;padding:8px 12px;background:rgba(var(--acc-raw),.06);border:1px solid rgba(var(--acc-raw),.15);border-radius:8px;max-width:360px;width:100%;}
 
 /* Setup: animated welcome logo */
 .setup-welcome-logo{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
@@ -2990,14 +3234,14 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
 .ic-teal{background:linear-gradient(145deg,rgba(var(--acc-raw),.28),rgba(var(--acc-raw),.18));border-color:rgba(var(--acc-raw),.28);color:var(--acc);}
 .ext-row.active .ext-row-status{color:var(--acc);background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.4);}
 /* Extension store card grid */
-.ext-card.active{border-color:rgba(var(--acc-raw),.38);background:rgba(var(--acc-raw),.04);}
-.ext-card.active .ext-card-status{color:var(--acc);background:rgba(var(--acc-raw),.12);border-color:rgba(var(--acc-raw),.4);}
-.ext-card:hover{border-color:rgba(var(--acc-raw),.2);}
-.ext-cat.active{background:rgba(var(--acc-raw),.12);color:var(--acc);border-color:rgba(var(--acc-raw),.3);}
-#ext-featured{background:linear-gradient(120deg,rgba(var(--acc-raw),.1)0%,rgba(var(--acc-raw),.04)100%);border:1px solid rgba(var(--acc-raw),.2);}
-#ext-featured.active{border-color:rgba(var(--acc-raw),.45);background:linear-gradient(120deg,rgba(var(--acc-raw),.15)0%,rgba(var(--acc-raw),.08)100%);}
+.ext-card.active{border-color:rgba(var(--acc-raw),.42);background:rgba(var(--acc-raw),.04);box-shadow:0 2px 10px rgba(var(--acc-raw),.08),0 0 0 1px rgba(var(--acc-raw),.1);}
+.ext-card.active .ext-card-status{display:inline-block;color:var(--acc);background:rgba(var(--acc-raw),.1);border-color:rgba(var(--acc-raw),.32);}
+.ext-card:hover{border-color:rgba(var(--acc-raw),.25);}
+.ext-cat.active{background:rgba(var(--acc-raw),.1);color:var(--acc);border-color:rgba(var(--acc-raw),.35);box-shadow:0 0 0 1px rgba(var(--acc-raw),.12);}
+#ext-featured{background:linear-gradient(130deg,rgba(var(--acc-raw),.13)0%,rgba(var(--acc-raw),.05)100%);border:1px solid rgba(var(--acc-raw),.22);}
+#ext-featured.active{border-color:rgba(var(--acc-raw),.42);background:linear-gradient(130deg,rgba(var(--acc-raw),.17)0%,rgba(var(--acc-raw),.07)100%);}
 .ext-feat-btn{background:var(--acc);color:#000;}
-.ext-feat-btn.enabled{background:rgba(var(--acc-raw),.15);color:var(--acc);border:1px solid rgba(var(--acc-raw),.35);}
+.ext-feat-btn.enabled{background:rgba(var(--acc-raw),.12);color:var(--acc);border:1px solid rgba(var(--acc-raw),.3);}
 /* Settings inputs */
 .set-select:focus{border-color:rgba(var(--acc-raw),.3);}
 .set-input-text:focus{border-color:rgba(var(--acc-raw),.3);}
@@ -3053,6 +3297,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
 </style>
 </head>
 <body>
+<video id="live-wallpaper" autoplay loop muted playsinline></video>
 <div id="shell">
 
   <!-- CHROME -->
@@ -3135,6 +3380,17 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <path d="M1.5 12h11" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
           </svg>
           <span id="dl-badge" class="badge-dot" style="display:none"></span>
+        </button>
+        <button class="ib" id="btn-limiter" title="Limiter Tool — CPU / RAM / Network">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M7 7L4.2 4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="7" cy="7" r="1.2" fill="currentColor"/>
+            <path d="M3.5 10.5l.6-.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".5"/>
+            <path d="M10.5 10.5l-.6-.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".5"/>
+            <path d="M2 7h1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".5"/>
+            <path d="M11 7h1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".5"/>
+          </svg>
         </button>
         <div class="vsep"></div>
         <button class="ib" id="btn-shield" title="Privacy Shield">
@@ -3416,6 +3672,68 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
     <div id="dl-active-list"></div>
   </div>
   <div class="panel-list" id="dl-list"></div>
+</div>
+
+<!-- LIMITER PANEL -->
+<div class="panel" id="panel-limiter">
+  <div class="panel-head"><span class="panel-title">Limiter Tool</span></div>
+
+  <!-- Network Speed -->
+  <div class="lim-section">
+    <div class="lim-head">
+      <span class="lim-label">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 9c1-3 2.5-5 5-5s4 2 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M6 9V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".4"/></svg>
+        Network Speed
+      </span>
+      <span class="lim-val off" id="lim-net-val">Unlimited</span>
+    </div>
+    <input type="range" class="lim-slider" id="lim-net-slider" min="0" max="4" step="1" value="0">
+    <div class="lim-ticks">
+      <span class="lim-tick">Off</span>
+      <span class="lim-tick">128K</span>
+      <span class="lim-tick">1M</span>
+      <span class="lim-tick">5M</span>
+      <span class="lim-tick">∞</span>
+    </div>
+    <div class="lim-note">Throttles download + upload speed. Useful for testing slow connections.</div>
+  </div>
+
+  <!-- CPU Priority -->
+  <div class="lim-section">
+    <div class="lim-head">
+      <span class="lim-label">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="3" y="3" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M5 1v1.5M7 1v1.5M5 9.5V11M7 9.5V11M1 5h1.5M1 7h1.5M9.5 5H11M9.5 7H11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        CPU Priority
+      </span>
+      <span class="lim-val" id="lim-cpu-val">Normal</span>
+    </div>
+    <input type="range" class="lim-slider" id="lim-cpu-slider" min="0" max="2" step="1" value="1">
+    <div class="lim-ticks">
+      <span class="lim-tick">Low</span>
+      <span class="lim-tick">Normal</span>
+      <span class="lim-tick">High</span>
+    </div>
+    <div class="lim-note">Adjusts renderer process priority. Low = browser uses less CPU, leaving more for other apps.</div>
+  </div>
+
+  <!-- RAM -->
+  <div class="lim-section">
+    <div class="lim-head">
+      <span class="lim-label">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="3.5" width="10" height="5" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 3.5V2.5M5.5 3.5V2.5M8.5 3.5V2.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M3.5 8.5V9.5M5.5 8.5V9.5M8.5 8.5V9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        RAM Saver
+      </span>
+      <span class="lim-val off" id="lim-ram-val">Off</span>
+    </div>
+    <input type="range" class="lim-slider" id="lim-ram-slider" min="0" max="3" step="1" value="0">
+    <div class="lim-ticks">
+      <span class="lim-tick">Off</span>
+      <span class="lim-tick">Light</span>
+      <span class="lim-tick">Moderate</span>
+      <span class="lim-tick">Aggressive</span>
+    </div>
+    <div class="lim-note">Suspends background tabs to free memory. Aggressive = unload tabs after 5 min idle.</div>
+  </div>
 </div>
 
 <!-- PRIVACY PANEL -->
@@ -3814,12 +4132,15 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
     <!-- Featured extension -->
     <div id="ext-featured" data-ext="reader-mode" data-cat="productivity">
       <div class="ext-featured-icon">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="6" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="12" width="10" height="1.5" rx=".75" fill="currentColor" opacity=".3"/><rect x="6" y="15" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".2"/></svg>
+        <svg width="26" height="26" viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="6" y="6" width="10" height="4" rx="1" fill="currentColor" opacity=".5"/><rect x="6" y="12" width="10" height="1.5" rx=".75" fill="currentColor" opacity=".3"/><rect x="6" y="15" width="7" height="1.5" rx=".75" fill="currentColor" opacity=".2"/></svg>
       </div>
       <div class="ext-featured-info">
-        <div class="ext-featured-tag">⭐ Featured Add-On</div>
+        <div class="ext-featured-tag">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" opacity=".9"><path d="M5 1l1.1 2.4 2.6.3-1.9 1.8.5 2.6L5 6.8 2.7 8.1l.5-2.6L1.3 3.7l2.6-.3z"/></svg>
+          Featured Add-On
+        </div>
         <div class="ext-featured-name">Reader Mode</div>
-        <div class="ext-featured-desc">Strips ads, distractions and sidebars — reformats articles into a clean, focused dark reading layout</div>
+        <div class="ext-featured-desc">Strips ads, distractions and sidebars — reformats articles into a clean, focused reading layout</div>
       </div>
       <button class="ext-feat-btn" id="ext-featured-btn">Enable</button>
     </div>
@@ -3835,7 +4156,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Dark Mode</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Inverts page colours for night reading — preserves images and video</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="dark-mode"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="dark-mode"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="grayscale" data-cat="appearance">
@@ -3844,7 +4165,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Grayscale</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Strips all colour from pages — great for focus or accessibility</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="grayscale"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="grayscale"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="night-filter" data-cat="appearance">
@@ -3853,7 +4174,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Night Filter</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Warm amber overlay to reduce blue light and eye strain at night</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="night-filter"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="night-filter"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="no-animations" data-cat="appearance">
@@ -3862,7 +4183,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">No Animations</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Kills all CSS animations and transitions site-wide instantly</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="no-animations"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="no-animations"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="font-boost" data-cat="appearance">
@@ -3871,7 +4192,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Font Boost</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Increases body font size by ~8% and opens up line-height for easier reading</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="font-boost"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="font-boost"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="custom-cursor" data-cat="appearance">
@@ -3880,7 +4201,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Custom Cursor</div><div class="ext-card-cat">Appearance</div></div>
         </div>
         <div class="ext-card-desc">Adds a neon teal ring around your cursor for a stylish look</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="custom-cursor"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="custom-cursor"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="focus-mode" data-cat="productivity">
@@ -3889,7 +4210,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Focus Mode</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Hides sidebars, banners and distractions — centres article content</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="focus-mode"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="focus-mode"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="reader-mode" data-cat="productivity">
@@ -3898,7 +4219,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Reader Mode</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Strips clutter and reformats articles into a clean, distraction-free dark layout</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="reader-mode"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="reader-mode"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="scroll-progress" data-cat="productivity">
@@ -3907,7 +4228,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Scroll Progress</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Thin progress bar at the top shows how far through a page you've scrolled</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="scroll-progress"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="scroll-progress"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="word-count" data-cat="productivity">
@@ -3916,7 +4237,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Word Count</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Shows word count and estimated reading time in a subtle corner badge</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="word-count"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="word-count"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="smooth-scroll" data-cat="productivity">
@@ -3925,7 +4246,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Smooth Scroll</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Enables silky smooth CSS scroll behaviour on all pages</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smooth-scroll"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smooth-scroll"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="smart-copy" data-cat="productivity">
@@ -3934,7 +4255,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Smart Copy</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Strips rich formatting when copying — always pastes as clean plain text</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smart-copy"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="smart-copy"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="hide-comments" data-cat="productivity">
@@ -3943,7 +4264,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Hide Comments</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Collapses comment sections on news sites, Reddit and blogs</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="hide-comments"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="hide-comments"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="link-preview" data-cat="productivity">
@@ -3952,7 +4273,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Link Preview</div><div class="ext-card-cat">Productivity</div></div>
         </div>
         <div class="ext-card-desc">Shows full destination URL in a bottom bar when hovering over any link</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="link-preview"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="link-preview"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="anti-tracking" data-cat="privacy">
@@ -3961,7 +4282,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Anti Tracking</div><div class="ext-card-cat">Privacy</div></div>
         </div>
         <div class="ext-card-desc">Hides invisible 1×1 tracking pixels that spy on page visits</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="anti-tracking"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="anti-tracking"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="print-clean" data-cat="privacy">
@@ -3970,7 +4291,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Print Clean</div><div class="ext-card-cat">Privacy</div></div>
         </div>
         <div class="ext-card-desc">Strips ads, navbars and sidebars when printing or saving as PDF</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="print-clean"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="print-clean"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="video-speed" data-cat="media">
@@ -3979,7 +4300,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Video Speed</div><div class="ext-card-cat">Media</div></div>
         </div>
         <div class="ext-card-desc">Floating speed control on every video — click to cycle 0.25×–3×</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="video-speed"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="video-speed"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="image-zoom" data-cat="media">
@@ -3988,7 +4309,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Image Zoom</div><div class="ext-card-cat">Media</div></div>
         </div>
         <div class="ext-card-desc">Click any image to expand it fullscreen — click again to dismiss</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="image-zoom"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="image-zoom"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="highlight-links" data-cat="media">
@@ -3997,7 +4318,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Highlight Links</div><div class="ext-card-cat">Media</div></div>
         </div>
         <div class="ext-card-desc">Underlines all links in teal so they're always easy to spot</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="highlight-links"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="highlight-links"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="auto-scroll" data-cat="media">
@@ -4006,7 +4327,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Auto Scroll</div><div class="ext-card-cat">Media</div></div>
         </div>
         <div class="ext-card-desc">Floating button to auto-scroll down — great for articles and feeds</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="auto-scroll"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="auto-scroll"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="high-contrast" data-cat="appearance">
@@ -4015,7 +4336,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">High Contrast</div><div class="ext-card-cat">Appearance <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Boosts contrast across the whole page for easier reading and accessibility</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="high-contrast"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="high-contrast"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="neon-glow" data-cat="appearance">
@@ -4024,7 +4345,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Neon Glow</div><div class="ext-card-cat">Appearance <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Adds a teal neon glow effect to headings and links for a futuristic look</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="neon-glow"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="neon-glow"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="pip-mode" data-cat="media">
@@ -4033,7 +4354,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">PiP Mode</div><div class="ext-card-cat">Media <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Pops the page video into a floating picture-in-picture window</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="pip-mode"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="pip-mode"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="yt-ad" data-cat="media">
@@ -4042,7 +4363,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">YouTube Ad Skip</div><div class="ext-card-cat">Media</div></div>
         </div>
         <div class="ext-card-desc">Automatically skips and mutes YouTube ads — restores your volume and playback speed after each ad</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="yt-ad"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="yt-ad"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="sticky-notes" data-cat="productivity">
@@ -4051,7 +4372,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Sticky Notes</div><div class="ext-card-cat">Productivity <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Floating draggable notepad that stays on top of any page</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="sticky-notes"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="sticky-notes"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="low-data" data-cat="privacy">
@@ -4060,7 +4381,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Low Data Mode</div><div class="ext-card-cat">Privacy <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Hides all images and videos to save bandwidth and speed up pages</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="low-data"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="low-data"><span class="tog-tr"></span></label></div>
       </div>
 
       <div class="ext-card" data-ext="page-zoom" data-cat="productivity">
@@ -4069,7 +4390,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="ext-card-meta"><div class="ext-card-name">Page Zoom</div><div class="ext-card-cat">Productivity <span class="ext-badge-new">NEW</span></div></div>
         </div>
         <div class="ext-card-desc">Floating + / − controls to zoom in and out on any page</div>
-        <div class="ext-card-footer"><span class="ext-card-status">Off</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="page-zoom"><span class="tog-tr"></span></label></div>
+        <div class="ext-card-footer"><span class="ext-card-status">Active</span><label class="tog"><input type="checkbox" class="ext-tog" data-ext="page-zoom"><span class="tog-tr"></span></label></div>
       </div>
 
     </div>
@@ -4087,6 +4408,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
     </div>
     <div id="settings-body">
       <div id="settings-nav">
+      <div id="settings-nav-items">
         <div class="set-nav-item active" data-sec="appearance">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="7" r="2" fill="currentColor" opacity=".4"/></svg>
           Appearance
@@ -4127,10 +4449,24 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><ellipse cx="6.5" cy="3.5" rx="5" ry="2" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 3.5v3c0 1.1 2.2 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 6.5v3c0 1.1 2.2 2 5 2s5-.9 5-2v-3" stroke="currentColor" stroke-width="1.2"/></svg>
           Data
         </div>
+        <div class="set-nav-item" data-sec="diag">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M4 7.5l1.8 1.8L9 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Diagnostics
+        </div>
         <div class="set-nav-item" data-sec="about">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.2"/><line x1="6.5" y1="6" x2="6.5" y2="9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6.5" cy="3.8" r=".8" fill="currentColor"/></svg>
           About
         </div>
+        <div class="set-nav-item" data-sec="legal">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="2" y="1" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="4.5" x2="9" y2="4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="4" y1="6.5" x2="9" y2="6.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="4" y1="8.5" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+          Legal
+        </div>
+      </div>
+      <div id="settings-nav-footer">
+        <span id="nav-foot-privacy" data-sec="legal">Privacy Policy</span>
+        &nbsp;·&nbsp;
+        <span id="nav-foot-terms" data-sec="legal">Terms of Service</span>
+      </div>
       </div>
 
       <div id="settings-content">
@@ -4182,6 +4518,10 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <div class="set-r-lbl"><span>Show Sidebar</span><small>Quick-access strip on the left — add your favourite sites</small></div>
               <label class="tog"><input type="checkbox" id="set-sidebar"><span class="tog-tr"></span></label>
             </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Hide Logo on New Tab</span><small>Remove the RAW logo above the search bar on new tab</small></div>
+              <label class="tog"><input type="checkbox" id="set-hide-nt-logo"><span class="tog-tr"></span></label>
+            </div>
           </div>
 
           <div class="set-card">
@@ -4191,11 +4531,19 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <input type="color" id="set-bg-color" value="#080808" style="width:36px;height:26px;border:1px solid var(--ln);border-radius:5px;background:transparent;cursor:pointer;padding:2px">
             </div>
             <div class="set-r">
-              <div class="set-r-lbl"><span>Custom Wallpaper</span><small>Set an image as your new tab background</small></div>
+              <div class="set-r-lbl"><span>Custom Wallpaper</span><small>Image or live video (MP4, WebM) — video wallpapers play on new tab</small></div>
               <div style="display:flex;gap:6px">
                 <button class="set-btn-sm" id="set-wallpaper-btn">Choose…</button>
                 <button class="set-btn-sm danger" id="set-rmwall-btn" style="display:none">Remove</button>
               </div>
+            </div>
+            <div class="set-r" id="set-live-audio-row" style="display:none">
+              <div class="set-r-lbl"><span>Live Wallpaper Audio</span><small>Play audio from the video wallpaper</small></div>
+              <label class="tog"><input type="checkbox" id="set-live-audio"><span class="tog-tr"></span></label>
+            </div>
+            <div style="padding:8px 14px 10px">
+              <span class="lib-section-label">Library</span>
+              <div class="lib-grid" id="lib-grid"></div>
             </div>
           </div>
 
@@ -4217,6 +4565,13 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <div class="set-r">
               <div class="set-r-lbl"><span>Block Ads &amp; Trackers</span><small>EasyList + EasyPrivacy + 2000+ built-in domains</small></div>
               <label class="tog"><input type="checkbox" id="set-ab" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Blocking Level</span><small>Moderate: block known ad/tracker domains · Strict: also block by subdomain patterns &amp; aggressive rules</small></div>
+              <select class="set-select" id="set-blocking-level">
+                <option value="moderate">Moderate</option>
+                <option value="strict">Strict</option>
+              </select>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Block Telemetry</span><small>OS/browser phone-home requests</small></div>
@@ -4445,6 +4800,14 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <label class="tog"><input type="checkbox" id="tb-geo" checked><span class="tog-tr"></span></label>
             </div>
             <div class="set-r">
+              <div class="set-r-lbl"><span>Limiter Tool</span><small>CPU / RAM / Network usage limiter</small></div>
+              <label class="tog"><input type="checkbox" id="tb-limiter" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Video Pop Out</span><small>Picture-in-picture video button</small></div>
+              <label class="tog"><input type="checkbox" id="tb-pip" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
               <div class="set-r-lbl"><span>Add-Ons</span><small>Manage per-site content enhancements</small></div>
               <label class="tog"><input type="checkbox" id="tb-ext" checked><span class="tog-tr"></span></label>
             </div>
@@ -4536,13 +4899,53 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           </div>
         </div>
 
+        <!-- Diagnostics -->
+        <div class="set-section" id="sec-diag">
+          <div class="set-section-title">Diagnostics &amp; Reporting</div>
+          <div class="set-card">
+            <div class="set-r">
+              <div class="set-r-lbl">
+                <span>Error Reporting</span>
+                <small>Anonymous crash &amp; error reports when something breaks — no IP, no browsing history, no page contents.</small>
+              </div>
+              <label class="tog"><input type="checkbox" id="tog-crash-reports" class="diag-tog" data-key="crashReports"><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl">
+                <span>Usage Stats</span>
+                <small>Counts of which features are used — helps prioritise what to improve. Never includes URLs or search terms.</small>
+              </div>
+              <label class="tog"><input type="checkbox" id="tog-usage-stats" class="diag-tog" data-key="usageStats"><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl">
+                <span>Performance Data</span>
+                <small>Basic startup time &amp; memory usage — helps keep Raw fast on different devices.</small>
+              </div>
+              <label class="tog"><input type="checkbox" id="tog-perf-data" class="diag-tog" data-key="perfData"><span class="tog-tr"></span></label>
+            </div>
+          </div>
+          <div class="setup-diag-notice">
+            <strong style="display:block;color:var(--t1);margin-bottom:3px">Raw Browser believes in transparent data practices.</strong>
+            All reports are fully anonymous and never contain your IP address, browsing history, page contents, or any personal identifiers. You can change these options at any time from this Diagnostics panel.
+          </div>
+        </div>
+
         <!-- About -->
         <div class="set-section" id="sec-about">
           <div class="set-section-title">About Raw Browser</div>
           <div class="set-card">
             <div class="set-r">
               <div class="set-r-lbl"><span>Version</span></div>
-              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.5</span>
+              <span style="font-size:12px;color:var(--acc);font-weight:600;letter-spacing:.04em">V1.0.6</span>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Updates</span><small id="set-upd-sub">Checking for updates…</small></div>
+              <span class="set-upd-badge chk" id="set-upd-badge">Checking</span>
+            </div>
+            <div class="set-r" id="set-upd-action-row" style="display:none">
+              <div class="set-r-lbl"><span>New version available</span><small>Download the latest version from rawbrowser.pages.dev</small></div>
+              <button class="set-btn-sm" id="set-upd-now-btn" style="background:rgba(255,160,0,.15);border-color:rgba(255,160,0,.35);color:#ffb020;">Update Now</button>
             </div>
             <div class="set-r">
               <div class="set-r-lbl"><span>Built with</span></div>
@@ -4555,6 +4958,89 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
             <div class="set-r">
               <div class="set-r-lbl"><span>Community</span><small>Get help, share feedback &amp; meet other users</small></div>
               <button class="set-btn-sm" id="set-discord-btn" style="background:rgba(88,101,242,.18);border-color:rgba(88,101,242,.35);color:rgb(130,148,255)">Join Discord</button>
+            </div>
+            <div class="set-r">
+              <div class="set-r-lbl"><span>Check for Updates</span><small>Manually check if a new version is available</small></div>
+              <button class="set-btn-sm acc" id="set-check-update-btn">Check Now</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legal -->
+        <div class="set-section" id="sec-legal">
+          <div class="set-section-title">Legal</div>
+
+          <div class="set-card" style="margin-bottom:12px">
+            <div class="set-card-title">Privacy Policy</div>
+            <div class="legal-body">
+              <h3>Overview</h3>
+              <p>Raw Browser is built on a single principle: your browsing is your business. We do not collect, store, or sell your personal data — ever.</p>
+
+              <h3>What We Never Collect</h3>
+              <ul>
+                <li>Your browsing history or search queries</li>
+                <li>Websites you visit or URLs you type</li>
+                <li>Your IP address or approximate location</li>
+                <li>Cookies, passwords, or form data</li>
+                <li>Any personally identifiable information</li>
+              </ul>
+
+              <h3>Optional Diagnostic Data</h3>
+              <p>If you choose to enable diagnostics (off by default), Raw Browser may send fully anonymous crash reports and aggregate performance metrics. These reports contain no IP address, no browsing data, no page content, and no personal identifiers. You can toggle this at any time in Settings → Diagnostics.</p>
+
+              <h3>Local Storage</h3>
+              <p>All data — including saved passwords, bookmarks, history, and settings — is stored locally on your device only. It is never uploaded, synced, or shared with any server.</p>
+
+              <h3>Third-Party Services</h3>
+              <p>When you perform a search, your query is sent directly to your chosen search engine (e.g. Google, DuckDuckGo). Raw Browser does not intercept, log, or modify these requests. Please review your search engine's own privacy policy for details.</p>
+
+              <h3>Children's Privacy</h3>
+              <p>Raw Browser does not knowingly collect any information from users under 13 years of age.</p>
+
+              <h3>Changes to This Policy</h3>
+              <p>Any updates to this Privacy Policy will be reflected in the app. Continued use of Raw Browser after changes constitutes acceptance of the updated policy.</p>
+
+              <h3>Contact</h3>
+              <p>Questions? Reach us via the Discord community linked in the About section.</p>
+            </div>
+          </div>
+
+          <div class="set-card">
+            <div class="set-card-title">Terms of Service</div>
+            <div class="legal-body">
+              <h3>Acceptance</h3>
+              <p>By downloading or using Raw Browser you agree to these Terms of Service. If you do not agree, please do not use the application.</p>
+
+              <h3>License</h3>
+              <p>Raw Browser is released under the MIT License. You are free to use, copy, modify, and distribute the software, provided that the original copyright notice and this permission notice appear in all copies.</p>
+
+              <h3>Permitted Use</h3>
+              <ul>
+                <li>Personal and commercial browsing</li>
+                <li>Privacy-focused research and development</li>
+                <li>Educational purposes</li>
+              </ul>
+
+              <h3>Prohibited Use</h3>
+              <p>You may not use Raw Browser to:</p>
+              <ul>
+                <li>Violate any applicable law or regulation</li>
+                <li>Attempt to access systems without authorisation</li>
+                <li>Distribute malware or engage in harmful activity</li>
+                <li>Misrepresent the software or remove attribution</li>
+              </ul>
+
+              <h3>No Warranty</h3>
+              <p>Raw Browser is provided "as is", without warranty of any kind, express or implied. The authors are not liable for any damages arising from the use or inability to use the software, including but not limited to data loss, security breaches, or interruption of service.</p>
+
+              <h3>Updates</h3>
+              <p>We may release updates to improve security, performance, or features. We recommend keeping Raw Browser up to date. Outdated versions may not receive security fixes.</p>
+
+              <h3>Termination</h3>
+              <p>These terms apply for as long as you use Raw Browser. You may stop using the software at any time by uninstalling it.</p>
+
+              <h3>Contact</h3>
+              <p>Questions about these terms? Join the community via the Discord link in the About section.</p>
             </div>
           </div>
         </div>
@@ -4599,6 +5085,7 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
     <div id="setup-card-inner">
 
       <div id="setup-dots">
+        <span class="setup-dot"></span>
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
         <span class="setup-dot"></span>
@@ -4726,8 +5213,47 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         </div>
       </div>
 
-      <!-- Step 5: Done -->
+      <!-- Step 5: Help Raw Out -->
       <div class="setup-step" data-step="5">
+        <div class="setup-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="10" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M9 14.5l2.5 2.5L17 9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 class="setup-title">Help Raw Out</h2>
+        <p class="setup-desc" style="font-size:12px;margin-bottom:10px">Optionally share fully anonymous diagnostics to help improve speed and stability.</p>
+        <div class="setup-diag-list">
+          <div class="setup-diag-row" id="sdr-crash">
+            <div class="setup-diag-info">
+              <div class="setup-diag-name">Error Reporting</div>
+              <div class="setup-diag-desc">Sends crash &amp; error reports when something breaks — no IP address, no browsing history, no page contents.</div>
+            </div>
+            <label class="tog"><input type="checkbox" id="setup-tog-crash" checked><span class="tog-tr"></span></label>
+          </div>
+          <div class="setup-diag-row" id="sdr-usage">
+            <div class="setup-diag-info">
+              <div class="setup-diag-name">Usage Stats</div>
+              <div class="setup-diag-desc">Counts of which features are used — helps prioritise what to improve. Never includes URLs or search terms.</div>
+            </div>
+            <label class="tog"><input type="checkbox" id="setup-tog-usage"><span class="tog-tr"></span></label>
+          </div>
+          <div class="setup-diag-row" id="sdr-perf">
+            <div class="setup-diag-info">
+              <div class="setup-diag-name">Performance Data</div>
+              <div class="setup-diag-desc">Basic startup time &amp; memory usage — helps keep Raw fast on different devices.</div>
+            </div>
+            <label class="tog"><input type="checkbox" id="setup-tog-perf"><span class="tog-tr"></span></label>
+          </div>
+        </div>
+        <div class="setup-diag-notice">
+          <strong style="display:block;color:rgba(255,255,255,.9);margin-bottom:3px">Raw Browser believes in transparent data practices.</strong>
+          Reports are fully anonymous and never contain your IP address, browsing history, page contents, or any personal identifiers. You can change these options later in Settings → Diagnostics.
+        </div>
+      </div>
+
+      <!-- Step 6: Done -->
+      <div class="setup-step" data-step="6">
         <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
           <div style="width:80px;height:80px;border-radius:50%;background:rgba(var(--acc-raw),.10);border:1.5px solid rgba(var(--acc-raw),.25);display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(var(--acc-raw),.15);animation:donePulse 2.6s ease-in-out infinite">
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -4808,6 +5334,7 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
     loadPoisonState();
     updateBmBtn();
     renderWhitelist();
+    if (typeof renderLibraryGrid === 'function') renderLibraryGrid();
     const activeTab = S.tabs.find(t => t.id === S.activeId);
     updateNewtabLayer(activeTab?.url || 'newtab');
   } catch (e) {
@@ -4836,13 +5363,41 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
     setTimeout(() => { pop.style.display = 'none'; }, 280);
   }
 
-  // Run check after a 4-second delay so it doesn't block UI startup
-  setTimeout(async () => {
+  function _applyUpdateBadge(outdated) {
+    const badge  = $('set-upd-badge');
+    const sub    = $('set-upd-sub');
+    const row    = $('set-upd-action-row');
+    if (!badge) return;
+    if (outdated) {
+      badge.textContent = 'Update Available';
+      badge.className   = 'set-upd-badge out';
+      if (sub) sub.textContent = 'A newer version of Raw Browser is available.';
+      if (row) row.style.display = '';
+    } else {
+      badge.textContent = 'Up to date';
+      badge.className   = 'set-upd-badge ok';
+      if (sub) sub.textContent = 'You are running the latest version.';
+      if (row) row.style.display = 'none';
+    }
+  }
+
+  async function _runUpdateCheck() {
+    const badge = $('set-upd-badge');
+    const sub   = $('set-upd-sub');
+    if (badge) { badge.textContent = 'Checking…'; badge.className = 'set-upd-badge chk'; }
+    if (sub)   sub.textContent = 'Checking for updates…';
     try {
       const upd = await ipcRenderer.invoke('check-update');
+      _applyUpdateBadge(!!(upd && upd.outdated));
       if (upd && upd.outdated) _showUpdatePopup();
-    } catch(e) {}
-  }, 4000);
+    } catch(e) {
+      if (badge) { badge.textContent = 'Unable to check'; badge.className = 'set-upd-badge chk'; }
+      if (sub)   sub.textContent = 'Could not reach update server.';
+    }
+  }
+
+  // Run check after a 4-second delay so it doesn't block UI startup
+  setTimeout(_runUpdateCheck, 4000);
 
   // Button wiring — deferred to DOMContentLoaded because the popup HTML
   // is defined after this script block and the elements don't exist yet.
@@ -4852,15 +5407,38 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
       _hideUpdatePopup();
     });
     $('upd-skip')?.addEventListener('click', () => {
-      // Show step 2
       document.querySelectorAll('.upd-state').forEach((s, i) => s.classList.toggle('active', i === 1));
     });
     $('upd-understand')?.addEventListener('click', () => {
-      // Show step 3 then auto-dismiss after 3.5s
       document.querySelectorAll('.upd-state').forEach((s, i) => s.classList.toggle('active', i === 2));
       setTimeout(_hideUpdatePopup, 3500);
     });
     $('update-backdrop')?.addEventListener('click', () => { /* intentionally blocked — must use buttons */ });
+
+    // Manual check button in About section
+    $('set-upd-now-btn')?.addEventListener('click', () => {
+      ipcRenderer.send('tab:new', 'https://rawbrowser.pages.dev/auth');
+    });
+    $('set-check-update-btn')?.addEventListener('click', () => {
+      _runUpdateCheck();
+    });
+
+    // Nav footer "Privacy Policy / Terms of Service" links → open Legal section
+    function _navToLegal() {
+      document.querySelectorAll('.set-nav-item').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.set-section').forEach(s => s.classList.remove('active'));
+      const legalNav = document.querySelector('.set-nav-item[data-sec="legal"]');
+      if (legalNav) legalNav.classList.add('active');
+      const legalSec = $('sec-legal');
+      if (legalSec) legalSec.classList.add('active');
+      // Make sure settings panel is open
+      const settingsPanel = $('panel-settings');
+      if (settingsPanel && !settingsPanel.classList.contains('on')) {
+        if (typeof openPanel === 'function') openPanel('panel-settings', 'btn-settings');
+      }
+    }
+    $('nav-foot-privacy')?.addEventListener('click', _navToLegal);
+    $('nav-foot-terms')?.addEventListener('click', _navToLegal);
   });
 })();
 // One-shot flag: send 'panel:snapshot:drawn' ACK to main process only for
@@ -4939,7 +5517,7 @@ ipcRenderer.on('tabs:reorder',     (_, tabs) => {
 ipcRenderer.on('nav:state',        (_, ns) => applyNavState(ns));
 ipcRenderer.on('bookmarks:set',    (_, b)  => { S.bookmarks = b; renderBookmarks(); updateBmBtn(); });
 ipcRenderer.on('history:set',      (_, h)  => { S.history = h; renderHistory(); });
-ipcRenderer.on('settings:set',     (_, s)  => { S.settings = s; applySettings(s); renderSidebar(); });
+ipcRenderer.on('settings:set',     (_, s)  => { S.settings = s; applySettings(s); renderSidebar(); if (typeof renderLibraryGrid === 'function') renderLibraryGrid(); });
 ipcRenderer.on('toast',            (_, m, cls) => toast(m, cls||''));
 ipcRenderer.on('downloads:update', (_, d)  => { S.downloads = d; renderDownloads(d); });
 ipcRenderer.on('zoom:current',     (_, z)  => setZoom(z));
@@ -4954,6 +5532,14 @@ ipcRenderer.on('blocked:update', (_, { total, session }) => {
   sh.classList.add('active-icon');
   clearTimeout(sh._bt);
   sh._bt = setTimeout(() => sh.classList.remove('active-icon'), 1500);
+  // Update tracker info button + popup
+  const tic = $('tracker-info-count');
+  const tib = $('tracker-info-btn');
+  if (tic) tic.textContent = session;
+  if (tib) tib.classList.toggle('has-blocked', session > 0);
+  const tipS = $('tip-session'); const tipT = $('tip-total');
+  if (tipS) { tipS.textContent = session; tipS.className = 'tip-val' + (session === 0 ? ' zero' : ''); }
+  if (tipT) { tipT.textContent = total;   tipT.className = 'tip-val' + (total   === 0 ? ' zero' : ''); }
 });
 ipcRenderer.on('whitelist:set', (_, wl) => { S.userWhitelist = wl; renderWhitelist(); });
 
@@ -5127,6 +5713,14 @@ function applyNavState({ url, canBack, canFwd, loading, favicon, muted, zoom, bl
     const poSession = $('po-session');
     if (poTotal) poTotal.textContent = S.blockedTotal;
     if (poSession) poSession.textContent = S.blockedSession;
+    // Sync tracker info button + popup with current tab's session count
+    const tic = $('tracker-info-count');
+    const tib = $('tracker-info-btn');
+    if (tic) tic.textContent = S.blockedSession;
+    if (tib) tib.classList.toggle('has-blocked', S.blockedSession > 0);
+    const tipS2 = $('tip-session'); const tipT2 = $('tip-total');
+    if (tipS2) { tipS2.textContent = S.blockedSession; tipS2.className = 'tip-val' + (S.blockedSession === 0 ? ' zero' : ''); }
+    if (tipT2) { tipT2.textContent = S.blockedTotal;   tipT2.className = 'tip-val' + (S.blockedTotal   === 0 ? ' zero' : ''); }
   }
   updateBmBtn();
   updateNewtabLayer(url);
@@ -5596,6 +6190,7 @@ const PANEL_MAP = {
   'btn-bm-panel': 'panel-bookmarks',
   'btn-hist':     'panel-history',
   'btn-dl':       'panel-downloads',
+  'btn-limiter':  'panel-limiter',
   'btn-shield':   'panel-privacy',
   'btn-poison':   'panel-poison',
   'btn-ytdlp':    'panel-ytdlp',
@@ -5687,6 +6282,8 @@ Object.entries(PANEL_MAP).forEach(([btnId, panelId]) => {
       // sending a redundant panel:hide IPC before panel:show:instant.
       if (document.querySelector('.panel.on')) closeAllDrops();
       openPanel(panelId, btnId);
+      // Refresh privacy stats immediately when the shield panel opens
+      if (panelId === 'panel-privacy') ipcRenderer.send('privacy:refresh');
     }
   });
 });
@@ -6394,6 +6991,7 @@ function _updateVseps() {
     'tb-passwords': 'btn-passwords',
     'tb-notes':   'btn-notes',    'tb-calc':      'btn-calc',
     'tb-geo':     'btn-geo',      'tb-ext':       'btn-ext',
+    'tb-limiter': 'btn-limiter', 'tb-pip':       'btn-pip',
     'tb-ig-fab':  'incognito-fab',
   };
   for (const [cbId, btnId] of Object.entries(_tbMap)) {
@@ -6579,14 +7177,27 @@ function renderDownloads(items) {
     const eta = etaSec > 0
       ? ' · ~' + (etaSec >= 60 ? Math.ceil(etaSec / 60) + 'm' : etaSec + 's')
       : '';
+    const isActive = d.state === 'progressing';
     return `<div class="dl-item">
-      <div class="dl-icon${d.state === 'progressing' ? ' dl-icon-active' : ''}">${dlIco}</div>
+      <div class="dl-icon${isActive ? ' dl-icon-active' : ''}">${dlIco}</div>
       <div class="dl-body">
         <div class="dl-name">${esc(d.filename)}</div>
-        ${d.state === 'progressing' ? `<div class="dl-bar-wrap"><div class="dl-bar" style="width:${pct}%"></div></div>` : ''}
+        ${isActive ? `<div class="dl-bar-wrap"><div class="dl-bar" style="width:${pct}%"></div></div>` : ''}
         <div class="dl-st ${sc}">${st}${sz}${spd}${eta}</div>
       </div>
       <div class="dl-acts">
+        ${isActive ? `
+          ${d.paused
+            ? `<button class="dl-act" data-action="resume" data-id="${d.id}" title="Resume">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 2l6 3-6 3V2Z" fill="currentColor" opacity=".8"/></svg>
+               </button>`
+            : `<button class="dl-act" data-action="pause" data-id="${d.id}" title="Pause">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="2" width="2.5" height="6" rx=".8" fill="currentColor" opacity=".8"/><rect x="5.5" y="2" width="2.5" height="6" rx=".8" fill="currentColor" opacity=".8"/></svg>
+               </button>`
+          }
+          <button class="dl-act" data-action="cancel" data-id="${d.id}" title="Cancel" style="color:var(--red)">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>` : ''}
         ${d.state === 'completed' ? `
           <button class="dl-act" data-action="open" data-p="${esc(d.path || '')}" title="Open file">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 5h3M5 3.5l1.5 1.5L5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -6598,15 +7209,26 @@ function renderDownloads(items) {
     </div>`;
   }
 
+  function wireDlButtons(container) {
+    container.querySelectorAll('.dl-act').forEach(b => {
+      b.addEventListener('click', () => {
+        const act = b.dataset.action;
+        if (act === 'open')   ipcRenderer.send('downloads:open',   b.dataset.p);
+        else if (act === 'reveal') ipcRenderer.send('downloads:reveal', b.dataset.p);
+        else if (act === 'pause')  ipcRenderer.send('downloads:pause',  Number(b.dataset.id));
+        else if (act === 'resume') ipcRenderer.send('downloads:resume', Number(b.dataset.id));
+        else if (act === 'cancel') ipcRenderer.send('downloads:cancel', Number(b.dataset.id));
+      });
+    });
+  }
+
   // Active downloads section
   const activeWrap = $('dl-active-wrap');
   const activeList = $('dl-active-list');
   if (activeWrap && activeList) {
     activeWrap.style.display = activeItems.length ? '' : 'none';
     activeList.innerHTML = activeItems.map(makeDlItem).join('');
-    activeList.querySelectorAll('.dl-act').forEach(b => b.addEventListener('click', () => {
-      ipcRenderer.send(b.dataset.action === 'open' ? 'downloads:open' : 'downloads:reveal', b.dataset.p);
-    }));
+    wireDlButtons(activeList);
   }
 
   // Completed/failed downloads
@@ -6615,9 +7237,7 @@ function renderDownloads(items) {
     return;
   }
   list.innerHTML = doneItems.slice(0, 100).map(makeDlItem).join('');
-  list.querySelectorAll('.dl-act').forEach(b => b.addEventListener('click', () => {
-    ipcRenderer.send(b.dataset.action === 'open' ? 'downloads:open' : 'downloads:reveal', b.dataset.p);
-  }));
+  wireDlButtons(list);
 }
 
 const dlClearBtn = $('dl-clear-btn');
@@ -6797,19 +7417,44 @@ function applySettings(s) {
 
   if (setBgColor && s.wallpaperColor) setBgColor.value = s.wallpaperColor;
 
+  const _liveVid = $('live-wallpaper');
+  const _liveAudioRow = $('set-live-audio-row');
+  const _liveAudioChk = $('set-live-audio');
   if (s.wallpaper) {
-    // Stored as a proper file:// URL by the main process — use directly
-    document.body.style.backgroundImage    = `url('${s.wallpaper}')`;
-    document.body.style.backgroundSize     = 'cover';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundColor   = '';
-    document.body.classList.add('has-wallpaper');
+    const _isVideo = /\.(mp4|webm|ogg|mov)(\?|$)/i.test(s.wallpaper);
+    if (_isVideo) {
+      // Live wallpaper — use video element
+      if (_liveVid && _liveVid.src !== s.wallpaper) {
+        _liveVid.src = s.wallpaper;
+        _liveVid.play().catch(() => {});
+      }
+      _liveVid && (_liveVid.muted = !s.liveWallpaperAudio);
+      document.body.classList.add('has-live-wallpaper');
+      document.body.classList.remove('has-wallpaper');
+      document.body.style.backgroundImage = 'none';
+      document.body.style.backgroundColor = 'transparent';
+      if (_liveAudioRow) _liveAudioRow.style.display = '';
+      if (_liveAudioChk) _liveAudioChk.checked = !!s.liveWallpaperAudio;
+    } else {
+      // Static wallpaper — use CSS background
+      if (_liveVid) { _liveVid.src = ''; _liveVid.pause(); }
+      document.body.classList.remove('has-live-wallpaper');
+      document.body.style.backgroundImage    = `url('${s.wallpaper}')`;
+      document.body.style.backgroundSize     = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundColor   = '';
+      document.body.classList.add('has-wallpaper');
+      if (_liveAudioRow) _liveAudioRow.style.display = 'none';
+    }
     if (setRmwallBtn) setRmwallBtn.style.display = '';
   } else {
+    if (_liveVid) { _liveVid.src = ''; _liveVid.pause(); }
+    document.body.classList.remove('has-live-wallpaper');
     document.body.style.backgroundImage  = 'none';
     document.body.style.backgroundColor = s.wallpaperColor || '#080808';
     document.body.classList.remove('has-wallpaper');
     if (setRmwallBtn) setRmwallBtn.style.display = 'none';
+    if (_liveAudioRow) _liveAudioRow.style.display = 'none';
   }
 
   if (setCompact) {
@@ -6828,6 +7473,16 @@ function applySettings(s) {
     document.body.classList.toggle('has-sidebar', !!s.showSidebar);
     ipcRenderer.send('sidebar:toggle', !!s.showSidebar);
   }
+
+  const setHideNtLogo = $('set-hide-nt-logo');
+  if (setHideNtLogo) {
+    setHideNtLogo.checked = !!s.hideNtLogo;
+    document.body.classList.toggle('hide-nt-logo', !!s.hideNtLogo);
+  }
+
+  const setBlockingLevel = $('set-blocking-level');
+  if (setBlockingLevel && s.blockingLevel) setBlockingLevel.value = s.blockingLevel;
+
   renderSidebar();
   
   if (setSmoothScroll) setSmoothScroll.checked = s.smoothScrolling !== false;
@@ -6852,6 +7507,7 @@ function applySettings(s) {
     'tb-passwords': 'btn-passwords',
     'tb-notes':   'btn-notes',    'tb-calc':      'btn-calc',
     'tb-geo':     'btn-geo',      'tb-ext':       'btn-ext',
+    'tb-limiter': 'btn-limiter', 'tb-pip':       'btn-pip',
     'tb-ig-fab':  'incognito-fab',
   };
   const tb = s.toolbar || {};
@@ -6901,6 +7557,31 @@ function applySettings(s) {
   const selTransLang = $('sel-translate-lang');
   if (selTransLang && s.translateLang) selTransLang.value = s.translateLang;
 
+  // Diagnostics toggles (Settings → Diagnostics)
+  const togCrash = $('tog-crash-reports');
+  const togUsage = $('tog-usage-stats');
+  const togPerf  = $('tog-perf-data');
+  if (togCrash) togCrash.checked = s.crashReports !== false;
+  if (togUsage) togUsage.checked = !!s.usageStats;
+  if (togPerf)  togPerf.checked  = !!s.perfData;
+
+  // Wire diagnostics toggles once — intercept turn-off with confirmation popup
+  document.querySelectorAll('.diag-tog').forEach(tog => {
+    if (!tog.dataset.wired) {
+      tog.dataset.wired = '1';
+      tog.addEventListener('change', function() {
+        if (this.checked) {
+          // Turning ON — apply immediately
+          ipcRenderer.send('settings:set', { [this.dataset.key]: true });
+        } else {
+          // Turning OFF — show confirmation, revert toggle visually until confirmed
+          this.checked = true; // revert until confirmed
+          _showDiagConfirm(this.dataset.key);
+        }
+      });
+    }
+  });
+
   syncPrivToggles();
 }
 
@@ -6945,7 +7626,235 @@ const setWallpaperBtn = $('set-wallpaper-btn');
 if (setWallpaperBtn) setWallpaperBtn.addEventListener('click', () => ipcRenderer.send('wallpaper:pick'));
 
 const setRmwallBtn = $('set-rmwall-btn');
-if (setRmwallBtn) setRmwallBtn.addEventListener('click', () => ipcRenderer.send('settings:set',{wallpaper:null}));
+if (setRmwallBtn) setRmwallBtn.addEventListener('click', () => ipcRenderer.send('settings:set',{wallpaper:null, liveWallpaperAudio: false}));
+
+// Live wallpaper audio toggle
+const setLiveAudioChk = $('set-live-audio');
+if (setLiveAudioChk) setLiveAudioChk.addEventListener('change', function() {
+  const vid = $('live-wallpaper');
+  if (vid) vid.muted = !this.checked;
+  ipcRenderer.send('settings:set', { liveWallpaperAudio: this.checked });
+});
+
+// Wallpaper library — populate grid with bundled default wallpapers + user imports
+function renderLibraryGrid() {
+  const grid = $('lib-grid');
+  if (!grid) return;
+  const { pathToFileURL } = require('url');
+  const p = require('path');
+  const LIBRARY_WALLPAPERS = [
+    { file: 'CozyWinterCabin.jpg',      label: 'Cozy Winter Cabin' },
+    { file: 'EarthAstronomy.jpg',        label: 'Earth Astronomy' },
+    { file: 'FootballFieldAtNight.jpg',  label: 'Football Field at Night' },
+    { file: 'GreenNatureForest.jpg',     label: 'Green Nature Forest' },
+    { file: 'OrangeFireworksLA.jpg',     label: 'Orange Fireworks LA' },
+    { file: 'PoppyField.jpg',            label: 'Poppy Field' },
+    { file: 'SurrealOcean.jpg',          label: 'Surreal Ocean' },
+  ];
+
+  function _makeItem(url, label, isVideo, removable) {
+    const active = S.settings?.wallpaper === url ? ' active-wp' : '';
+    const media = isVideo
+      ? `<video src="${url}" muted loop autoplay playsinline></video><span class="lib-item-live-badge">LIVE</span>`
+      : `<img src="${url}" alt="${label}">`;
+    const rmBtn = removable
+      ? `<button class="lib-item-remove" title="Remove from library" tabindex="-1">&#x2715;</button>`
+      : '';
+    return `<div class="lib-item${active}" data-wpurl="${url}" data-isvideo="${isVideo ? '1' : ''}" title="${label}">${media}${rmBtn}<span class="lib-item-label">${label}</span></div>`;
+  }
+
+  const builtIn = LIBRARY_WALLPAPERS.map(w => {
+    const url = pathToFileURL(p.join(__dirname, w.file)).href;
+    return _makeItem(url, w.label, false, false);
+  });
+
+  const userLib = (S.settings?.wallpaperLibrary || []).map(w =>
+    _makeItem(w.url, w.label, /\.(mp4|webm|ogg|mov)(\?|$)/i.test(w.url), true)
+  );
+
+  grid.innerHTML = builtIn.join('') + userLib.join('');
+
+  grid.querySelectorAll('.lib-item').forEach(item => {
+    // Remove button — only present on user imports
+    const rmBtn = item.querySelector('.lib-item-remove');
+    if (rmBtn) {
+      rmBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const url = item.dataset.wpurl;
+        const lib = (S.settings?.wallpaperLibrary || []).filter(w => w.url !== url);
+        // If this was the active wallpaper, clear it too
+        const patch = { wallpaperLibrary: lib };
+        if (S.settings?.wallpaper === url) patch.wallpaper = null;
+        ipcRenderer.send('settings:set', patch);
+      });
+    }
+
+    item.addEventListener('click', () => {
+      const isVid = item.dataset.isvideo === '1';
+      ipcRenderer.send('settings:set', { wallpaper: item.dataset.wpurl, ...(isVid ? { liveWallpaperAudio: true } : {}) });
+      grid.querySelectorAll('.lib-item').forEach(i => i.classList.remove('active-wp'));
+      item.classList.add('active-wp');
+      toast('Wallpaper applied');
+    });
+  });
+}
+renderLibraryGrid();
+
+// Diagnostics turn-off confirmation popup
+let _diagConfirmKey = null;
+function _showDiagConfirm(key) {
+  _diagConfirmKey = key;
+  const bd = $('diag-confirm-backdrop');
+  const pop = $('diag-confirm-popup');
+  if (!bd || !pop) return;
+  // Reset to step 1
+  $('dc-state-1').classList.add('active');
+  $('dc-state-2').classList.remove('active');
+  bd.classList.add('on');
+  requestAnimationFrame(() => { pop.style.display = 'block'; requestAnimationFrame(() => pop.classList.add('on')); });
+}
+function _closeDiagConfirm() {
+  const bd = $('diag-confirm-backdrop');
+  const pop = $('diag-confirm-popup');
+  if (bd) bd.classList.remove('on');
+  if (pop) { pop.classList.remove('on'); setTimeout(() => { pop.style.display = 'none'; }, 250); }
+  _diagConfirmKey = null;
+}
+document.addEventListener('DOMContentLoaded', function wireDiagConfirmPopup() {
+  const bd = $('diag-confirm-backdrop');
+  const turnoff = $('dc-turnoff-btn');
+  const keep   = $('dc-keep-btn');
+  const cancel = $('dc-fine-cancel');
+  if (turnoff) turnoff.addEventListener('click', () => {
+    if (!_diagConfirmKey) return;
+    // Apply the setting (turn off)
+    ipcRenderer.send('settings:set', { [_diagConfirmKey]: false });
+    // Update the toggle visually
+    document.querySelectorAll('.diag-tog').forEach(t => {
+      if (t.dataset.key === _diagConfirmKey) t.checked = false;
+    });
+    // Show thank you
+    $('dc-state-1').classList.remove('active');
+    $('dc-state-2').classList.add('active');
+    setTimeout(_closeDiagConfirm, 2800);
+  });
+  if (keep) keep.addEventListener('click', () => { _closeDiagConfirm(); });
+  if (cancel) cancel.addEventListener('click', () => { _closeDiagConfirm(); });
+  if (bd) bd.addEventListener('click', (e) => { if (e.target === bd) _closeDiagConfirm(); });
+});
+
+
+// Hide Logo on New Tab
+const setHideNtLogoTog = $('set-hide-nt-logo');
+if (setHideNtLogoTog) setHideNtLogoTog.addEventListener('change', function() {
+  ipcRenderer.send('settings:set', { hideNtLogo: this.checked });
+  document.body.classList.toggle('hide-nt-logo', this.checked);
+});
+
+// Blocking level
+const setBlockingLevelSel = $('set-blocking-level');
+if (setBlockingLevelSel) setBlockingLevelSel.addEventListener('change', function() {
+  ipcRenderer.send('settings:set', { blockingLevel: this.value });
+  toast('Blocking level: ' + this.value.charAt(0).toUpperCase() + this.value.slice(1));
+});
+
+// ── Limiter Tool ─────────────────────────────────────────────────────────────
+(function initLimiter() {
+  // Network speed steps — step index : { label shown, kbps to throttle }
+  const NET_STEPS = [
+    { label: 'Off',       kbps: 0    },
+    { label: '128 KB/s',  kbps: 128  },
+    { label: '1 MB/s',    kbps: 1024 },
+    { label: '5 MB/s',    kbps: 5120 },
+    { label: '∞ Unlimited', kbps: 0  },
+  ];
+  const CPU_LABELS = ['Low priority', 'Normal priority', 'High priority'];
+  const RAM_LABELS = ['Off', 'Light', 'Moderate', 'Aggressive'];
+
+  const netSlider = $('lim-net-slider');
+  const netVal    = $('lim-net-val');
+  const cpuSlider = $('lim-cpu-slider');
+  const cpuVal    = $('lim-cpu-val');
+  const ramSlider = $('lim-ram-slider');
+  const ramVal    = $('lim-ram-val');
+
+  // ── Restore saved positions ─────────────────────────────────────────────
+  function _load(key, def) {
+    try { const v = localStorage.getItem('lim_' + key); return v !== null ? parseInt(v) : def; } catch { return def; }
+  }
+  function _save(key, val) {
+    try { localStorage.setItem('lim_' + key, val); } catch {}
+  }
+
+  // ── Network ─────────────────────────────────────────────────────────────
+  function _applyNet(pos) {
+    const step = NET_STEPS[pos] || NET_STEPS[0];
+    const isOff  = pos === 0;
+    const isUnlim = pos === NET_STEPS.length - 1;
+    netVal.textContent = step.label;
+    netVal.className   = 'lim-val' + (isOff || isUnlim ? ' off' : '');
+    if (isOff || isUnlim) {
+      ipcRenderer.send('limiter:network', { throttle: false });
+    } else {
+      ipcRenderer.send('limiter:network', { throttle: true, kbps: step.kbps });
+    }
+  }
+
+  if (netSlider && netVal) {
+    const saved = _load('net', 0);
+    netSlider.value = saved;
+    _applyNet(saved);
+    netSlider.addEventListener('input', function() {
+      const pos = parseInt(this.value);
+      _save('net', pos);
+      _applyNet(pos);
+    });
+  }
+
+  // ── CPU ─────────────────────────────────────────────────────────────────
+  function _applyCpu(lvl) {
+    cpuVal.textContent = CPU_LABELS[lvl] || CPU_LABELS[1];
+    cpuVal.className   = 'lim-val' + (lvl === 0 ? ' off' : '');
+    ipcRenderer.send('limiter:cpu', { level: lvl });
+  }
+
+  if (cpuSlider && cpuVal) {
+    const saved = _load('cpu', 1); // default: Normal
+    cpuSlider.value = saved;
+    _applyCpu(saved);
+    cpuSlider.addEventListener('input', function() {
+      const lvl = parseInt(this.value);
+      _save('cpu', lvl);
+      _applyCpu(lvl);
+    });
+  }
+
+  // ── RAM ─────────────────────────────────────────────────────────────────
+  let _bgTabTimer = null;
+  function _applyRam(lvl) {
+    ramVal.textContent = RAM_LABELS[lvl] || RAM_LABELS[0];
+    ramVal.className   = 'lim-val' + (lvl === 0 ? ' off' : '');
+    clearInterval(_bgTabTimer);
+    if (lvl > 0) {
+      ipcRenderer.send('limiter:ram', { level: lvl });
+      const intervals = [0, 60000, 30000, 10000];
+      _bgTabTimer = setInterval(() => ipcRenderer.send('limiter:ram', { level: lvl }), intervals[lvl]);
+    } else {
+      ipcRenderer.send('limiter:ram', { level: 0 });
+    }
+  }
+
+  if (ramSlider && ramVal) {
+    const saved = _load('ram', 0); // default: Off
+    ramSlider.value = saved;
+    _applyRam(saved);
+    ramSlider.addEventListener('input', function() {
+      const lvl = parseInt(this.value);
+      _save('ram', lvl);
+      _applyRam(lvl);
+    });
+  }
+})();
 
 const setRefreshFilters = $('set-refresh-filters');
 if (setRefreshFilters) setRefreshFilters.addEventListener('click', () => { ipcRenderer.send('adblock:refresh'); toast('Refreshing filter lists…'); });
@@ -8302,6 +9211,7 @@ if (btnYtdlp) {
     { key:'night-filter',   name:'Night Filter',   desc:'Warm red-tinted screen overlay',     icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7c1.8-3.2 3.8-4.5 6-4.5S11.2 3.8 13 7c-1.8 3.2-3.8 4.5-6 4.5S2.8 10.2 1 7Z" stroke="currentColor" stroke-width="1.15"/><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.1"/></svg>', def:false },
     { key:'scroll-progress', name:'Scroll Progress', desc:'Thin progress bar at top of every page', icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="12" height="1.8" rx=".9" fill="currentColor" opacity=".2"/><rect x="1" y="4" width="7" height="1.8" rx=".9" fill="currentColor" opacity=".85"/><line x1="1" y1="7.5" x2="9" y2="7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".4"/><line x1="1" y1="9.5" x2="6" y2="9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".4"/></svg>', def:false },
     { key:'yt-ad',          name:'YouTube Ad Skip', desc:'Auto-skips YouTube ads',               icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 4.5C2.5 3.67 3.17 3 4 3h6C10.83 3 11.5 3.67 11.5 4.5v5c0 .83-.67 1.5-1.5 1.5H4C3.17 11 2.5 10.33 2.5 9.5v-5Z" stroke="currentColor" stroke-width="1.1"/><polygon points="6,5.5 9.5,7 6,8.5" fill="currentColor" opacity=".65"/></svg>', def:false },
+    { key:'image-zoom',     name:'Image Zoom',     desc:'Click any image to expand fullscreen', icon:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.15"/><circle cx="7" cy="7" r="2.8" stroke="currentColor" stroke-width="1.1" opacity=".6"/><path d="M9 9l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".7"/></svg>', def:false },
   ];
 
   /* ── State ── */
@@ -8474,11 +9384,22 @@ if (btnYtdlp) {
     // Save accent colour
     ipcRenderer.send('settings:set', { accentColor: _accent });
 
+    // Save diagnostics preferences from setup step
+    const _diagCrash = $('setup-tog-crash');
+    const _diagUsage = $('setup-tog-usage');
+    const _diagPerf  = $('setup-tog-perf');
+    ipcRenderer.send('settings:set', {
+      crashReports: _diagCrash ? _diagCrash.checked : true,
+      usageStats:   _diagUsage ? _diagUsage.checked : false,
+      perfData:     _diagPerf  ? _diagPerf.checked  : false,
+    });
+
     // Apply toolbar button visibility immediately
     const _tbMap = {
       'tb-bm':'btn-bm','tb-bmPanel':'btn-bm-panel','tb-hist':'btn-hist','tb-dl':'btn-dl',
       'tb-shield':'btn-shield','tb-poison':'btn-poison','tb-ytdlp':'btn-ytdlp','tb-snip':'btn-snip',
       'tb-passwords':'btn-passwords','tb-notes':'btn-notes','tb-calc':'btn-calc','tb-geo':'btn-geo','tb-ext':'btn-ext',
+      'tb-limiter':'btn-limiter','tb-pip':'btn-pip',
     };
     for (const [cbId, btnId] of Object.entries(_tbMap)) {
       const cb  = $(cbId);
@@ -8508,10 +9429,53 @@ if (btnYtdlp) {
     }, 380);
   }
 
+  /* ── Confetti burst ── */
+  function _launchConfetti() {
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const COLORS = ['#00d4c8','#7c3aed','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899'];
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: canvas.width  * Math.random(),
+      y: -10 - Math.random() * 40,
+      r: 4 + Math.random() * 5,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: 3 + Math.random() * 4,
+      spin: (Math.random() - 0.5) * 0.3,
+      angle: Math.random() * Math.PI * 2,
+      shape: Math.random() > 0.5 ? 'rect' : 'circle',
+    }));
+    let frame = 0;
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      pieces.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.angle += p.spin;
+        if (p.y < canvas.height + 20) alive = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, 1 - Math.max(0, p.y - canvas.height * 0.7) / (canvas.height * 0.3));
+        if (p.shape === 'rect') { ctx.fillRect(-p.r, -p.r * 0.5, p.r * 2, p.r); }
+        else { ctx.beginPath(); ctx.arc(0, 0, p.r * 0.7, 0, Math.PI * 2); ctx.fill(); }
+        ctx.restore();
+      });
+      frame++;
+      if (alive && frame < 180) requestAnimationFrame(draw);
+      else canvas.remove();
+    }
+    draw();
+  }
+
   if (btnNext) {
     btnNext.addEventListener('click', () => {
       if (cur < steps.length - 1) showStep(cur + 1);
-      else dismiss();
+      else { _launchConfetti(); dismiss(); }
     });
   }
   if (btnSkip) btnSkip.addEventListener('click', dismiss);
@@ -8816,6 +9780,26 @@ if (btnYtdlp) {
     <div class="upd-body">You will be reminded in settings if you need an update.</div>
   </div>
 
+</div>
+
+<!-- DIAGNOSTICS CONFIRM POPUP -->
+<div id="diag-confirm-backdrop"></div>
+<div id="diag-confirm-popup">
+  <!-- Step 1: Are you sure? -->
+  <div class="dc-state active" id="dc-state-1">
+    <div class="dc-emoji">😟</div>
+    <div class="dc-title">Are you sure?</div>
+    <div class="dc-body">Your data is anonymized and does not contain your IP address, browsing history, or any personal identifiers.</div>
+    <button class="dc-btn-off" id="dc-turnoff-btn">Turn off</button>
+    <button class="dc-btn-keep" id="dc-keep-btn">I'll keep it on.</button>
+    <div class="dc-fine-print" id="dc-fine-cancel">Cancel</div>
+  </div>
+  <!-- Step 2: Thank you -->
+  <div class="dc-state" id="dc-state-2">
+    <div class="dc-emoji">🙏</div>
+    <div class="dc-title">Thank you!</div>
+    <div class="dc-body">Raw Browser respects your data, and will never share your data with anyone. You can always turn this back on in Settings → Diagnostics.</div>
+  </div>
 </div>
 
 </body>

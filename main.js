@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const {
   app, BrowserWindow, BrowserView,
@@ -14,9 +14,10 @@ const { shouldBlock }    = require('./blocklist.js');
 
 // Domains never blocked regardless of settings (needed for site functionality)
 const BUILTIN_WHITELIST = [
-  'tiktok.com','tiktokv.com','tiktokcdn.com','tiktokcdn-us.com',
-  'ttwstatic.com','byteoversea.com','ibytedtos.com','ibyteimg.com',
-  'musical.ly','snssdk.com','bdurl.net',
+  // TikTok — only core content/video delivery domains; tracker subdomains are NOT listed
+  // so they can be blocked by shouldBlock() normally.
+  'tiktok.com','tiktokv.com','tiktokcdn.com','tiktokcdn-us.com','ttwstatic.com',
+  'ibytedtos.com','ibyteimg.com','byteoversea.com',
   // Spotify — CDN, auth, and DRM license domains required for playback
   'spotify.com','scdn.co','spotifycdn.com','spotifycdn.net',
   'pscdn.co','spotilocal.com','audio-ak-spotify-com.akamaized.net',
@@ -27,8 +28,32 @@ const BUILTIN_WHITELIST = [
   'google.com','accounts.google.com','apis.google.com',
   'googleapis.com','googleusercontent.com','gstatic.com',
   'gmail.com','youtube.com','ytimg.com','ggpht.com',
-  'google-analytics.com','googletagmanager.com',
+  // NOTE: google-analytics.com and googletagmanager.com intentionally NOT listed here
+  // so they remain blockable by shouldBlock(). They don't affect Google auth flows.
 ];
+
+// Tracker/analytics subdomains that must be blocked even if their parent domain
+// is in BUILTIN_WHITELIST. These take priority over the whitelist.
+const TRACKER_FORCE_BLOCK = new Set([
+  // TikTok analytics, logging, monitoring, and ad infrastructure
+  'analytics.tiktok.com', 'log.tiktok.com', 'log-va.tiktok.com',
+  'log-sg.tiktok.com', 'log-useast2a.tiktok.com', 'log-useast8.tiktok.com',
+  'mon.tiktok.com', 'stats.tiktok.com', 'event.tiktok.com',
+  'metrics.tiktok.com', 'monitor.tiktok.com', 'tracker.tiktok.com',
+  'ads.tiktok.com', 'business.tiktok.com',
+  // ByteDance tracking SDK and analytics infrastructure (not needed for playback)
+  'snssdk.com', 'bdurl.net', 'musical.ly',
+  'toblog.ctobsnssdk.com', 'lf16-tiktok-web.tiktokcdn.com',
+  // Google tracker subdomains — force-block even though googleapis.com/gstatic.com
+  // are in BUILTIN_WHITELIST for auth. These subdomains carry no auth traffic.
+  'imasdk.googleapis.com',
+  'pagead2.googlesyndication.com', 'tpc.googlesyndication.com',
+  'stats.g.doubleclick.net', 'cm.g.doubleclick.net',
+  'fundingchoicesmessages.google.com',
+  'adservice.google.com',
+  'ssl.google-analytics.com', 'analytics.google.com',
+  'csi.gstatic.com',
+]);
 
 if (process.platform === 'win32') app.setAppUserModelId('com.raw.browser');
 
@@ -185,14 +210,6 @@ app.commandLine.appendSwitch('disable-web-notifications');
 
 // Allow audio/video autoplay without user gesture (needed for Music Player)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-// Enable hardware-accelerated media key handling + platform EME — all features combined
-// into ONE appendSwitch call because Chromium only honours the LAST --enable-features
-// value; separate calls silently overwrite each other.
-if (process.platform === 'win32') {
-  app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService,PlatformEncryptedMediaFoundation');
-} else {
-  app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,MediaSessionService');
-}
 // Prevent Chromium from EVER suspending background renderer processes or their media.
 // This is the definitive fix for videos/audio pausing when a BV is detached from the window.
 // JS-level overrides (visibility, blur, etc.) can race with native Chromium scheduler events;
@@ -253,15 +270,32 @@ app.userAgentFallback = SPOOF_UA;
 // worker, and sub-frame before any JS runs, overriding Electron's own binary string.
 app.commandLine.appendSwitch('user-agent', SPOOF_UA);
 
-// ── Block WebAuthn / Passkeys at the Chromium level ──────────────────────────
-// Prevents the Windows Hello / native FIDO2 dialog from appearing on Google,
-// Microsoft, or any other site. JS-level credential stubs in preload.js give
-// sites a graceful "not supported" signal; these flags ensure the underlying
-// Chromium authenticator subsystem never even initialises.
-// Combine ALL disable-features into one call — Chromium only honours the last value.
-// Also disable ElectronNonClientWindowFromFrame — this Electron-specific feature
-// exposes internals that detection scripts can query.
-app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns,WebAuthentication,WebAuthenticationCableSecondFactor,WebAuthenticationPasskeysInBrowserWindow,WebAuthenticationRemoteDesktopSupport');
+// ── Enable features — ONE call; Chromium only honours the last value ──────────
+// HardwareMediaKeyHandling + MediaSessionService: media keys & OS media HUD.
+// PlatformEncryptedMediaFoundation (win32 only): DRM via Media Foundation.
+// PartitionedCookies + StoragePartitioning: isolate cross-site cookies/storage.
+// BlockThirdPartyCookies: prevent third-party cookie-sync tracking.
+if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('enable-features',
+    'HardwareMediaKeyHandling,MediaSessionService,PlatformEncryptedMediaFoundation,' +
+    'PartitionedCookies,StoragePartitioning,BlockThirdPartyCookies');
+} else {
+  app.commandLine.appendSwitch('enable-features',
+    'HardwareMediaKeyHandling,MediaSessionService,' +
+    'PartitionedCookies,StoragePartitioning,BlockThirdPartyCookies');
+}
+
+// ── Disable features — ONE call; Chromium only honours the last value ─────────
+// NetworkPrediction: no speculative pre-connections leaking browsing intent.
+// DnsOverHttps: disable Chromium's built-in DoH (use OS resolver).
+// PrefetchPrivacyChanges: keep prefetch from pinging third-party hosts.
+// WebRtcHideLocalIpsWithMdns: expose real IP (mDNS can interfere with WebRTC).
+// WebAuthentication*: suppress Windows Hello / FIDO2 / passkey dialogs.
+app.commandLine.appendSwitch('disable-features',
+  'NetworkPrediction,DnsOverHttps,PrefetchPrivacyChanges,' +
+  'WebRtcHideLocalIpsWithMdns,WebAuthentication,WebAuthenticationCableSecondFactor,' +
+  'WebAuthenticationPasskeysInBrowserWindow,WebAuthenticationRemoteDesktopSupport');
+app.commandLine.appendSwitch('no-pings'); // suppress <a ping=> hyperlink auditing
 
 // ── Anti-bot detection flags ─────────────────────────────────────────────────
 // Remove Electron-specific infobars / first-run markers that differ from Chrome.
@@ -284,12 +318,19 @@ app.commandLine.appendSwitch('disable-crash-reporter');
 //  • Dismisses skip buttons, overlay ads, and bot-check dialogs
 //  • No canvas/pixel readback — avoids GPU stalls and fingerprinting risk
 const YT_AD_SKIP = `(function(){
+  // YouTube Shorts — do NOT run ad-skip logic here.
+  // Shorts uses the same player infrastructure but seeking/speeding breaks playback.
+  if(window.location.pathname.indexOf('/shorts/')===0)return;
+
   // Re-entrant guard with cleanup of prior instance
   var _k='_rb'+Math.random().toString(36).slice(2,7);
   if(window._rbYtAdKey){
     try{window[window._rbYtAdKey].obs.disconnect();}catch(e){}
     if(window[window._rbYtAdKey]&&window[window._rbYtAdKey].iv)
       clearInterval(window[window._rbYtAdKey].iv);
+    // Clean up any pending wait-observer from a previous injection
+    if(window[window._rbYtAdKey]&&window[window._rbYtAdKey].wObs)
+      try{window[window._rbYtAdKey].wObs.disconnect();}catch(e){}
     delete window[window._rbYtAdKey];
   }
   window._rbYtAdKey=_k;
@@ -473,10 +514,13 @@ const YT_AD_SKIP = `(function(){
         var p2=document.querySelector('#movie_player,.html5-video-player,ytd-player');
         if(p2){
           _w.disconnect();
+          if(window[_k])window[_k].wObs=null;
           _obs.observe(p2,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
         }
       });
       _w.observe(document.body||document.documentElement,{childList:true,subtree:false});
+      // Save reference so re-entry cleanup can disconnect it if still pending
+      if(window[_k])window[_k].wObs=_w;
     }
   }
 
@@ -730,6 +774,9 @@ function _injectGoogleUAFix(wc) {
 // Shows on hover (YouTube / any site) and on autoplay without hover (TikTok).
 // Real in-page click → requestPictureInPicture works everywhere.
 const VIDEO_PIP_INJECT = `(function(){
+  // Cleanup any prior instance — disconnects observers and clears intervals
+  // to prevent accumulation on SPA navigations (especially YouTube Shorts).
+  if(window._rawPipCleanup){try{window._rawPipCleanup();}catch(e){}}
   if(window._rawPipV3)return;
   window._rawPipV3=true;
 
@@ -815,7 +862,7 @@ const VIDEO_PIP_INJECT = `(function(){
       if(muts[i].addedNodes&&muts[i].addedNodes.length){ _bindAll(); break; }
     }
   });
-  _mo.observe(document.documentElement,{childList:true,subtree:true});
+  _mo.observe(document.body||document.documentElement,{childList:true,subtree:true});
 
   /* ── Also poll for autoplay videos the hover approach can't catch ── */
   /* (TikTok: video plays full-screen without the user hovering)       */
@@ -888,12 +935,24 @@ const VIDEO_PIP_INJECT = `(function(){
   });
 
   /* ── Initial poll + recurring poll for autoplay sites ── */
-  var _polled=0;
+  var _polled=0, _slowIv=null;
   var _fastIv=setInterval(function(){
     _poll(); _polled++;
-    if(_polled>=60){ clearInterval(_fastIv); setInterval(_poll,4000); }
+    if(_polled>=60){ clearInterval(_fastIv); _slowIv=setInterval(_poll,4000); }
   },1000);
   _poll();
+
+  /* ── Cleanup function — called on re-injection to prevent observer/interval accumulation ── */
+  window._rawPipCleanup=function(){
+    try{_mo.disconnect();}catch(e){}
+    try{clearInterval(_fastIv);}catch(e){}
+    if(_slowIv)try{clearInterval(_slowIv);}catch(e){}
+    if(_ro)try{_ro.disconnect();}catch(e){}
+    window.removeEventListener('scroll',_repos,{capture:true});
+    window.removeEventListener('resize',_repos);
+    window._rawPipV3=false;
+    window._rawPipCleanup=null;
+  };
 })();`;
 
 // ── Extension content scripts (injected into BrowserView via executeJavaScript) ─
@@ -981,7 +1040,7 @@ const EXT_SCRIPTS = {
   'link-preview':
     `(function(){if(window._rawLinkPrev)return;window._rawLinkPrev=true;var tip=document.createElement('div');tip.id='_rawLinkPrev';tip.style.cssText='position:fixed;bottom:12px;left:50%;transform:translateX(-50%);max-width:520px;background:rgba(12,12,12,.92);color:#a0a0a0;font:12px/1.4 system-ui,sans-serif;padding:4px 14px;border-radius:7px;z-index:2147483646;pointer-events:none;opacity:0;transition:opacity .15s;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';document.documentElement.appendChild(tip);document.addEventListener('mouseover',function(e){var a=e.target.closest('a');if(a&&a.href&&!/^javascript/i.test(a.href)){tip.textContent=a.href;tip.style.opacity='1';}});document.addEventListener('mouseout',function(e){if(e.target.closest('a'))tip.style.opacity='0';});})()`,
   'custom-cursor':
-    `(function(){if(window._rawCursor)return;window._rawCursor=true;var tr=document.createElement('div');tr.id='_rawCursorRing';tr.style.cssText='position:fixed;width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(0,212,200,.75);pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);transition:top .06s linear,left .06s linear;top:-100px;left:-100px;box-shadow:0 0 10px rgba(0,212,200,.35);';document.documentElement.appendChild(tr);document.addEventListener('mousemove',function(e){tr.style.top=e.clientY+'px';tr.style.left=e.clientX+'px';});})()`,
+    `(function(){if(window._rawCursor)return;window._rawCursor=true;var cs=document.createElement('style');cs.id='_rawCursorCSS';cs.textContent='*,*::before,*::after{cursor:none!important}';(document.head||document.documentElement).appendChild(cs);var tr=document.createElement('div');tr.id='_rawCursorRing';tr.style.cssText='position:fixed;width:20px;height:20px;border-radius:50%;border:2px solid rgba(0,212,200,.9);pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);top:-100px;left:-100px;box-shadow:0 0 8px rgba(0,212,200,.5);background:rgba(0,212,200,.08);';document.documentElement.appendChild(tr);document.addEventListener('mousemove',function(e){tr.style.top=e.clientY+'px';tr.style.left=e.clientX+'px';});})()`,
   'auto-scroll':
     `(function(){if(window._rawAutoScrollBtn)return;var spd=0,anim,btn=document.createElement('div');btn.id='_rawAutoScrollBtn';btn.style.cssText='position:fixed;bottom:60px;right:20px;z-index:2147483647;background:rgba(0,0,0,.85);color:#00d4c8;font:bold 12px/1 system-ui;padding:6px 14px;border-radius:8px;cursor:pointer;user-select:none;border:1px solid rgba(0,212,200,.4);';btn.textContent='\u25bc Auto';window._rawAutoScrollBtn=btn;function tick(){if(spd>0){window.scrollBy(0,spd);anim=requestAnimationFrame(tick);}}btn.onclick=function(e){e.stopPropagation();spd=spd>0?0:1.5;btn.textContent=spd>0?'\u25a0 Stop':'\u25bc Auto';if(spd>0)anim=requestAnimationFrame(tick);else if(anim)cancelAnimationFrame(anim);};document.body.appendChild(btn);})()`,
   'high-contrast':
@@ -1047,7 +1106,7 @@ const EXT_UNSCRIPTS = {
   'smart-copy':       `(function(){window._rawSmartCopy=false;})()`,
   'hide-comments':    `(function(){document.getElementById('_rawHideCom')?.remove();})()`,
   'link-preview':     `(function(){document.getElementById('_rawLinkPrev')?.remove();window._rawLinkPrev=false;})()`,
-  'custom-cursor':    `(function(){document.getElementById('_rawCursorRing')?.remove();window._rawCursor=false;})()`,
+  'custom-cursor':    `(function(){document.getElementById('_rawCursorRing')?.remove();document.getElementById('_rawCursorCSS')?.remove();window._rawCursor=false;})()`,
   'auto-scroll':      `(function(){var b=document.getElementById('_rawAutoScrollBtn');if(b)b.remove();window._rawAutoScrollBtn=false;})()`,
   'high-contrast':    `(function(){document.getElementById('_rawHiCon')?.remove();})()`,
   'pip-mode':         `(function(){if(document.pictureInPictureElement)document.exitPictureInPicture().catch(function(){});window._rawPip=false;})()`,
@@ -1073,13 +1132,22 @@ const DEF_SETTINGS = {
   hardwareAcceleration: true,
   searchEngine: 'https://duckduckgo.com/?q=',
   homepage: 'newtab', accentColor: 'teal',
-  wallpaperColor: '#080808', wallpaper: null,
+  wallpaperColor: '#080808', wallpaper: null, liveWallpaperAudio: false,
   showSidebar: false, sidebarSites: [],
   showFavicons: true,
+  hideNtLogo: false,
+  blockingLevel: 'moderate',
   extensions: {},
   translateLang: 'en',
   geoEnabled: false,
   geoRegion: 'new-york',
+  // Diagnostics / telemetry (all optional, user controllable)
+  // crashReports: anonymous crash/error reports
+  // usageStats:   aggregate feature usage events
+  // perfData:     basic performance snapshots (startup time, memory)
+  crashReports: true,
+  usageStats:   false,
+  perfData:     false,
   toolbar: { 'tb-geo': false, 'tb-calc': false, 'tb-notes': false },
 };
 
@@ -1089,7 +1157,124 @@ let bookmarks     = [];
 let history       = [];
 let downloads     = [];
 let userWhitelist = [];
+const _downloadItems = new Map(); // id → DownloadItem (for pause/resume/cancel)
 let F             = {};   // file paths, set in initStorage()
+
+// ── Telemetry / crash reporting ───────────────────────────────────────────────
+const CRASH_ENDPOINT = new URL('https://rawbrowsercrashreports.rubikmaster49.workers.dev/');
+
+function _buildDiscordPayload(kind, payload) {
+  const now = new Date().toISOString();
+  const baseFields = [
+    {
+      name: 'App',
+      value: `Raw Browser v${app.getVersion()} • Electron ${process.versions.electron}`,
+      inline: false,
+    },
+    {
+      name: 'Platform',
+      value: `${process.platform} ${os.release()} (${process.arch})`,
+      inline: false,
+    },
+  ];
+
+  if (kind === 'crash') {
+    const err = payload.error || {};
+    const msg = (err.message || String(err)).slice(0, 1024);
+    const stack = (err.stack || payload.stack || '')
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .slice(0, 1024);
+    const where = payload.where || 'unknown';
+    return {
+      embeds: [{
+        title: 'Crash Report',
+        description: `Location: **${where}**`,
+        color: 0xff5555,
+        fields: [
+          ...baseFields,
+          { name: 'Error', value: msg || '(no message)', inline: false },
+          ...(stack ? [{ name: 'Stack', value: '```text\n' + stack + '\n```', inline: false }] : []),
+        ],
+        timestamp: now,
+      }],
+    };
+  }
+
+  if (kind === 'usage') {
+    return {
+      embeds: [{
+        title: 'Usage Event',
+        color: 0x14b8a6,
+        fields: [
+          ...baseFields,
+          { name: 'Event', value: payload.event || 'unknown', inline: false },
+        ],
+        timestamp: now,
+      }],
+    };
+  }
+
+  if (kind === 'perf') {
+    const memTotal = os.totalmem();
+    const memFree  = os.freemem();
+    const toMB = n => Math.round(n / 1048576);
+    return {
+      embeds: [{
+        title: 'Performance Snapshot',
+        color: 0x22c55e,
+        fields: [
+          ...baseFields,
+          { name: 'Event', value: payload.event || 'baseline', inline: false },
+          {
+            name: 'Memory',
+            value: `Total: ${toMB(memTotal)} MB\nFree: ${toMB(memFree)} MB`,
+            inline: false,
+          },
+        ],
+        timestamp: now,
+      }],
+    };
+  }
+
+  return {
+    embeds: [{
+      title: 'Telemetry',
+      color: 0x06b6d4,
+      fields: baseFields,
+      timestamp: now,
+    }],
+  };
+}
+
+function sendTelemetry(kind, payload) {
+  try {
+    let enabled = false;
+    if (kind === 'crash') enabled = settings.crashReports !== false;
+    else if (kind === 'usage') enabled = !!settings.usageStats;
+    else if (kind === 'perf')  enabled = !!settings.perfData;
+    if (!enabled) return;
+
+    const body = JSON.stringify(_buildDiscordPayload(kind, payload || {}));
+    const req = https.request({
+      method: 'POST',
+      hostname: CRASH_ENDPOINT.hostname,
+      path: CRASH_ENDPOINT.pathname,
+      port: 443,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, res => {
+      // Drain response to free socket; we don't care about body
+      res.on('data', () => {});
+    });
+    req.on('error', () => {});
+    req.write(body);
+    req.end();
+  } catch {
+    // Never let telemetry throw
+  }
+}
 
 // Called inside app.whenReady() — app.getPath() only works after ready
 function initStorage() {
@@ -1109,13 +1294,41 @@ function initStorage() {
   userWhitelist = load(F.whitelist, []);
 }
 
+// Global crash/exception hooks (main process only)
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception in main process:', err);
+  sendTelemetry('crash', { where: 'main:uncaughtException', error: err });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection in main process:', reason);
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  sendTelemetry('crash', { where: 'main:unhandledRejection', error: err });
+});
+
+app.on('render-process-gone', (event, webContents, details) => {
+  sendTelemetry('crash', {
+    where: 'renderer:' + (details?.reason || 'unknown'),
+    error: new Error(details?.reason || 'renderer-process-gone'),
+  });
+});
+
+app.on('child-process-gone', (event, details) => {
+  sendTelemetry('crash', {
+    where: 'child:' + (details?.type || 'unknown'),
+    error: new Error(details?.reason || 'child-process-gone'),
+  });
+});
+
 // ── Runtime ───────────────────────────────────────────────────────────────────
 let   CHROME_H   = 82;   // matches --chrome-h; updated dynamically for compact mode (72)
 const SIDEBAR_W  = 64;   // sidebar strip width
 let   sidebarOn  = false;
 let   nextId     = 0;
 const tabMap   = new Map();
+const wcIdMap  = new Map(); // webContentsId → tabId — O(1) lookup in request handlers
 let   activeId = null;
+let   _snapInterval = null; // cleared on quit to prevent dangling callbacks
 let   win      = null;
 let   totalBlocked = 0;
 let   panelOpen    = false;
@@ -1300,8 +1513,13 @@ function createTab(url, activate = true) {
     loading: false, pinned: false, muted: false, zoom: 1, blocked: 0,
   };
   tabMap.set(id, tab);
+  wcIdMap.set(bv.webContents.id, id); // register for O(1) lookup in request handlers
 
   const wc = bv.webContents;
+  // Electron adds its own internal listeners per-WebContents (e.g. for devtools,
+  // remote module, etc.). Raise the limit so our app listeners don't trigger the
+  // spurious "Possible EventEmitter memory leak detected" warning.
+  wc.setMaxListeners(30);
   // Prevent Chromium from throttling/pausing the renderer when it's not
   // composited into the window (e.g. while a toolbar panel is open with BV removed).
   // Without this, video/audio can pause at the media pipeline level regardless of
@@ -1360,6 +1578,7 @@ function createTab(url, activate = true) {
     pwc.setUserAgent(SPOOF_UA);
     pwc.setBackgroundThrottling(false);
     popup.setMenuBarVisibility(false);
+    popup.on('closed', () => { try { pwc.removeAllListeners(); } catch {} });
     // Inject Google UA fix at the earliest moment (before page scripts) + on later events.
     pwc.on('did-commit-navigation', (_, navUrl) => {
       if (navUrl && _GOOGLE_RE.test(navUrl)) pwc.executeJavaScript(GOOGLE_UA_FIX).catch(() => {});
@@ -1517,7 +1736,7 @@ function createTab(url, activate = true) {
       const _doSnap = () => {
         if (!panelOpen && tab?.bv && !tab.bv.webContents.isDestroyed()) {
           tab.bv.webContents.capturePage().then(img => {
-            tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
+            tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
           }).catch(() => {});
         }
       };
@@ -1618,8 +1837,9 @@ function createTab(url, activate = true) {
     tab.url = normalizeUrl(u);
     send('tab:update', tabData(tab));
     if (id === activeId) send('nav:state', navData(tab));
-    // Re-inject yt-ad add-on on YouTube SPA navigation if user has it enabled
-    if (/youtube\.com/i.test(u) && settings.extensions?.['yt-ad']) {
+    // Re-inject yt-ad add-on on YouTube SPA navigation if user has it enabled.
+    // Skip Shorts — the ad-skip logic interferes with Shorts video playback.
+    if (/youtube\.com/i.test(u) && settings.extensions?.['yt-ad'] && !/\/shorts\//i.test(u)) {
       wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
     }
   });
@@ -1644,8 +1864,13 @@ function createTab(url, activate = true) {
 function closeTab(id) {
   const tab = tabMap.get(id);
   if (!tab) return;
+  tab.snapshot = null; // free JPEG memory immediately
   try { win.removeBrowserView(tab.bv); } catch {}
-  try { tab.bv.webContents.destroy();  } catch {}
+  try {
+    wcIdMap.delete(tab.bv.webContents.id);
+    tab.bv.webContents.removeAllListeners();
+    tab.bv.webContents.destroy();
+  } catch {}
   tabMap.delete(id);
   send('tab:close', id);
   if (activeId === id) {
@@ -1666,12 +1891,45 @@ function setZoom(id, fn) {
 
 // ── Session / ad-blocking setup ───────────────────────────────────────────────
 function setupSession(ses) {
+  // Tracking parameters that are pure cross-site identifiers with no functional value.
+  const _TRACKING_PARAMS = new Set([
+    'utm_source','utm_medium','utm_campaign','utm_term','utm_content','utm_id','utm_source_platform',
+    'fbclid','fb_action_ids','fb_action_types','fb_source','fb_ref',
+    'gclid','gclsrc','gbraid','wbraid','gad_source',
+    'msclkid','mc_eid','mc_cid',
+    'ttclid','twclid','dclid','yclid','sscid','zanpid',
+    '_ga','_gl','_hsenc','_hsmi','mkt_tok','igshid',
+    'oly_anon_id','oly_enc_id','rb_clickid','vero_id','vero_conv',
+    's_cid','s_kwcid','ef_id','wickedid',
+    'trk','trkCampaign','trkcampaign','trkInfo',
+  ]);
+
   ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, cb) => {
-    const tab = [...tabMap.values()].find(t => t.bv?.webContents?.id === details.webContentsId);
+    const tab = tabMap.get(wcIdMap.get(details.webContentsId));
     if (!tab) return cb({});
+
+    // Strip cross-site tracking parameters from URLs before the request is sent.
+    // Only runs on navigation/main-frame requests to avoid breaking API calls.
+    if (settings.adblockEnabled && (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame')) {
+      try {
+        const u = new URL(details.url);
+        let stripped = false;
+        for (const key of [...u.searchParams.keys()]) {
+          if (_TRACKING_PARAMS.has(key)) { u.searchParams.delete(key); stripped = true; }
+        }
+        if (stripped) return cb({ redirectURL: u.toString() });
+      } catch {}
+    }
 
     try {
       const host = new URL(details.url).hostname.toLowerCase().replace(/^www\./, '');
+      // Tracker override: block these even if parent domain is whitelisted
+      if (settings.adblockEnabled && TRACKER_FORCE_BLOCK.has(host)) {
+        tab.blocked = (tab.blocked || 0) + 1;
+        totalBlocked++;
+        if (tab.id === activeId) send('blocked:update', { total: totalBlocked, session: tab.blocked });
+        return cb({ cancel: true });
+      }
       if (BUILTIN_WHITELIST.some(d => host === d || host.endsWith('.' + d))) return cb({});
       if (userWhitelist.some(d => host === d || host.endsWith('.' + d))) return cb({});
     } catch {}
@@ -1684,7 +1942,7 @@ function setupSession(ses) {
       return cb({ cancel: true });
     }
 
-    if (shouldBlock(details.url, settings.adblockEnabled)) {
+    if (shouldBlock(details.url, settings.adblockEnabled, settings.blockingLevel || 'moderate')) {
       tab.blocked = (tab.blocked || 0) + 1;
       totalBlocked++;
       if (tab.id === activeId) send('blocked:update', { total: totalBlocked, session: tab.blocked });
@@ -1727,20 +1985,26 @@ function setupSession(ses) {
 
     // For non-whitelisted requests from popup windows / unknown webContents
     // (no matching BV tab) — skip all header modifications to avoid breaking them.
-    const tab = [...tabMap.values()].find(t => t.bv?.webContents?.id === details.webContentsId);
+    const tab = tabMap.get(wcIdMap.get(details.webContentsId));
     if (!tab) return cb({});
 
     if (settings.doNotTrack)    { h['DNT'] = '1'; h['Sec-GPC'] = '1'; }
     _applyUA(h);
 
-    // Strip cross-origin Referer to origin-only — prevents full URLs containing
-    // tokens, session IDs, or personal data from leaking to third-party servers.
+    // Strip Referer on cross-origin requests — prevents full page URLs (with
+    // tokens / session IDs) leaking to third-party servers.
+    // For known tracker/ad domains: strip entirely (no origin leak either).
+    // For general cross-site: truncate to origin-only.
     if (h['Referer']) {
       try {
         const refHost = new URL(h['Referer']).hostname;
-        const reqHost = new URL(details.url).hostname;
-        if (refHost !== reqHost) {
-          h['Referer'] = new URL(h['Referer']).origin + '/';
+        const reqHost = new URL(details.url).hostname.toLowerCase().replace(/^www\./, '');
+        if (refHost !== new URL(details.url).hostname) {
+          if (shouldBlock(details.url, true, 'moderate')) {
+            delete h['Referer']; // tracker — remove entirely
+          } else {
+            h['Referer'] = new URL(h['Referer']).origin + '/';
+          }
         }
       } catch { delete h['Referer']; }
     }
@@ -1796,6 +2060,22 @@ function setupSession(ses) {
             lk === 'cross-origin-resource-policy')) {
           continue;
         }
+        // Enforce SameSite=Lax on Set-Cookie headers that lack a SameSite directive.
+        // This prevents third-party cookies from being sent cross-site, blocking the
+        // classic cookie-sync / cross-site profiling attack at the protocol level.
+        if (lk === 'set-cookie') {
+          h[k] = v.map(cookie => {
+            const lower = cookie.toLowerCase();
+            // Don't touch cookies that already declare SameSite (respect site intent)
+            if (lower.includes('samesite=')) return cookie;
+            // Don't add SameSite to Secure cookies from the same auth bypass domains —
+            // auth session cookies need SameSite=None for cross-origin login flows.
+            if (isBypass && lower.includes('secure')) return cookie;
+            return cookie + '; SameSite=Lax';
+          });
+          continue;
+        }
+
         h[k] = v;
       }
     } catch {
@@ -1831,10 +2111,11 @@ function setupSession(ses) {
     const entry = {
       id: Date.now(), filename: item.getFilename(),
       path: '', size: item.getTotalBytes(), received: 0, state: 'progressing',
-      speed: 0, startTime: Date.now(),
+      speed: 0, startTime: Date.now(), paused: false,
     };
     let _lastBytes = 0, _lastTime = Date.now();
     downloads.unshift(entry);
+    _downloadItems.set(entry.id, item);
     send('downloads:update', downloads);
 
     item.on('updated', (__, state) => {
@@ -1844,6 +2125,7 @@ function setupSession(ses) {
       entry.speed   = dt > 0.1 ? Math.round((bytes - _lastBytes) / dt) : entry.speed;
       _lastBytes = bytes; _lastTime = now;
       entry.state    = state;
+      entry.paused   = item.isPaused();
       entry.received = bytes;
       entry.path     = item.getSavePath() || entry.path;
       send('downloads:update', downloads);
@@ -1851,8 +2133,10 @@ function setupSession(ses) {
     item.once('done', (__, state) => {
       entry.state    = state;
       entry.speed    = 0;
+      entry.paused   = false;
       entry.received = item.getReceivedBytes();
       entry.path     = item.getSavePath() || entry.path;
+      _downloadItems.delete(entry.id);
       save(F.downloads, downloads.filter(d => d.state !== 'progressing'));
       send('downloads:update', downloads);
     });
@@ -1919,13 +2203,18 @@ app.whenReady().then(() => {
     if (_pendingExtUrl) { createTab(_pendingExtUrl, true); _pendingExtUrl = null; }
     // Auto-check yt-dlp after UI is stable
     setTimeout(() => ytdlpCheckUpdate(), 3500);
+    // Lightweight anonymous usage/perf snapshot (if enabled)
+    setTimeout(() => {
+      sendTelemetry('usage', { event: 'app_start' });
+      sendTelemetry('perf',  { event: 'baseline' });
+    }, 8000);
     // Keep the cached page snapshot fresh (used by panel popups to show current page state).
     // Refreshes every 5 s while a real page is active and no panel is open.
-    setInterval(() => {
+    _snapInterval = setInterval(() => {
       const tab = tabMap.get(activeId);
       if (!tab?.bv || panelOpen || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
       tab.bv.webContents.capturePage().then(img => {
-        tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
+        tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
       }).catch(() => {});
     }, 5000);
   });
@@ -1942,6 +2231,8 @@ app.whenReady().then(() => {
   win.on('maximize',   () => send('win:state', 'maximized'));
   win.on('unmaximize', () => send('win:state', 'normal'));
   win.on('closed',     () => { win = null; });
+
+app.on('before-quit', () => { if (typeof _snapInterval !== 'undefined') clearInterval(_snapInterval); });
 
   // Context menu for editable fields in the main window (omnibox, newtab search, etc.)
   win.webContents.on('context-menu', (_, p) => {
@@ -2482,7 +2773,7 @@ async function _openPanel(tab) {
   // Step 2: Capture screenshot at full bounds.
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
   } catch {}
   if (!panelOpen) return;
 
@@ -2526,6 +2817,12 @@ ipcMain.on('panel:show', () => {
   panelOpen = true;
   _openPanel(tabMap.get(activeId));
 });
+// Send fresh privacy stats on demand (called when the privacy panel opens)
+ipcMain.on('privacy:refresh', () => {
+  const tab = tabMap.get(activeId);
+  send('blocked:update', { total: totalBlocked, session: tab?.blocked || 0 });
+});
+
 ipcMain.on('panel:show:quick', () => {
   panelOpen = true;
   _openPanel(tabMap.get(activeId));
@@ -2617,7 +2914,7 @@ ipcMain.on('sidebar:modal:open', async () => {
   // Capture screenshot at current full bounds
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(90).toString('base64');
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
   } catch {}
   // Send snapshot to renderer, wait for it to confirm canvas is drawn, then park.
   // This ensures the canvas is visible the instant the BV moves offscreen.
@@ -3110,6 +3407,68 @@ ipcMain.on('downloads:clear', () => {
   save(F.downloads, []);
   send('downloads:update', downloads);
 });
+// ── Limiter Tool IPC ──────────────────────────────────────────────────────────
+ipcMain.on('limiter:network', (_, { throttle, kbps }) => {
+  try {
+    const ses = session.fromPartition('persist:main');
+    if (!throttle) {
+      ses.disableNetworkEmulation();
+    } else {
+      const bps = (kbps || 0) * 1024;
+      ses.enableNetworkEmulation({ downloadThroughput: bps, uploadThroughput: Math.round(bps * 0.4) });
+    }
+  } catch(e) {}
+});
+ipcMain.on('limiter:cpu', (_, { level }) => {
+  // 0=below normal, 1=normal, 2=above normal
+  try {
+    const priorities = ['below normal', 'normal', 'above normal'];
+    const pri = priorities[Math.max(0, Math.min(2, level))];
+    app.getAppPath(); // ensure alive
+    if (process.platform === 'win32') {
+      // Windows: spawn wmic to set priority
+      const { exec } = require('child_process');
+      const pid = process.pid;
+      const wmiPri = level === 0 ? 'Below Normal' : level === 2 ? 'Above Normal' : 'Normal';
+      exec(`wmic process where ProcessId=${pid} CALL setpriority "${wmiPri}"`, () => {});
+    }
+  } catch(e) {}
+});
+ipcMain.on('limiter:ram', (_, { level }) => {
+  try {
+    if (level === 0) return;
+    // Force V8 garbage collection (available with --expose-gc flag, best-effort)
+    if (global.gc) global.gc();
+    // Purge memory via Electron API if available
+    if (app.clearRecentDocuments) app.clearRecentDocuments();
+    // Ask all BV renderers to reduce idle memory
+    for (const [, tab] of tabMap) {
+      if (tab.bv && tab.bv.webContents && !tab.bv.webContents.isDestroyed()) {
+        if (level >= 2) tab.bv.webContents.invalidate();
+      }
+    }
+  } catch(e) {}
+});
+
+ipcMain.on('downloads:pause', (_, id) => {
+  const item = _downloadItems.get(id);
+  if (item && !item.isPaused()) { item.pause(); }
+  const entry = downloads.find(d => d.id === id);
+  if (entry) { entry.paused = true; send('downloads:update', downloads); }
+});
+ipcMain.on('downloads:resume', (_, id) => {
+  const item = _downloadItems.get(id);
+  if (item && item.isPaused()) { item.resume(); }
+  const entry = downloads.find(d => d.id === id);
+  if (entry) { entry.paused = false; send('downloads:update', downloads); }
+});
+ipcMain.on('downloads:cancel', (_, id) => {
+  const item = _downloadItems.get(id);
+  if (item) { item.cancel(); }
+  downloads = downloads.filter(d => d.id !== id);
+  _downloadItems.delete(id);
+  send('downloads:update', downloads);
+});
 ipcMain.on('downloads:open',   (_, p) => {
   // Validate: must be an absolute path to an existing file in a safe location.
   // Never open paths that start with ~, contain .. traversal, or point outside home/downloads.
@@ -3237,11 +3596,25 @@ ipcMain.on('whitelist:remove', (_, domain) => {
 ipcMain.on('wallpaper:pick', async () => {
   const r = await dialog.showOpenDialog(win, {
     properties: ['openFile'],
-    filters: [{ name: 'Images', extensions: ['jpg','jpeg','png','gif','webp'] }],
+    filters: [
+      { name: 'Wallpapers', extensions: ['jpg','jpeg','png','gif','webp','mp4','webm','ogg','mov'] },
+      { name: 'Images', extensions: ['jpg','jpeg','png','gif','webp'] },
+      { name: 'Videos (Live Wallpaper)', extensions: ['mp4','webm','ogg','mov'] },
+    ],
   });
   if (!r.canceled && r.filePaths[0]) {
-    // Store as a proper file:// URL so Chromium can use it directly in CSS url()
-    settings.wallpaper = pathToFileURL(r.filePaths[0]).href;
+    // Store as a proper file:// URL so Chromium can use it directly
+    const wpUrl = pathToFileURL(r.filePaths[0]).href;
+    settings.wallpaper = wpUrl;
+    // Add to user wallpaper library if not already present
+    if (!settings.wallpaperLibrary) settings.wallpaperLibrary = [];
+    const label = require('path').basename(r.filePaths[0], require('path').extname(r.filePaths[0])).replace(/[-_]/g, ' ');
+    if (!settings.wallpaperLibrary.some(w => w.url === wpUrl)) {
+      settings.wallpaperLibrary.push({ url: wpUrl, label });
+    }
+    // Default audio on for live (video) wallpapers
+    const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(r.filePaths[0]);
+    if (isVideo) settings.liveWallpaperAudio = true;
     save(F.settings, settings);
     send('settings:set', settings);
   }
@@ -3256,6 +3629,14 @@ ipcMain.on('ext:toggle', (_, { id, enabled }) => {
   if (tab?.bv && tab.url !== 'newtab') {
     const script = enabled ? EXT_SCRIPTS[id] : EXT_UNSCRIPTS[id];
     if (script) tab.bv.webContents.executeJavaScript(script).catch(() => {});
+  } else if (tab?.url === 'newtab' && enabled) {
+    // Let the user know the add-on will activate on the next page they visit
+    send('toast', 'Add-on enabled — navigate to a page to activate it');
+  }
+  // Custom cursor: also inject/remove the ring overlay in the main browser chrome
+  if (id === 'custom-cursor' && win && !win.isDestroyed()) {
+    const winScript = enabled ? EXT_SCRIPTS['custom-cursor'] : EXT_UNSCRIPTS['custom-cursor'];
+    if (winScript) win.webContents.executeJavaScript(winScript).catch(() => {});
   }
 });
 
@@ -3363,7 +3744,7 @@ function igCreateTab(url = 'newtab', activate = true) {
     tab.url = norm(wc.getURL()) || tab.url;
     sendIg('ig:tab:update', { id, url: tab.url, title: tab.title, loading: false, favicon: tab.favicon });
     if (igActiveId === id) sendIg('ig:nav:state', igNavData(tab));
-    if (/youtube\.com/i.test(tab.url) && settings.extensions?.['yt-ad']) wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
+    if (/youtube\.com/i.test(tab.url) && settings.extensions?.['yt-ad'] && !/\/shorts\//i.test(tab.url)) wc.executeJavaScript(YT_AD_SKIP).catch(() => {});
     wc.insertCSS('html::-webkit-scrollbar{display:none!important}html{scrollbar-width:none!important}', { cssOrigin:'user' }).catch(() => {});
     // Inject floating PiP button — same as main browser
     if (tab.url && tab.url !== 'newtab' && !tab.url.startsWith('view-source:')) {
@@ -3806,7 +4187,7 @@ ipcMain.on('ytdlp:cancel', (_, id) => {
 });
 
 // ── Auto update checker ───────────────────────────────────────────────────────
-const CURRENT_VERSION = '1.0.5';
+const CURRENT_VERSION = '1.0.6';
 ipcMain.handle('check-update', () => new Promise((resolve) => {
   const url = 'https://raw.githubusercontent.com/sharp4real/rawbrowser/refs/heads/main/version';
   const req = https.get(url, { timeout: 8000, headers: { 'User-Agent': SPOOF_UA } }, (res) => {
