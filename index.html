@@ -7914,12 +7914,13 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
     if (btn) {
       btn.addEventListener('click', function() {
         const p = document.getElementById('panel-passwords');
-        if (p && p.classList.contains('on')) {
-          if (typeof closeAllDrops === 'function') closeAllDrops();
-        } else {
-          if (typeof openPanel === 'function') openPanel('panel-passwords', 'btn-passwords');
-          _onPanelOpen();
-        }
+        //removed this because the panel opening already happens in another function and in result they conflict
+        //if (p && p.classList.contains('on')) {          
+          //if (typeof closeAllDrops === 'function') closeAllDrops();
+       //} else {
+          //if (typeof openPanel === 'function') openPanel('panel-passwords', 'btn-passwords');
+          //_onPanelOpen();
+       // }
       });
     }
     const mi = document.getElementById('pw-master-input');
@@ -7975,7 +7976,8 @@ ipcRenderer.on('snip:ready', (_, dataURL) => {
     const manageBtn = document.getElementById('set-manage-passwords');
     if (manageBtn) manageBtn.addEventListener('click', function() {
       // Close settings panel and open password panel
-      if (typeof closeAllDrops === 'function') closeAllDrops();
+      // Now it closes the settings, not the drops
+      if (typeof closeAllDrops === 'function') closeSettingsPage();
       if (typeof openPanel === 'function') openPanel('panel-passwords', 'btn-passwords');
       _onPanelOpen();
     });
