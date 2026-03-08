@@ -32,15 +32,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.github_token }}
         shell: bash
 
-      - name: Install flatpak dependencies (Linux only)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y flatpak flatpak-builder
-          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-          sudo flatpak install -y flathub org.electronjs.Electron2.BaseApp//23.08
-
       - name: Build/release Electron app
         uses: samuelmeuli/action-electron-builder@v1.6.0
         with:

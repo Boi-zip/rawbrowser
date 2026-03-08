@@ -68,10 +68,6 @@
         {
           "target": "deb",
           "arch": ["x64"]
-        },
-        {
-          "target": "flatpak",
-          "arch": ["x64"]
         }
       ],
       "category": "Network;WebBrowser",
