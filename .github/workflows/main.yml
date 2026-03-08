@@ -9,6 +9,7 @@ jobs:
       contents: write
 
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
@@ -21,16 +22,14 @@ jobs:
         with:
           node-version: 25
 
-      - name: Delete existing release
-        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')
+      - name: Install flatpak dependencies (Linux only)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
-          gh release delete v1.0.6 --yes --cleanup-tag 2>/dev/null || true
-          gh release delete V1.0.6 --yes --cleanup-tag 2>/dev/null || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.github_token }}
-        shell: bash
+          sudo apt-get update -y
+          sudo apt-get install -y flatpak flatpak-builder elfutils
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
+          sudo flatpak install -y flathub org.electronjs.Electron2.BaseApp//23.08
 
       - name: Build/release Electron app
         uses: samuelmeuli/action-electron-builder@v1.6.0
