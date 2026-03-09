@@ -127,10 +127,11 @@ app.commandLine.appendSwitch('disable-web-notifications');
       const local = process.env.LOCALAPPDATA || '';
       const prog  = process.env.PROGRAMFILES || 'C:\\Program Files';
       const prog86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
-      // Modern Chrome/Edge (v120+) keeps WidevineCdm in User Data, not Application
+      // Modern Chrome/Edge/Brave (v120+) keeps WidevineCdm in User Data, not Application
       const userDataCandidates = [
         path.join(local, 'Google', 'Chrome', 'User Data', 'WidevineCdm'),
         path.join(local, 'Microsoft', 'Edge', 'User Data', 'WidevineCdm'),
+        path.join(local, 'BraveSoftware', 'Brave-Browser', 'User Data', 'WidevineCdm'),
         path.join(prog,  'Google', 'Chrome', 'User Data', 'WidevineCdm'),
       ];
       let found = false;
@@ -273,16 +274,19 @@ app.commandLine.appendSwitch('user-agent', SPOOF_UA);
 // ── Enable features — ONE call; Chromium only honours the last value ──────────
 // HardwareMediaKeyHandling + MediaSessionService: media keys & OS media HUD.
 // PlatformEncryptedMediaFoundation (win32 only): DRM via Media Foundation.
-// PartitionedCookies + StoragePartitioning: isolate cross-site cookies/storage.
-// BlockThirdPartyCookies: prevent third-party cookie-sync tracking.
+//
+// NOTE: StoragePartitioning and BlockThirdPartyCookies are intentionally NOT
+// enabled here. In Chromium 120+ (Electron 36+) these features operate BELOW
+// Electron's webRequest layer and block third-party cookies/storage for DRM
+// license servers (e.g. spclient.wg.spotify.com) even when those domains are
+// whitelisted in our request handlers. Removing them fixes Widevine/Spotify DRM.
+// Cross-site isolation is still enforced by our webRequest interceptors.
 if (process.platform === 'win32') {
   app.commandLine.appendSwitch('enable-features',
-    'HardwareMediaKeyHandling,MediaSessionService,PlatformEncryptedMediaFoundation,' +
-    'PartitionedCookies,StoragePartitioning,BlockThirdPartyCookies');
+    'HardwareMediaKeyHandling,MediaSessionService,PlatformEncryptedMediaFoundation');
 } else {
   app.commandLine.appendSwitch('enable-features',
-    'HardwareMediaKeyHandling,MediaSessionService,' +
-    'PartitionedCookies,StoragePartitioning,BlockThirdPartyCookies');
+    'HardwareMediaKeyHandling,MediaSessionService');
 }
 
 // ── Disable features — ONE call; Chromium only honours the last value ─────────
