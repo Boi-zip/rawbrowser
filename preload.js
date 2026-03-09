@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 // Apply privacy protections before any page script runs
 (function hardenPrivacy() {
@@ -77,7 +77,7 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
           'Object.getOwnPropertyDescriptor=function(o,p){var s=_sp.get(o);if(s&&s.has(p)){var d=_origGOPD.call(Object,Object.getPrototypeOf(o)||o,p);if(d)return d;}return _origGOPD.call(Object,o,p);};' +
           '_fn.add(Object.getOwnPropertyDescriptor);' +
           /* Core spoofing functions */
-          'var _UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";' +
+          'var _UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";' +
           'function _def(t,p,v){try{var g=function(){return v;};_fn.add(g);Object.defineProperty(t,p,{get:g,configurable:true});if(!_sp.has(t))_sp.set(t,new Set());_sp.get(t).add(p);}catch(e){}}' +
           '_def(navigator,"webdriver",false);' +
           '_def(navigator,"userAgent",_UA);' +
@@ -94,7 +94,7 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
           '_def(navigator,"appName","Netscape");' +
           '_def(navigator,"product","Gecko");' +
           '_def(navigator,"productSub","20030107");' +
-          '_def(navigator,"appVersion","5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");' +
+          '_def(navigator,"appVersion","5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");' +
           /* Plugins */
           'try{' +
           'var _fp={name:"PDF Viewer",description:"Portable Document Format",filename:"internal-pdf-viewer",length:0};' +
@@ -108,9 +108,9 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
           '_def(navigator,"mimeTypes",_mt);' +
           '}catch(e){}' +
           /* userAgentData */
-          'var _br=[{brand:"Not_A Brand",version:"8"},{brand:"Chromium",version:"120"},{brand:"Google Chrome",version:"120"}];' +
-          'var _fvl=[{brand:"Not_A Brand",version:"8.0.0.0"},{brand:"Chromium",version:"120.0.6099.234"},{brand:"Google Chrome",version:"120.0.6099.234"}];' +
-          'var _ghev=function getHighEntropyValues(){return Promise.resolve({architecture:"x86",bitness:"64",brands:_br,fullVersionList:_fvl,mobile:false,model:"",platform:"Windows",platformVersion:"10.0.0",uaFullVersion:"120.0.6099.234",wow64:false});};' +
+          'var _br=[{brand:"Not_A Brand",version:"8"},{brand:"Chromium",version:"131"},{brand:"Google Chrome",version:"131"}];' +
+          'var _fvl=[{brand:"Not_A Brand",version:"8.0.0.0"},{brand:"Chromium",version:"131.0.6778.205"},{brand:"Google Chrome",version:"131.0.6778.205"}];' +
+          'var _ghev=function getHighEntropyValues(){return Promise.resolve({architecture:"x86",bitness:"64",brands:_br,fullVersionList:_fvl,mobile:false,model:"",platform:"Windows",platformVersion:"10.0.0",uaFullVersion:"131.0.6778.205",wow64:false});};' +
           'var _tj=function toJSON(){return{brands:_br,mobile:false,platform:"Windows"};};' +
           '_fn.add(_ghev);_fn.add(_tj);' +
           'var _aud={brands:_br,mobile:false,platform:"Windows",getHighEntropyValues:_ghev,toJSON:_tj};' +
@@ -179,8 +179,9 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
           'try{if(window.speechSynthesis){var _ogv=window.speechSynthesis.getVoices.bind(window.speechSynthesis);var _fv=[{voiceURI:"Google US English",name:"Google US English",lang:"en-US",localService:true,default:true},{voiceURI:"Google UK English Female",name:"Google UK English Female",lang:"en-GB",localService:false,default:false}];var _gvf=function getVoices(){var r=_ogv();return(r&&r.length)?r:_fv;};_fn.add(_gvf);window.speechSynthesis.getVoices=_gvf;}}catch(e){}' +
           'try{if(typeof Notification!=="undefined")Object.defineProperty(Notification,"permission",{get:function(){return"default";},configurable:true});}catch(e){}' +
           'try{if(navigator.permissions){var _origQ=navigator.permissions.query.bind(navigator.permissions);var _pqf=function query(d){if(d&&(d.name==="notifications"||d.name==="push"))return Promise.resolve({state:"prompt",status:"prompt",onchange:null});return _origQ(d);};_fn.add(_pqf);navigator.permissions.query=_pqf;}}catch(e){}' +
-          /* Block service worker registration — SW context has no overrides */
-          'try{if(navigator.serviceWorker){var _srf=function register(){return Promise.reject(new DOMException("Failed to register a ServiceWorker","SecurityError"));};_fn.add(_srf);navigator.serviceWorker.register=_srf;}}catch(e){}' +
+          /* Block service worker registration only on Google domains — SW context has no overrides.
+             Spotify and other streaming sites depend on SWs for playback; don't block them. */
+          'try{if(navigator.serviceWorker&&/google\\.com|googleapis\\.com|gstatic\\.com|gmail\\.com|youtube\\.com/i.test(window.location.hostname)){var _srf=function register(){return Promise.reject(new DOMException("Failed to register a ServiceWorker","SecurityError"));};_fn.add(_srf);navigator.serviceWorker.register=_srf;}}catch(e){}' +
           '})();';
         var _bypassScript = document.createElement('script');
         _bypassScript.textContent = _bypassCode;
@@ -322,8 +323,8 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
       try {
         const _uaBrands = [
           { brand: 'Not_A Brand', version: '8' },
-          { brand: 'Chromium', version: '120' },
-          { brand: 'Google Chrome', version: '120' },
+          { brand: 'Chromium', version: '131' },
+          { brand: 'Google Chrome', version: '131' },
         ];
         Object.defineProperty(navigator, 'userAgentData', {
           get: () => ({
@@ -333,10 +334,10 @@ const _SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
             getHighEntropyValues: () => Promise.resolve({
               architecture: 'x86', bitness: '64',
               brands: _uaBrands,
-              fullVersionList: [{ brand: 'Not_A Brand', version: '8.0.0.0' }, { brand: 'Chromium', version: '120.0.6099.234' }, { brand: 'Google Chrome', version: '120.0.6099.234' }],
+              fullVersionList: [{ brand: 'Not_A Brand', version: '8.0.0.0' }, { brand: 'Chromium', version: '131.0.6778.205' }, { brand: 'Google Chrome', version: '131.0.6778.205' }],
               mobile: false, model: '',
               platform: 'Windows', platformVersion: '10.0.0',
-              uaFullVersion: '120.0.6099.234',
+              uaFullVersion: '131.0.6778.205',
             }),
             toJSON: () => ({ brands: _uaBrands, mobile: false, platform: 'Windows' }),
           }),

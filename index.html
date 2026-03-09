@@ -1979,8 +1979,10 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 
 /* ── UPDATE POPUP ──────────────────────────────────────────────────────── */
 #update-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,.65);
-  z-index: 10000000; backdrop-filter: blur(4px);
+  position: fixed; inset: var(--chrome-h) 0 0; background: rgba(0,0,0,.65);
+  backdrop-filter: blur(14px) saturate(.7);
+  -webkit-backdrop-filter: blur(14px) saturate(.7);
+  z-index: 10000000;
   display: none; opacity: 0; transition: opacity .25s;
 }
 #update-backdrop.on { display: block; opacity: 1; }
@@ -2716,6 +2718,44 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 }
 @keyframes ntup { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:none } }
 
+/* ── YTDLP WARNING MODAL ──────────────────────────────────────────────────── */
+#ytdlp-warn-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.72);
+  z-index: 10000002; display: none; opacity: 0; transition: opacity .22s;
+  align-items: center; justify-content: center;
+}
+#ytdlp-warn-backdrop.on { display: flex; opacity: 1; }
+#ytdlp-warn-modal {
+  width: 420px; max-width: calc(100vw - 40px);
+  background: var(--bg1); border: 1px solid var(--ln);
+  border-radius: 18px; padding: 28px 26px 22px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.04);
+  text-align: left;
+}
+.ytdlp-warn-icon {
+  width: 48px; height: 48px; border-radius: 14px; margin-bottom: 14px;
+  background: linear-gradient(135deg,rgba(255,189,46,.18),rgba(255,140,0,.1));
+  border: 1px solid rgba(255,189,46,.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ylw);
+}
+.ytdlp-warn-title { font-size: 16px; font-weight: 700; color: var(--t0); letter-spacing: -.03em; margin-bottom: 10px; }
+.ytdlp-warn-body  { font-size: 12px; color: var(--t2); line-height: 1.7; margin-bottom: 16px; }
+.ytdlp-warn-body b { color: var(--t1); }
+.ytdlp-warn-btns  { display: flex; gap: 8px; flex-direction: column; }
+#ytdlp-warn-accept {
+  padding: 10px 20px; background: var(--acc); color: #000;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; letter-spacing: -.01em; transition: filter .15s;
+}
+#ytdlp-warn-accept:hover { filter: brightness(1.1); }
+#ytdlp-warn-cancel {
+  padding: 9px 20px; background: transparent; color: var(--t3);
+  border: 1px solid var(--ln); border-radius: 10px; font-size: 12px;
+  font-weight: 500; cursor: pointer; transition: background .15s, color .15s;
+}
+#ytdlp-warn-cancel:hover { background: var(--bg3); color: var(--t1); }
+
 /* VIDEO DOWNLOADER PANEL */
 #panel-ytdlp { width: 400px; max-height: 580px; }
 
@@ -3136,6 +3176,11 @@ body.is-newtab #overlay.on.panel-active { pointer-events: auto; }
 #setup-set-default-btn.done{opacity:.7;}
 .sdb-hint{font-size:10px;color:var(--t4);margin-top:5px;text-align:center;}
 /* Splash step 0 */
+/* Legal doc card hover effect in setup step 0 */
+#setup-tos-link:hover, #setup-privacy-link:hover {
+  background: rgba(255,255,255,.055) !important;
+  border-color: rgba(var(--acc-raw),.22) !important;
+}
 .setup-splash-wrap{position:relative;width:calc(100% + 52px);margin:-18px -26px;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:hidden;padding:48px 26px 90px;gap:0;background:transparent;}
 .splash-content-area{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:2;}
 .splash-logo{width:72px;height:72px;border-radius:0;object-fit:contain;animation:splashLogoUp .85s cubic-bezier(.22,1,.36,1) both;}
@@ -4681,6 +4726,13 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               </div>
               <label class="tog"><input type="checkbox" id="set-throttle-bg" checked><span class="tog-tr"></span></label>
             </div>
+            <div class="set-r">
+              <div class="set-r-lbl">
+                <span>Game Mode</span>
+                <small>Optimizes the browser while gaming — pauses Discord RPC and reduces background activity so games get more CPU &amp; RAM</small>
+              </div>
+              <label class="tog"><input type="checkbox" id="set-game-mode"><span class="tog-tr"></span></label>
+            </div>
           </div>
           <div style="margin-top:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--ln);border-radius:10px;font-size:11.5px;color:var(--t3);line-height:1.7;display:flex;align-items:flex-start;gap:8px">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.1"/><path d="M6.5 5v3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.5" cy="9" r=".6" fill="currentColor"/></svg>
@@ -4960,6 +5012,10 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
               <button class="set-btn-sm" id="set-discord-btn" style="background:rgba(88,101,242,.18);border-color:rgba(88,101,242,.35);color:rgb(130,148,255)">Join Discord</button>
             </div>
             <div class="set-r">
+              <div class="set-r-lbl"><span>Discord Rich Presence</span><small>Show what you're browsing in Discord (requires Discord to be running)</small></div>
+              <label class="tog"><input type="checkbox" id="set-discord-rpc" checked><span class="tog-tr"></span></label>
+            </div>
+            <div class="set-r">
               <div class="set-r-lbl"><span>Check for Updates</span><small>Manually check if a new version is available</small></div>
               <button class="set-btn-sm acc" id="set-check-update-btn">Check Now</button>
             </div>
@@ -4973,74 +5029,142 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
           <div class="set-card" style="margin-bottom:12px">
             <div class="set-card-title">Privacy Policy</div>
             <div class="legal-body">
-              <h3>Overview</h3>
-              <p>Raw Browser is built on a single principle: your browsing is your business. We do not collect, store, or sell your personal data — ever.</p>
+              <p style="font-size:10px;color:var(--t3);margin-bottom:10px">Last updated: March 2026 · Effective upon first use</p>
 
-              <h3>What We Never Collect</h3>
+              <h3>1. Our Core Commitment</h3>
+              <p>Raw Browser is built on a single principle: <strong>your browsing is your business.</strong> We do not operate servers that receive your browsing data. We do not sell, share, or monetise your personal information — ever. Everything stays on your device.</p>
+
+              <h3>2. What We Never Collect</h3>
+              <p>The following data is <strong>never collected, transmitted, or stored</strong> by Raw Browser on any server we operate:</p>
               <ul>
-                <li>Your browsing history or search queries</li>
-                <li>Websites you visit or URLs you type</li>
-                <li>Your IP address or approximate location</li>
-                <li>Cookies, passwords, or form data</li>
-                <li>Any personally identifiable information</li>
+                <li>Your browsing history or page visit logs</li>
+                <li>Search queries you enter</li>
+                <li>URLs or domains you navigate to</li>
+                <li>Your IP address or approximate geolocation</li>
+                <li>Cookies, login sessions, or authentication tokens</li>
+                <li>Passwords or form data</li>
+                <li>Screenshots or page content</li>
+                <li>Bookmarks or saved notes</li>
+                <li>Any personally identifiable information (PII)</li>
               </ul>
 
-              <h3>Optional Diagnostic Data</h3>
-              <p>If you choose to enable diagnostics (off by default), Raw Browser may send fully anonymous crash reports and aggregate performance metrics. These reports contain no IP address, no browsing data, no page content, and no personal identifiers. You can toggle this at any time in Settings → Diagnostics.</p>
+              <h3>3. Local Storage</h3>
+              <p>All user data — including bookmarks, passwords, browsing history, saved notes, settings, and session data — is stored exclusively on your local device. This data is never uploaded, synced, or shared with any external server or cloud service. You can delete it at any time via Settings → Privacy → Clear Data.</p>
 
-              <h3>Local Storage</h3>
-              <p>All data — including saved passwords, bookmarks, history, and settings — is stored locally on your device only. It is never uploaded, synced, or shared with any server.</p>
+              <h3>4. Optional Anonymous Diagnostics</h3>
+              <p>If you opt in during setup (off by default), Raw Browser may send fully anonymous reports containing: crash error types and stack traces (never your IP or browsing data); aggregate feature interaction counts (never URLs or search terms); and session startup time and peak memory in milliseconds/MB (no personal data). You can change these preferences at any time in Settings → Diagnostics.</p>
 
-              <h3>Third-Party Services</h3>
-              <p>When you perform a search, your query is sent directly to your chosen search engine (e.g. Google, DuckDuckGo). Raw Browser does not intercept, log, or modify these requests. Please review your search engine's own privacy policy for details.</p>
+              <h3>5. Search Engines &amp; Third-Party Services</h3>
+              <p>When you perform a search, your query is sent directly to your chosen search engine (e.g. Google, DuckDuckGo). Raw Browser does not intercept, log, proxy, or modify these requests. Your search queries are governed entirely by your search engine's own privacy policy.</p>
 
-              <h3>Children's Privacy</h3>
-              <p>Raw Browser does not knowingly collect any information from users under 13 years of age.</p>
+              <h3>6. Ad Blocking &amp; Filter Lists</h3>
+              <p>Raw Browser downloads publicly available filter lists (EasyList, EasyPrivacy, EasyAnnoyances) anonymously from their official CDN endpoints. These lists are cached locally. Filter-list CDN providers may log your IP address as part of standard access logging — this is outside our control.</p>
 
-              <h3>Changes to This Policy</h3>
-              <p>Any updates to this Privacy Policy will be reflected in the app. Continued use of Raw Browser after changes constitutes acceptance of the updated policy.</p>
+              <h3>7. Automatic Update Checks</h3>
+              <p>When you use "Check for Updates", Raw Browser contacts the GitHub Releases API. This request may include your IP address as a standard HTTP header. No additional user data is transmitted. GitHub's privacy policy applies.</p>
 
-              <h3>Contact</h3>
-              <p>Questions? Reach us via the Discord community linked in the About section.</p>
+              <h3>8. yt-dlp &amp; Video Downloads</h3>
+              <p>When you use the video downloader, yt-dlp makes direct HTTP requests to the target website from your device. Raw Browser does not proxy or log these requests. The target platform will see your IP address. These interactions are governed by the respective platform's privacy policies.</p>
+
+              <h3>9. Discord Rich Presence (Optional)</h3>
+              <p>If Discord is running, Raw Browser may display a "Rich Presence" status via a local socket connection. No browsing data or URLs are shared with Discord. Discord's own privacy policy governs what Discord does with Rich Presence data. You can disable this feature at any time.</p>
+
+              <h3>10. Connectivity Checks</h3>
+              <p>The offline-detection feature makes an anonymous DNS-over-HTTPS request to <code>dns.google</code> to verify internet connectivity. No user data is attached to this request. Google's privacy policy applies.</p>
+
+              <h3>11. Children's Privacy</h3>
+              <p>Raw Browser does not knowingly collect any personal information from users under the age of 13 (or the applicable age of digital consent in your jurisdiction). If you believe a child has provided personal data, please contact us so we can take appropriate action.</p>
+
+              <h3>12. Your Rights</h3>
+              <p>Because Raw Browser stores all data locally and does not transmit it to us, you exercise your data rights directly on your device. You can view, export, and delete all locally stored data at any time via Settings. For any previously submitted anonymous diagnostic reports, contact us via our community Discord.</p>
+
+              <h3>13. Data Security</h3>
+              <p>We design Raw Browser to minimise data exposure. We strongly recommend enabling full-disk encryption on your operating system, keeping Raw Browser updated, and using a strong system login password to protect locally stored data.</p>
+
+              <h3>14. Changes to This Policy</h3>
+              <p>We may update this Privacy Policy to reflect changes in our practices or for legal reasons. Updated policies will be included in new versions of Raw Browser. Continued use after an update constitutes acceptance of the revised policy.</p>
+
+              <h3>15. Contact</h3>
+              <p>Questions? Reach us via the Discord community linked in the About section of Settings.</p>
             </div>
           </div>
 
           <div class="set-card">
             <div class="set-card-title">Terms of Service</div>
             <div class="legal-body">
-              <h3>Acceptance</h3>
-              <p>By downloading or using Raw Browser you agree to these Terms of Service. If you do not agree, please do not use the application.</p>
+              <p style="font-size:10px;color:var(--t3);margin-bottom:10px">Last updated: March 2026 · Effective upon first use</p>
 
-              <h3>License</h3>
-              <p>Raw Browser is released under the MIT License. You are free to use, copy, modify, and distribute the software, provided that the original copyright notice and this permission notice appear in all copies.</p>
+              <h3>1. Acceptance</h3>
+              <p>By downloading, installing, or using Raw Browser ("the Software"), you ("User") agree to be bound by these Terms of Service ("Terms"). If you do not agree, do not install or use the Software. These Terms constitute a legally binding agreement between you and the Raw Browser project.</p>
 
-              <h3>Permitted Use</h3>
+              <h3>2. License Grant</h3>
+              <p>Raw Browser is released under the <strong>MIT License</strong>. You may freely use, copy, modify, merge, publish, distribute, sub-license, and/or sell copies of the Software, provided that the original copyright notice and permission notice are preserved in all copies.</p>
+
+              <h3>3. Permitted Use</h3>
               <ul>
-                <li>Personal and commercial browsing</li>
-                <li>Privacy-focused research and development</li>
-                <li>Educational purposes</li>
+                <li>Personal, educational, and commercial web browsing</li>
+                <li>Privacy-focused research and security testing on systems you own or have explicit written authorisation to test</li>
+                <li>Accessing publicly available websites and online services</li>
+                <li>Using built-in features for their intended purposes</li>
               </ul>
 
-              <h3>Prohibited Use</h3>
-              <p>You may not use Raw Browser to:</p>
+              <h3>4. Prohibited Use</h3>
+              <p>You may <strong>not</strong> use Raw Browser to:</p>
               <ul>
-                <li>Violate any applicable law or regulation</li>
-                <li>Attempt to access systems without authorisation</li>
-                <li>Distribute malware or engage in harmful activity</li>
-                <li>Misrepresent the software or remove attribution</li>
+                <li>Violate any applicable local, national, or international law or regulation</li>
+                <li>Access, probe, or attack computer systems or networks without authorisation</li>
+                <li>Distribute, transmit, or store malware, spyware, ransomware, or any malicious code</li>
+                <li>Engage in harassment, stalking, fraud, phishing, or identity theft</li>
+                <li>Scrape or harvest personal data from third-party websites in violation of their terms or applicable data-protection law</li>
+                <li>Circumvent technical protection measures on systems you do not own</li>
+                <li>Remove, alter, or obscure copyright notices, attributions, or licence text</li>
+                <li>Use the Software in any manner that could damage, disable, or impair our infrastructure or that of third parties</li>
               </ul>
 
-              <h3>No Warranty</h3>
-              <p>Raw Browser is provided "as is", without warranty of any kind, express or implied. The authors are not liable for any damages arising from the use or inability to use the software, including but not limited to data loss, security breaches, or interruption of service.</p>
+              <h3>5. Video Downloader &amp; yt-dlp</h3>
+              <p>Raw Browser includes an optional video-download feature powered by <strong>yt-dlp</strong>. <strong>You are solely responsible for how you use this feature.</strong> Downloading or redistributing copyrighted content without the rights holder's permission may violate the DMCA, the EU Copyright Directive, or equivalent laws in your jurisdiction. Downloading content may also breach the Terms of Service of the originating platform. Raw Browser takes no responsibility for any account suspension, legal action, or other consequence arising from such use. You may only download content you own, hold a licence for, or that is in the public domain or freely licensed.</p>
 
-              <h3>Updates</h3>
-              <p>We may release updates to improve security, performance, or features. We recommend keeping Raw Browser up to date. Outdated versions may not receive security fixes.</p>
+              <h3>6. Ad Blocking &amp; Content Filtering</h3>
+              <p>The built-in ad blocker may prevent some website features from functioning and may conflict with the terms of use of certain websites. You acknowledge that you use these features at your own discretion and that we are not liable for any degraded website experience resulting from content filtering.</p>
 
-              <h3>Termination</h3>
-              <p>These terms apply for as long as you use Raw Browser. You may stop using the software at any time by uninstalling it.</p>
+              <h3>7. Location Masking &amp; Geolocation Spoofing</h3>
+              <p>The Location Masking feature overrides your browser's reported geolocation. You must not use this feature to fraudulently misrepresent your location for purposes that are illegal in your jurisdiction (e.g. circumventing geo-restrictions in violation of a service's licence terms, or accessing regulated services under false pretences where doing so is unlawful).</p>
 
-              <h3>Contact</h3>
-              <p>Questions about these terms? Join the community via the Discord link in the About section.</p>
+              <h3>8. Fingerprint Spoofing &amp; Privacy Features</h3>
+              <p>Raw Browser injects noise into browser fingerprint APIs to reduce tracking. We make no guarantee that it will defeat all tracking methods. Some websites may behave unexpectedly or deny service when fingerprint APIs return unexpected values.</p>
+
+              <h3>9. Password Manager</h3>
+              <p>Credentials stored in Raw Browser's password manager are saved locally and never transmitted to our servers. <strong>You are solely responsible for the security of your device.</strong> We strongly recommend enabling full-disk encryption on your operating system. Raw Browser is not liable for unauthorised access to locally stored credentials resulting from device compromise, physical access, or malware.</p>
+
+              <h3>10. Screen Capture &amp; Snipping</h3>
+              <p>You must not use the built-in screen-capture tool to capture, store, or distribute content in a manner that infringes copyright, violates a third party's privacy rights, or contravenes applicable law (including GDPR or CCPA).</p>
+
+              <h3>11. Third-Party Services &amp; Websites</h3>
+              <p>Raw Browser navigates to third-party websites at your direction. We have no control over, and assume no responsibility for, the content, privacy practices, or terms of any third-party site you visit. Use of third-party services is governed solely by their own terms and privacy policies.</p>
+
+              <h3>12. Disclaimer of Warranties</h3>
+              <p>THE SOFTWARE IS PROVIDED <strong>"AS IS"</strong>, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR UNINTERRUPTED.</p>
+
+              <h3>13. Limitation of Liability</h3>
+              <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE RAW BROWSER PROJECT, ITS CONTRIBUTORS, OR MAINTAINERS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF PROFITS, SECURITY BREACHES, OR INTERRUPTION OF SERVICE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. OUR TOTAL AGGREGATE LIABILITY SHALL NOT EXCEED USD 10 OR THE AMOUNT YOU PAID FOR THE SOFTWARE, WHICHEVER IS GREATER.</p>
+
+              <h3>14. Indemnification</h3>
+              <p>You agree to indemnify, defend, and hold harmless the Raw Browser project and its contributors from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or connected with your use of the Software, your violation of these Terms, or your violation of any third party's rights.</p>
+
+              <h3>15. Updates &amp; Modifications</h3>
+              <p>We may release updates to improve security, fix bugs, or add features. We recommend keeping Raw Browser up to date. We reserve the right to modify these Terms at any time. Continued use after a change constitutes your acceptance of the revised Terms.</p>
+
+              <h3>16. Termination</h3>
+              <p>These Terms remain in effect for as long as you use Raw Browser. We may terminate your right to use the Software if you breach these Terms. You may terminate your use at any time by uninstalling the Software. Sections 5, 9, 12, 13, 14, and 17 survive termination.</p>
+
+              <h3>17. Governing Law &amp; Jurisdiction</h3>
+              <p>These Terms shall be governed by and construed in accordance with applicable law. Any dispute arising under these Terms shall be resolved in the jurisdiction where you reside, to the extent permitted by law. Nothing in these Terms limits statutory consumer rights you may have under applicable law.</p>
+
+              <h3>18. Export Controls</h3>
+              <p>Raw Browser may be subject to export control laws. You agree not to export or re-export the Software to any country, entity, or person in violation of applicable export control laws, including regulations administered by the U.S. Bureau of Industry and Security.</p>
+
+              <h3>19. Contact</h3>
+              <p>Questions about these Terms? Join the community via the Discord link in the About section of Settings.</p>
             </div>
           </div>
         </div>
@@ -5079,6 +5203,32 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
   </div>
 </div>
 
+<!-- yt-dlp legal warning modal -->
+<div id="ytdlp-warn-backdrop">
+  <div id="ytdlp-warn-modal">
+    <div class="ytdlp-warn-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <path d="M11 2L20.5 19H1.5L11 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M11 9v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="11" cy="15.5" r=".9" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="ytdlp-warn-title">Before You Use Video Downloader</div>
+    <div class="ytdlp-warn-body">
+      <b>Raw Browser's Video Downloader uses yt-dlp</b>, an open-source tool that can download videos from many websites.<br><br>
+      <b>Please read before continuing:</b><br>
+      • Downloading videos may violate the <b>Terms of Service</b> of the platform you're downloading from (e.g. YouTube, Twitch).<br>
+      • Only download content you have the <b>right to download</b> — content you own, content licensed for download, or content in the public domain.<br>
+      • <b>Do not use this tool</b> to download copyrighted material without permission.<br>
+      • Raw Browser is not responsible for how you use yt-dlp.
+    </div>
+    <div class="ytdlp-warn-btns">
+      <button id="ytdlp-warn-accept">I understand — open Video Downloader</button>
+      <button id="ytdlp-warn-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- First-run onboarding overlay -->
 <div id="setup-overlay">
   <div id="setup-card">
@@ -5094,34 +5244,42 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         <span class="setup-dot"></span>
       </div>
 
-      <!-- Step 0: Welcome / Splash -->
+      <!-- Step 0: Terms & Privacy Acceptance (must accept before proceeding) -->
       <div class="setup-step" data-step="0">
-        <div class="setup-splash-wrap">
-          <div class="splash-content-area">
-            <img src="assets/logo.png" alt="RAW" class="splash-logo">
-            <h2 class="splash-welcome-title">Welcome to Raw</h2>
-            <p class="splash-welcome-sub">Private. Fast. Yours.</p>
-          </div>
-          <!-- Floating particles -->
-          <div class="splash-particle sp1" aria-hidden="true"></div>
-          <div class="splash-particle sp2" aria-hidden="true"></div>
-          <div class="splash-particle sp3" aria-hidden="true"></div>
-          <div class="splash-particle sp4" aria-hidden="true"></div>
-          <div class="splash-particle sp5" aria-hidden="true"></div>
-          <div class="splash-particle sp6" aria-hidden="true"></div>
-          <div class="splash-particle sp7" aria-hidden="true"></div>
-          <div class="splash-particle sp8" aria-hidden="true"></div>
-          <div class="splash-wave-area" aria-hidden="true">
-            <div class="splash-wave w1">
-              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 30C240 0 480 60 720 30C960 0 1200 60 1440 30L1440 60H0Z" fill="currentColor"/></svg>
-              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 30C240 0 480 60 720 30C960 0 1200 60 1440 30L1440 60H0Z" fill="currentColor"/></svg>
-            </div>
-            <div class="splash-wave w2">
-              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 40C360 10 720 60 1080 35C1260 22 1380 50 1440 40L1440 60H0Z" fill="currentColor"/></svg>
-              <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 40C360 10 720 60 1080 35C1260 22 1380 50 1440 40L1440 60H0Z" fill="currentColor"/></svg>
-            </div>
-          </div>
+        <!-- Compact branding header -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:18px">
+          <img src="assets/logo.png" alt="RAW" style="width:44px;height:44px;border-radius:12px;object-fit:contain">
+          <div style="font-size:17px;font-weight:700;color:var(--t0);letter-spacing:-.03em">Before You Continue</div>
+          <div style="font-size:11.5px;color:var(--t2);line-height:1.5;max-width:340px;text-align:center">Please read and accept the Terms of Service and Privacy Policy to use Raw Browser.</div>
         </div>
+
+        <!-- Document cards — click to read -->
+        <div style="display:flex;gap:8px;width:100%;max-width:420px;margin-bottom:14px">
+          <button id="setup-tos-link" style="flex:1;display:flex;align-items:center;gap:9px;padding:12px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;cursor:pointer;text-align:left;color:var(--t1);font-family:var(--f);transition:background .13s,border-color .13s">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="flex-shrink:0;color:var(--acc)"><rect x="1.5" y="1" width="12" height="13" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 4.5h7M4 7h7M4 9.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--t0)">Terms of Service</div>
+              <div style="font-size:10.5px;color:var(--t3);margin-top:1px">Click to read</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:auto;color:var(--t3)"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="setup-privacy-link" style="flex:1;display:flex;align-items:center;gap:9px;padding:12px 13px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:11px;cursor:pointer;text-align:left;color:var(--t1);font-family:var(--f);transition:background .13s,border-color .13s">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="flex-shrink:0;color:var(--acc)"><path d="M7.5 1.5L2 3.75V8.5c0 3.2 2.3 5 5.5 5.5 3.2-.5 5.5-2.3 5.5-5.5V3.75L7.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--t0)">Privacy Policy</div>
+              <div style="font-size:10.5px;color:var(--t3);margin-top:1px">Click to read</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:auto;color:var(--t3)"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <!-- Acceptance checkbox -->
+        <label id="setup-tos-label" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px 14px;background:var(--bg2);border:1.5px solid var(--ln);border-radius:11px;transition:border-color .15s;width:100%;max-width:420px;box-sizing:border-box">
+          <input type="checkbox" id="setup-tos-check" style="margin-top:2px;accent-color:var(--acc);width:15px;height:15px;flex-shrink:0;cursor:pointer">
+          <span style="font-size:11.5px;color:var(--t2);line-height:1.6;user-select:none">
+            I have read and agree to Raw Browser's <strong style="color:var(--t1)">Terms of Service</strong> and <strong style="color:var(--t1)">Privacy Policy</strong>. I understand that the yt-dlp video downloader is subject to the terms of third-party platforms, and that I am solely responsible for how I use it.
+          </span>
+        </label>
       </div>
 
       <!-- Step 1: Import data -->
@@ -5217,48 +5375,66 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
       <div class="setup-step" data-step="5">
         <div class="setup-icon">
           <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-            <path d="M13 4C13 4 7 7.5 4.5 12c-1.2 2.2-1 5 .5 7 1.2 1.6 3.2 2.5 5 2.8" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
-            <path d="M13 4C13 4 19 7.5 21.5 12c1.2 2.2 1 5-.5 7-1.2 1.6-3.2 2.5-5 2.8" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/>
-            <path d="M8.5 15.5l2.8 2.8 5.5-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M13 3.5l2.2 6.3H22l-5.4 3.8 2.1 6.4L13 16.2l-5.7 3.8 2.1-6.4L4 9.8h6.8L13 3.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
           </svg>
         </div>
         <h2 class="setup-title">Help Improve Raw Browser</h2>
-        <p class="setup-desc" style="font-size:12px;margin-bottom:13px">Opt in to share anonymous diagnostics — helps fix bugs faster and guide what we build next. Everything is off by default.</p>
-        <div class="setup-diag-list">
-          <div class="setup-diag-row" id="sdr-crash">
-            <div class="setup-diag-info">
-              <div class="setup-diag-name" style="display:flex;align-items:center;gap:5px">
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="color:var(--acc);flex-shrink:0"><path d="M5.5 1.5v3.2l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/></svg>
-                Error Reporting
-              </div>
-              <div class="setup-diag-desc">Error type, stack trace &amp; app version when something crashes — never your IP, browsing history, or page contents.</div>
+        <p class="setup-desc" style="margin-bottom:16px">Everything is off by default. Share only what you're comfortable with — your browsing history and page content are never collected.</p>
+
+        <div style="display:flex;flex-direction:column;gap:7px;width:100%;max-width:390px;margin-bottom:14px">
+
+          <!-- Error Reporting -->
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 14px;background:var(--bg3);border:1px solid var(--ln2);border-radius:12px">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(var(--acc-raw),.09);border:1px solid rgba(var(--acc-raw),.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--acc)">
+                <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+                <path d="M9 5.8v3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="9" cy="12.4" r=".85" fill="currentColor"/>
+              </svg>
             </div>
-            <label class="tog"><input type="checkbox" id="setup-tog-crash" checked><span class="tog-tr"></span></label>
-          </div>
-          <div class="setup-diag-row" id="sdr-usage">
-            <div class="setup-diag-info">
-              <div class="setup-diag-name" style="display:flex;align-items:center;gap:5px">
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="color:var(--acc);flex-shrink:0"><rect x="1" y="6" width="2" height="4" rx=".7" fill="currentColor"/><rect x="4.5" y="3.5" width="2" height="6.5" rx=".7" fill="currentColor"/><rect x="8" y="1" width="2" height="9" rx=".7" fill="currentColor"/></svg>
-                Usage Stats
-              </div>
-              <div class="setup-diag-desc">Feature interaction counts (e.g. ad blocker toggled, sidebar opened) — no URLs, no search terms, no page data ever.</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">Error Reporting</div>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Crash type &amp; app version only — no URLs, no history, no content.</div>
             </div>
-            <label class="tog"><input type="checkbox" id="setup-tog-usage"><span class="tog-tr"></span></label>
+            <label class="tog" style="flex-shrink:0"><input type="checkbox" id="setup-tog-crash" checked><span class="tog-tr"></span></label>
           </div>
-          <div class="setup-diag-row" id="sdr-perf">
-            <div class="setup-diag-info">
-              <div class="setup-diag-name" style="display:flex;align-items:center;gap:5px">
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="color:var(--acc);flex-shrink:0"><path d="M1.8 8.5a4.5 4.5 0 0 1 7.4 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5.5 3.5v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5.5 5.5l1.8-.9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-                Performance Data
-              </div>
-              <div class="setup-diag-desc">Startup time (ms) and peak memory (MB) per session — helps keep Raw Browser fast across different devices. No personal data.</div>
+
+          <!-- Usage Stats -->
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 14px;background:var(--bg3);border:1px solid var(--ln2);border-radius:12px">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(var(--acc-raw),.09);border:1px solid rgba(var(--acc-raw),.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--acc)">
+                <rect x="2" y="11" width="3.5" height="5" rx="1" fill="currentColor" opacity=".45"/>
+                <rect x="7.25" y="7" width="3.5" height="9" rx="1" fill="currentColor" opacity=".7"/>
+                <rect x="12.5" y="3" width="3.5" height="13" rx="1" fill="currentColor"/>
+              </svg>
             </div>
-            <label class="tog"><input type="checkbox" id="setup-tog-perf"><span class="tog-tr"></span></label>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">Usage Stats</div>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Feature interaction counts — no search terms, no page data, ever.</div>
+            </div>
+            <label class="tog" style="flex-shrink:0"><input type="checkbox" id="setup-tog-usage"><span class="tog-tr"></span></label>
           </div>
+
+          <!-- Performance Data -->
+          <div style="display:flex;align-items:center;gap:13px;padding:13px 14px;background:var(--bg3);border:1px solid var(--ln2);border-radius:12px">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(var(--acc-raw),.09);border:1px solid rgba(var(--acc-raw),.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--acc)">
+                <path d="M2.5 13a6.5 6.5 0 0 1 13 0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <path d="M9 6.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M9 9.5l2.2-1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">Performance Data</div>
+              <div style="font-size:11px;color:var(--t3);line-height:1.5">Startup time &amp; memory per session — no personal data included.</div>
+            </div>
+            <label class="tog" style="flex-shrink:0"><input type="checkbox" id="setup-tog-perf"><span class="tog-tr"></span></label>
+          </div>
+
         </div>
-        <div class="setup-diag-notice" style="display:flex;gap:9px;align-items:flex-start">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;margin-top:1px;color:var(--acc)"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 5v3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="10" r=".7" fill="currentColor"/></svg>
-          <span><strong style="display:block;color:rgba(255,255,255,.9);margin-bottom:3px">Transparent by design.</strong>All reports are fully anonymous — no IP address, no browsing history, no page contents, no personal identifiers. Toggle any option off at any time in Settings → Diagnostics.</span>
+
+        <div style="font-size:10.5px;color:var(--t3);text-align:center;line-height:1.6;max-width:340px">
+          Change anytime in <strong style="color:var(--t2);font-weight:600">Settings → Diagnostics</strong>
         </div>
       </div>
 
@@ -5307,6 +5483,22 @@ body.has-wallpaper .nt-search:focus{border-color:rgba(var(--acc-raw),.38)!import
         <button id="setup-next">Get Started →</button>
       </div>
 
+    </div>
+
+    <!-- In-wizard legal document viewer — overlays the card when a doc link is clicked -->
+    <div id="setup-legal-modal" style="display:none;position:absolute;inset:0;z-index:10;background:var(--bg1);border-radius:18px;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--ln);flex-shrink:0">
+        <button id="setup-legal-back" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--acc);cursor:pointer;font-size:12.5px;font-family:var(--f);font-weight:500;padding:4px 0">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back
+        </button>
+        <div id="setup-legal-title" style="font-size:13px;font-weight:600;color:var(--t0);flex:1;text-align:center"></div>
+        <div id="setup-legal-tabs" style="display:flex;gap:4px">
+          <button class="slm-tab" data-doc="tos" style="font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;border:1px solid var(--ln);background:transparent;color:var(--t2);cursor:pointer;font-family:var(--f);transition:all .12s">Terms</button>
+          <button class="slm-tab" data-doc="privacy" style="font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;border:1px solid var(--ln);background:transparent;color:var(--t2);cursor:pointer;font-family:var(--f);transition:all .12s">Privacy</button>
+        </div>
+      </div>
+      <div id="setup-legal-body" style="flex:1;overflow-y:auto;padding:18px 20px;scrollbar-width:thin;scrollbar-color:var(--ln3) transparent"></div>
     </div>
   </div>
 </div>
@@ -5406,8 +5598,8 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
     }
   }
 
-  // Run check after a 4-second delay so it doesn't block UI startup
-  setTimeout(_runUpdateCheck, 4000);
+  // Update check is manual-only — no auto phone-home on startup.
+  // User triggers it via the "Check for Updates" button in Settings.
 
   // Button wiring — deferred to DOMContentLoaded because the popup HTML
   // is defined after this script block and the elements don't exist yet.
@@ -5459,7 +5651,7 @@ ipcRenderer.on('panel:snapshot', (_, dataURL) => {
   const snap = $('page-snapshot');
   if (!snap) return;
   // Discard stale snapshot if nothing is open that needs it
-  if (!document.querySelector('.panel.on') && !document.getElementById('_ctx') && !document.querySelector('#sb-add-modal.on')) return;
+  if (!document.querySelector('.panel.on') && !document.getElementById('_ctx') && !document.querySelector('#sb-add-modal.on') && !document.querySelector('#omni-wrap.sugg-open')) return;
   // Use canvas for smooth, flicker-free frame swaps.
   let canvas = snap.querySelector('canvas');
   if (!canvas) {
@@ -6203,7 +6395,7 @@ const PANEL_MAP = {
   'btn-limiter':  'panel-limiter',
   'btn-shield':   'panel-privacy',
   'btn-poison':   'panel-poison',
-  'btn-ytdlp':    'panel-ytdlp',
+  // btn-ytdlp handled separately with warning gate below
   'btn-notes':    'panel-notes',
   'btn-passwords':'panel-passwords',
   'btn-calc':     'panel-calc',
@@ -6298,6 +6490,54 @@ Object.entries(PANEL_MAP).forEach(([btnId, panelId]) => {
   });
 });
 
+/* yt-dlp — warning gate before opening panel */
+(function() {
+  const WARNED_KEY = 'ytdlp-warned';
+  const btnYtdlpOpen = $('btn-ytdlp');
+  const backdrop     = $('ytdlp-warn-backdrop');
+  const acceptBtn    = $('ytdlp-warn-accept');
+  const cancelBtn    = $('ytdlp-warn-cancel');
+
+  function _openYtdlpPanel() {
+    const btn   = $('btn-ytdlp');
+    const panel = $('panel-ytdlp');
+    if (!btn || !panel) return;
+    const isOpen = btn.classList.contains('active-icon') || panel.classList.contains('on');
+    if (isOpen) { closeAllDrops(); return; }
+    if (document.querySelector('.panel.on')) closeAllDrops();
+    openPanel('panel-ytdlp', 'btn-ytdlp');
+    ipcRenderer.send('ytdlp:check-update');
+    ytdlpRenderJobs && ytdlpRenderJobs();
+  }
+
+  if (btnYtdlpOpen) {
+    btnYtdlpOpen.addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (localStorage.getItem(WARNED_KEY)) { _openYtdlpPanel(); return; }
+      if (backdrop) backdrop.classList.add('on');
+    });
+  }
+
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', () => {
+      localStorage.setItem(WARNED_KEY, '1');
+      if (backdrop) backdrop.classList.remove('on');
+      _openYtdlpPanel();
+    });
+  }
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      if (backdrop) backdrop.classList.remove('on');
+    });
+  }
+  if (backdrop) {
+    backdrop.addEventListener('click', e => {
+      if (e.target === backdrop) backdrop.classList.remove('on');
+    });
+  }
+})();
+
 /* Extension Store */
 function openExtStore() {
   closeAllDrops();
@@ -6305,8 +6545,10 @@ function openExtStore() {
   if (!overlay) return;
   overlay.classList.add('on');
   ipcRenderer.send('panel:show:quick'); // full-screen overlay — must remove BV
+  ipcRenderer.send('rpc:state', 'addons');
 }
 function closeExtStore() {
+  ipcRenderer.send('rpc:state', 'tab');
   const overlay = $('ext-store-overlay');
   if (!overlay) return;
   overlay.classList.remove('on');
@@ -6846,7 +7088,12 @@ function showRbConfirm(title, msg, okLabel) {
     } else if (k === '+/-') {
       cur = String(-n);
     } else if (k === '%') {
-      cur = String(n / 100);
+      if (op && expr) {
+        const a = parseFloat(expr.replace(/[^0-9.\-]/g, ''));
+        cur = String(!isNaN(a) ? a * n / 100 : n / 100);
+      } else {
+        cur = String(n / 100);
+      }
     } else if (k === 'sin') {
       expr = 'sin(' + cur + ')'; cur = String(Math.sin(n * Math.PI / 180)); waitNext = true;
     } else if (k === 'cos') {
@@ -7341,8 +7588,10 @@ function openSettingsPage() {
   if (settingsOverlay) settingsOverlay.classList.add('on');
   // Settings covers the full window — no screenshot needed, use quick detach
   ipcRenderer.send('panel:show:quick');
+  ipcRenderer.send('rpc:state', 'settings');
 }
 function closeSettingsPage() {
+  ipcRenderer.send('rpc:state', 'tab');
   const settingsOverlay = $('settings-overlay');
   if (settingsOverlay) settingsOverlay.classList.remove('on');
   closeAllDrops();  // cleans up overlay, panels, and sends panel:hide
@@ -7497,6 +7746,8 @@ function applySettings(s) {
   
   if (setSmoothScroll) setSmoothScroll.checked = s.smoothScrolling !== false;
   if (setThrottleBg) setThrottleBg.checked   = s.throttleBackground !== false;
+  if (setGameMode) setGameMode.checked       = !!s.gameMode;
+  if (setDiscordRpc) setDiscordRpc.checked   = !s.discordRpcDisabled;
   
   if (setRestoreSession) setRestoreSession.checked = !!s.restoreSession;
   if (setBgTabs) setBgTabs.checked         = s.openInBackground !== false;
@@ -7625,6 +7876,12 @@ if (setSmoothScroll) setSmoothScroll.addEventListener('change', function(){ ipcR
 
 const setThrottleBg = $('set-throttle-bg');
 if (setThrottleBg) setThrottleBg.addEventListener('change', function(){ ipcRenderer.send('settings:set',{throttleBackground:this.checked}); });
+
+const setGameMode = $('set-game-mode');
+if (setGameMode) setGameMode.addEventListener('change', function() {
+  ipcRenderer.send('settings:set', { gameMode: this.checked });
+  toast(this.checked ? 'Game Mode on — browser optimized for gaming' : 'Game Mode off');
+});
 
 const setEngine = $('set-engine');
 if (setEngine) setEngine.addEventListener('change', function(){ ipcRenderer.send('settings:set',{searchEngine:this.value}); toast('Search engine updated'); });
@@ -7986,6 +8243,12 @@ const setDiscordBtn = $('set-discord-btn');
 if (setDiscordBtn) setDiscordBtn.addEventListener('click', () => {
   ipcRenderer.send('nav:go', { id: S.activeId, tabUrl: 'https://discord.gg/WweUzF3YCQ' });
   closeAllDrops();
+});
+
+const setDiscordRpc = $('set-discord-rpc');
+if (setDiscordRpc) setDiscordRpc.addEventListener('change', function() {
+  ipcRenderer.send('settings:set', { discordRpcDisabled: !this.checked });
+  toast(this.checked ? 'Discord Rich Presence enabled' : 'Discord Rich Presence disabled');
 });
 
 /* Poison Data */
@@ -9178,15 +9441,7 @@ if (ytdlpLicenseLink) {
   });
 }
 
-const btnYtdlp = $('btn-ytdlp');
-if (btnYtdlp) {
-  btnYtdlp.addEventListener('click', () => {
-    if ($('panel-ytdlp')?.classList.contains('on')) {
-      ipcRenderer.send('ytdlp:check-update');
-      ytdlpRenderJobs();
-    }
-  });
-}
+// btn-ytdlp click is now handled by the yt-dlp warning gate above
 
 /* First-run setup */
 (function() {
@@ -9486,17 +9741,227 @@ if (btnYtdlp) {
     draw();
   }
 
+  /* ── ToS checkbox gate ── */
+  const tosCheck = document.getElementById('setup-tos-check');
+  const tosLabel = document.getElementById('setup-tos-label');
+
+  function _syncNextBtn() {
+    if (!btnNext) return;
+    const blocked = cur === 0 && tosCheck && !tosCheck.checked;
+    btnNext.disabled = !!blocked;
+    btnNext.style.opacity = blocked ? '0.4' : '';
+    btnNext.style.cursor  = blocked ? 'not-allowed' : '';
+  }
+
+  if (tosCheck) {
+    tosCheck.addEventListener('change', () => {
+      if (tosLabel) tosLabel.style.borderColor = tosCheck.checked ? 'rgba(var(--acc-raw),.4)' : '';
+      _syncNextBtn();
+    });
+  }
+
+  // ToS / Privacy links open the in-wizard legal modal
+  const tosLink  = document.getElementById('setup-tos-link');
+  const privLink = document.getElementById('setup-privacy-link');
+
+  const _legalModal = document.getElementById('setup-legal-modal');
+  const _legalTitle = document.getElementById('setup-legal-title');
+  const _legalBody  = document.getElementById('setup-legal-body');
+  const _legalBack  = document.getElementById('setup-legal-back');
+  const _legalTabs  = document.querySelectorAll('#setup-legal-tabs .slm-tab');
+
+  const _TOS_HTML = `
+    <div style="text-align:left;font-size:12px;color:var(--t1);line-height:1.7">
+      <p style="font-size:10.5px;color:var(--t3);margin-bottom:16px">Last updated: March 2026 &nbsp;·&nbsp; Effective upon first use</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">1. Acceptance of Terms</h3>
+      <p style="margin:0 0 14px">By downloading, installing, or using Raw Browser ("the Software"), you ("User") agree to be bound by these Terms of Service ("Terms"). If you do not agree to all of these Terms, do not use or install the Software. These Terms constitute a legally binding agreement between you and the Raw Browser project ("we", "us", "our").</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">2. License Grant</h3>
+      <p style="margin:0 0 14px">Raw Browser is released under the <strong>MIT License</strong>. Subject to your compliance with these Terms, we grant you a limited, non-exclusive, non-transferable, revocable licence to install and use the Software for your personal or commercial purposes. You may freely use, copy, modify, merge, publish, distribute, sub-license, and/or sell copies of the Software, provided that the original copyright notice and this permission notice are preserved in all copies or substantial portions of the Software.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">3. Permitted Use</h3>
+      <p style="margin:0 0 6px">You may use Raw Browser for:</p>
+      <ul style="margin:0 0 14px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+        <li>Personal, educational, and commercial web browsing</li>
+        <li>Privacy-focused research and security testing on systems you own or have explicit written authorisation to test</li>
+        <li>Accessing publicly available websites and online services</li>
+        <li>Using built-in features including the ad blocker, location masking, password manager, note-taking, and screenshot tools for their intended purposes</li>
+      </ul>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">4. Prohibited Use</h3>
+      <p style="margin:0 0 6px">You may <strong>not</strong> use Raw Browser to:</p>
+      <ul style="margin:0 0 14px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+        <li>Violate any applicable local, national, or international law or regulation</li>
+        <li>Access, probe, or attack computer systems or networks without authorisation</li>
+        <li>Distribute, transmit, or store malware, spyware, ransomware, or any malicious code</li>
+        <li>Engage in harassment, stalking, fraud, phishing, or identity theft</li>
+        <li>Scrape, harvest, or collect personal data from third-party websites in violation of their terms or applicable data-protection law</li>
+        <li>Circumvent technical protection measures on systems you do not own</li>
+        <li>Remove, alter, or obscure copyright notices, attributions, or licence text in the Software</li>
+        <li>Misrepresent the Software as your own product without proper attribution</li>
+        <li>Use the Software in any manner that could damage, disable, or impair our infrastructure or that of third parties</li>
+      </ul>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">5. Video Downloader &amp; yt-dlp</h3>
+      <p style="margin:0 0 14px">Raw Browser includes an optional video-download feature powered by <strong>yt-dlp</strong>, an open-source third-party tool. <strong>You are solely responsible for how you use this feature.</strong> In particular:</p>
+      <ul style="margin:0 0 14px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+        <li>Downloading or redistributing copyrighted content (e.g. from YouTube, Twitch, Netflix) without the rights holder's permission may violate the <strong>Digital Millennium Copyright Act (DMCA)</strong>, the EU Copyright Directive, or equivalent laws in your jurisdiction.</li>
+        <li>Downloading content may breach the Terms of Service of the platform it originates from. Raw Browser takes no responsibility for any account suspension, legal action, or other consequence arising from such use.</li>
+        <li>You may only download content you own, hold a licence for, or that is in the public domain or licensed under a Creative Commons or equivalent free licence.</li>
+        <li>Raw Browser does not host, cache, or redistribute any third-party video content.</li>
+      </ul>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">6. Ad Blocking &amp; Content Filtering</h3>
+      <p style="margin:0 0 14px">Raw Browser's built-in ad blocker filters network requests based on publicly available filter lists (EasyList, EasyPrivacy, and others). This may prevent some website features from functioning correctly and may conflict with the terms of use of certain websites. You acknowledge that you use these features at your own discretion and that we are not liable for any degraded website experience or service interruption resulting from content filtering.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">7. Location Masking &amp; Geolocation Spoofing</h3>
+      <p style="margin:0 0 14px">The Location Masking feature overrides your browser's reported geolocation coordinates. This is intended for privacy protection and accessing region-neutral content. You must not use this feature to fraudulently misrepresent your location for purposes that are illegal in your jurisdiction (e.g. circumventing geo-restrictions in violation of a service's licence terms, or accessing regulated services under false pretences where doing so is unlawful).</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">8. Fingerprint Spoofing &amp; Privacy Features</h3>
+      <p style="margin:0 0 14px">Raw Browser injects noise into browser fingerprint APIs (Canvas, WebGL, fonts, etc.) to reduce tracking. This is a privacy-protection measure. We make no guarantee that it will defeat all tracking methods. You accept that some websites may behave unexpectedly or deny service when fingerprint APIs return unexpected values.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">9. Password Manager</h3>
+      <p style="margin:0 0 14px">Credentials stored in Raw Browser's built-in password manager are saved locally on your device and are never transmitted to our servers. <strong>You are solely responsible for the security of your device.</strong> We strongly recommend enabling full-disk encryption on your operating system. Raw Browser is not liable for unauthorised access to locally stored credentials resulting from device compromise, physical access, malware, or any other cause.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">10. Screen Capture &amp; Snipping</h3>
+      <p style="margin:0 0 14px">The built-in screen-capture / snipping tool captures content visible in the browser window. You must not use this tool to capture, store, or distribute content in a manner that infringes copyright, violates a third party's privacy rights, or contravenes applicable law (including data-protection regulations such as GDPR or CCPA).</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">11. Third-Party Services &amp; Websites</h3>
+      <p style="margin:0 0 14px">Raw Browser navigates to third-party websites and services at your direction. We have no control over, and assume no responsibility for, the content, privacy practices, or terms of any third-party site you visit. Use of third-party services is governed solely by their own terms and privacy policies.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">12. Disclaimer of Warranties</h3>
+      <p style="margin:0 0 14px">THE SOFTWARE IS PROVIDED <strong>"AS IS"</strong>, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. WE DO NOT WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR UNINTERRUPTED.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">13. Limitation of Liability</h3>
+      <p style="margin:0 0 14px">TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE RAW BROWSER PROJECT, ITS CONTRIBUTORS, OR MAINTAINERS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF PROFITS, SECURITY BREACHES, OR INTERRUPTION OF SERVICE, ARISING OUT OF OR IN CONNECTION WITH THE USE OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. OUR TOTAL AGGREGATE LIABILITY SHALL NOT EXCEED USD 10 (TEN US DOLLARS) OR THE AMOUNT YOU PAID FOR THE SOFTWARE, WHICHEVER IS GREATER.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">14. Indemnification</h3>
+      <p style="margin:0 0 14px">You agree to indemnify, defend, and hold harmless the Raw Browser project and its contributors from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or in any way connected with your use of the Software, your violation of these Terms, or your violation of any third party's rights.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">15. Updates &amp; Modifications</h3>
+      <p style="margin:0 0 14px">We may release updates to improve security, fix bugs, or add features. We recommend keeping Raw Browser up to date. We reserve the right to modify these Terms at any time. Updated Terms will be reflected in the application. Continued use of Raw Browser after a change constitutes your acceptance of the revised Terms.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">16. Termination</h3>
+      <p style="margin:0 0 14px">These Terms remain in effect for as long as you use Raw Browser. We may suspend or terminate your right to use the Software if you breach these Terms. You may terminate your use at any time by uninstalling the Software. Sections 5, 9, 12, 13, 14, and 17 survive termination.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">17. Governing Law &amp; Jurisdiction</h3>
+      <p style="margin:0 0 14px">These Terms shall be governed by and construed in accordance with applicable law. Any dispute arising under these Terms shall be resolved in the jurisdiction where you reside, to the extent permitted by law. Nothing in these Terms limits statutory consumer rights you may have under applicable law.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">18. Export Controls</h3>
+      <p style="margin:0 0 14px">Raw Browser may be subject to export control laws and regulations. You agree not to export or re-export the Software to any country, entity, or person in violation of applicable export control laws, including but not limited to regulations administered by the U.S. Bureau of Industry and Security.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">19. Contact</h3>
+      <p style="margin:0">Questions about these Terms? Reach us via the Discord community linked in the About section of Raw Browser's Settings.</p>
+    </div>`;
+
+  const _PRIVACY_HTML = `
+    <div style="text-align:left;font-size:12px;color:var(--t1);line-height:1.7">
+      <p style="font-size:10.5px;color:var(--t3);margin-bottom:16px">Last updated: March 2026 &nbsp;·&nbsp; Effective upon first use</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">1. Our Core Commitment</h3>
+      <p style="margin:0 0 14px">Raw Browser is built on a single principle: <strong>your browsing is your business.</strong> We do not operate any servers that receive your browsing data. We do not sell, share, or monetise your personal information — ever. Everything stays on your device.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">2. What We Never Collect</h3>
+      <p style="margin:0 0 6px">The following data is <strong>never collected, transmitted, or stored</strong> by Raw Browser on any server we operate:</p>
+      <ul style="margin:0 0 14px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+        <li>Your browsing history or page visit logs</li>
+        <li>Search queries you enter</li>
+        <li>URLs or domains you navigate to</li>
+        <li>Your IP address or approximate geolocation</li>
+        <li>Cookies, login sessions, or authentication tokens</li>
+        <li>Passwords or form data</li>
+        <li>Screenshots or page content</li>
+        <li>Bookmarks or saved notes</li>
+        <li>Any personally identifiable information (PII)</li>
+      </ul>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">3. Local Storage</h3>
+      <p style="margin:0 0 14px">All user data — including bookmarks, passwords, browsing history, saved notes, settings, and session data — is stored exclusively on your local device using Electron's local file-system APIs. This data is never uploaded, synced, or shared with any external server or cloud service. You retain full ownership and control of this data. You can delete it at any time via Settings → Privacy → Clear Data.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">4. Optional Anonymous Diagnostics</h3>
+      <p style="margin:0 0 14px">If you opt in during setup (off by default), Raw Browser may send the following <strong>fully anonymous</strong> reports:</p>
+      <ul style="margin:0 0 6px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+        <li><strong>Crash reports:</strong> Error type, stack trace, and app version — never your IP, browsing data, or page content.</li>
+        <li><strong>Usage statistics:</strong> Aggregate counts of feature interactions (e.g. "ad blocker toggled on") — no URLs, no search terms, no page data.</li>
+        <li><strong>Performance data:</strong> Startup time (ms) and peak memory (MB) — no personal data of any kind.</li>
+      </ul>
+      <p style="margin:0 0 14px">These reports contain <strong>no IP address, no device identifier, no location, and no browsing information.</strong> You can change your preferences at any time in Settings → Diagnostics. Opting out takes effect immediately.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">5. Search Engines &amp; Third-Party Services</h3>
+      <p style="margin:0 0 14px">When you perform a search, your query is sent directly to your chosen search engine (e.g. Google, DuckDuckGo, Bing). Raw Browser does not intercept, log, proxy, or modify these requests. Your search queries are governed entirely by your search engine's own privacy policy. We encourage you to review those policies and choose a privacy-respecting search engine.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">6. Ad Blocking &amp; Filter Lists</h3>
+      <p style="margin:0 0 14px">Raw Browser downloads publicly available filter lists (EasyList, EasyPrivacy, EasyAnnoyances) from their official CDN endpoints to perform ad and tracker blocking. These downloads are performed anonymously with no user identifier attached. The lists are cached locally and refreshed periodically. The filter-list providers may log your IP address as part of standard CDN access logging — this is outside our control.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">7. Automatic Update Checks</h3>
+      <p style="margin:0 0 14px">When you use the "Check for Updates" feature, Raw Browser contacts the GitHub Releases API to determine whether a newer version is available. This request may include your IP address as a standard HTTP header (this is inherent to any HTTP request). No additional user data is transmitted. GitHub's privacy policy applies to these requests.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">8. yt-dlp &amp; Video Downloads</h3>
+      <p style="margin:0 0 14px">When you use the video downloader, yt-dlp makes direct HTTP requests to the target website on your behalf from your device. Raw Browser does not proxy or log these requests. The target platform will see your IP address. yt-dlp may also check its own GitHub repository for updates. These interactions are governed by the respective platform's privacy policies.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">9. Discord RPC (Optional)</h3>
+      <p style="margin:0 0 14px">If Discord is running on your device, Raw Browser may display a "Rich Presence" status in Discord (e.g. "Browsing with Raw Browser"). This feature transmits only application-level status strings to the locally running Discord client via a local socket — no browsing data or URLs are shared. Discord's own privacy policy governs what Discord does with Rich Presence data. You can disable this feature at any time.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">10. Connectivity Checks</h3>
+      <p style="margin:0 0 14px">The offline-detection feature makes an anonymous DNS-over-HTTPS request to <code style="font-size:11px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">dns.google</code> to verify internet connectivity. No user data is attached to this request. Google's privacy policy applies.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">11. Children's Privacy</h3>
+      <p style="margin:0 0 14px">Raw Browser does not knowingly collect any personal information from users under the age of 13 (or the applicable age of digital consent in your jurisdiction). If you believe a child has provided personal data to us, please contact us so we can take appropriate action.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">12. Your Rights</h3>
+      <p style="margin:0 0 14px">Because Raw Browser stores all data locally on your device and does not transmit it to us, you exercise your data rights directly on your own device. You can view, export, and delete all locally stored data at any time via Settings. If you have opted into anonymous diagnostics and wish to request deletion of any previously submitted anonymous reports, please contact us via our community Discord.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">13. Data Security</h3>
+      <p style="margin:0 0 14px">We design Raw Browser to minimise data exposure. However, no software is immune to all security risks. We strongly recommend enabling full-disk encryption on your operating system, keeping Raw Browser updated, and using a strong system login password to protect locally stored data from physical access.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">14. Changes to This Policy</h3>
+      <p style="margin:0 0 14px">We may update this Privacy Policy to reflect changes in our practices or for legal reasons. Updated policies will be included in new versions of Raw Browser. Continued use of Raw Browser after an update constitutes acceptance of the revised policy. We encourage you to review this policy periodically.</p>
+
+      <h3 style="font-size:13px;font-weight:700;color:var(--t0);margin:0 0 6px">15. Contact</h3>
+      <p style="margin:0">Questions or privacy concerns? Reach us via the Discord community linked in the About section of Raw Browser's Settings.</p>
+    </div>`;
+
+  function _openLegalModal(doc) {
+    if (!_legalModal) return;
+    _legalModal.style.display = 'flex';
+    _legalTabs.forEach(t => {
+      const on = t.dataset.doc === doc;
+      t.style.background = on ? 'rgba(var(--acc-raw),.12)' : 'transparent';
+      t.style.borderColor = on ? 'rgba(var(--acc-raw),.3)' : 'var(--ln)';
+      t.style.color = on ? 'var(--acc)' : 'var(--t2)';
+    });
+    _legalTitle.textContent = doc === 'tos' ? 'Terms of Service' : 'Privacy Policy';
+    _legalBody.innerHTML = doc === 'tos' ? _TOS_HTML : _PRIVACY_HTML;
+    _legalBody.scrollTop = 0;
+  }
+  if (_legalBack) _legalBack.addEventListener('click', () => { if (_legalModal) _legalModal.style.display = 'none'; });
+  _legalTabs.forEach(t => t.addEventListener('click', () => _openLegalModal(t.dataset.doc)));
+  if (tosLink)  tosLink.addEventListener('click',  e => { e.stopPropagation(); _openLegalModal('tos'); });
+  if (privLink) privLink.addEventListener('click', e => { e.stopPropagation(); _openLegalModal('privacy'); });
+
   if (btnNext) {
     btnNext.addEventListener('click', () => {
-      if (cur < steps.length - 1) showStep(cur + 1);
+      if (cur === 0 && tosCheck && !tosCheck.checked) {
+        if (tosLabel) { tosLabel.style.borderColor = 'rgba(255,95,87,.5)'; tosLabel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        return;
+      }
+      if (cur < steps.length - 1) { showStep(cur + 1); _syncNextBtn(); }
       else { _launchConfetti(); dismiss(); }
     });
   }
-  if (btnSkip) btnSkip.addEventListener('click', dismiss);
+  if (btnSkip) btnSkip.addEventListener('click', () => {
+    if (tosCheck && !tosCheck.checked) {
+      if (tosLabel) { tosLabel.style.borderColor = 'rgba(255,95,87,.5)'; tosLabel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      return;
+    }
+    dismiss();
+  });
 
   ipcRenderer.send('panel:show:quick');
   overlay.classList.add('on');
   showStep(0);
+  _syncNextBtn();
 })();
 
 /* Incognito FAB + Intro: wired in end-of-body <script> after DOM is ready */

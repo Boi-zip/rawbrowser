@@ -257,8 +257,8 @@ app.on('open-url', (event, url) => {
   else _pendingExtUrl = url;
 });
 
-const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const SPOOF_UA_HINTS = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"';
+const SPOOF_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const SPOOF_UA_HINTS = '"Not_A Brand";v="8", "Chromium";v="131", "Google Chrome";v="131"';
 
 // ── Global UA fallback ─────────────────────────────────────────────────────────
 // The deepest possible override — covers every WebContents that has NOT had
@@ -605,15 +605,15 @@ const GOOGLE_UA_FIX = `(function(){
     };
     _fakeNatives.add(Object.getOwnPropertyDescriptor);
 
-    var _UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-    var _br=[{brand:'Not_A Brand',version:'8'},{brand:'Chromium',version:'120'},{brand:'Google Chrome',version:'120'}];
-    var _fvl=[{brand:'Not_A Brand',version:'8.0.0.0'},{brand:'Chromium',version:'120.0.6099.234'},{brand:'Google Chrome',version:'120.0.6099.234'}];
+    var _UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+    var _br=[{brand:'Not_A Brand',version:'8'},{brand:'Chromium',version:'131'},{brand:'Google Chrome',version:'131'}];
+    var _fvl=[{brand:'Not_A Brand',version:'8.0.0.0'},{brand:'Chromium',version:'131.0.6778.205'},{brand:'Google Chrome',version:'131.0.6778.205'}];
     var _aud={
       brands:_br, mobile:false, platform:'Windows',
       getHighEntropyValues:function getHighEntropyValues(hints){
         return Promise.resolve({architecture:'x86',bitness:'64',brands:_br,
           fullVersionList:_fvl,mobile:false,model:'',
-          platform:'Windows',platformVersion:'10.0.0',uaFullVersion:'120.0.6099.234',
+          platform:'Windows',platformVersion:'10.0.0',uaFullVersion:'131.0.6778.205',
           wow64:false});
       },
       toJSON:function toJSON(){return {brands:_br,mobile:false,platform:'Windows'};}
@@ -634,7 +634,7 @@ const GOOGLE_UA_FIX = `(function(){
     _def(navigator,'userAgentData',_aud);
     _def(navigator,'webdriver',false);
     _def(navigator,'userAgent',_UA);
-    _def(navigator,'appVersion','5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    _def(navigator,'appVersion','5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
     _def(navigator,'vendor','Google Inc.');
     _def(navigator,'platform','Win32');
     _def(navigator,'language','en-US');
@@ -1145,10 +1145,12 @@ const DEF_SETTINGS = {
   // crashReports: anonymous crash/error reports
   // usageStats:   aggregate feature usage events
   // perfData:     basic performance snapshots (startup time, memory)
-  crashReports: true,
+  // All default to false — user opts in during setup wizard (step 5)
+  crashReports: false,
   usageStats:   false,
   perfData:     false,
   toolbar: { 'tb-geo': false, 'tb-calc': false, 'tb-notes': false },
+  restoreSession: false,
 };
 
 // ── App state (populated in initStorage after app ready) ──────────────────────
@@ -1159,6 +1161,78 @@ let downloads     = [];
 let userWhitelist = [];
 const _downloadItems = new Map(); // id → DownloadItem (for pause/resume/cancel)
 let F             = {};   // file paths, set in initStorage()
+
+// ── Discord Rich Presence ─────────────────────────────────────────────────────
+const DISCORD_CLIENT_ID = '1478113622717632562';
+let discordRpc        = null;
+let _rpcScreen        = 'newtab'; // current screen: 'newtab' | 'website' | 'settings' | 'addons'
+const _rpcStartTime   = Date.now();
+
+function _getRpcActivity() {
+  switch (_rpcScreen) {
+    case 'settings': return { details: 'In Settings',    state: 'Configuring Raw Browser' };
+    case 'addons':   return { details: 'In Add-Ons',     state: 'Managing Extensions'     };
+    case 'newtab':   return { details: 'On the New Tab', state: 'Raw Browser'             };
+    default:         return { details: 'Browsing the Web', state: 'Raw Browser'           };
+  }
+}
+
+function updateDiscordRPC() {
+  if (!discordRpc) return;
+  const { details, state } = _getRpcActivity();
+  discordRpc.setActivity({
+    details,
+    state,
+    startTimestamp: _rpcStartTime,
+    largeImageKey:  'logo',
+    largeImageText: 'Raw Browser',
+    buttons: [{ label: 'Try Raw Browser!', url: 'https://rawbrowser.pages.dev' }],
+  }).catch(err => console.error('[Discord RPC] setActivity error:', err?.message || err));
+}
+
+let _rpcInterval = null;
+
+function initDiscordRPC() {
+  if (settings.discordRpcDisabled || settings.gameMode) return; // user disabled RPC or game mode active
+  try {
+    const DiscordRPC = require('discord-rpc');
+    discordRpc = new DiscordRPC.Client({ transport: 'ipc' });
+    discordRpc.on('ready', () => {
+      updateDiscordRPC();
+      // Periodic sync every 15 s as a safety net — catches any missed reactive updates
+      if (_rpcInterval) clearInterval(_rpcInterval);
+      _rpcInterval = setInterval(() => {
+        if (!discordRpc) return;
+        // Re-derive state from actual tab if not in an overlay screen
+        if (!['settings', 'addons'].includes(_rpcScreen)) {
+          const activeTab = tabMap.get(activeId);
+          const derived = (!activeTab || activeTab.url === 'newtab') ? 'newtab' : 'website';
+          if (derived !== _rpcScreen) { _rpcScreen = derived; }
+        }
+        updateDiscordRPC();
+      }, 15000);
+    });
+    discordRpc.login({ clientId: DISCORD_CLIENT_ID }).catch(() => {
+      // Discord not running or user not logged in — silently skip
+      discordRpc = null;
+    });
+  } catch {
+    discordRpc = null;
+  }
+}
+
+ipcMain.on('rpc:state', (_, screen) => {
+  if (screen === 'tab') {
+    // Resolve 'tab' to actual tab state based on the currently active tab
+    const activeTab = tabMap.get(activeId);
+    _rpcScreen = (!activeTab || activeTab.url === 'newtab') ? 'newtab' : 'website';
+  } else if (['settings', 'addons', 'newtab', 'website'].includes(screen)) {
+    _rpcScreen = screen;
+  } else {
+    return;
+  }
+  updateDiscordRPC();
+});
 
 // ── Telemetry / crash reporting ───────────────────────────────────────────────
 const CRASH_ENDPOINT = new URL('https://rawbrowsercrashreports.rubikmaster49.workers.dev/');
@@ -1286,6 +1360,7 @@ function initStorage() {
     bookmarks: path.join(DATA, 'bookmarks.json'),
     downloads: path.join(DATA, 'downloads.json'),
     whitelist: path.join(DATA, 'whitelist.json'),
+    sessions:  path.join(DATA, 'sessions.json'),
   };
   settings      = { ...DEF_SETTINGS, ...load(F.settings,  {}) };
   bookmarks     = load(F.bookmarks, []);
@@ -1410,8 +1485,9 @@ function _parkBV(bv) {
 function _unparkBV(bv) {
   if (!bv || bv.webContents.isDestroyed()) return;
   try { bv.webContents.decrementCapturerCount(); } catch {}
-  try { win.addBrowserView(bv); } catch {}
+  // Set correct position BEFORE bringing to front — prevents 1-frame flash at parked offset
   try { setBounds(bv); } catch {}
+  try { win.addBrowserView(bv); } catch {}
 }
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
@@ -1478,9 +1554,11 @@ function activateTab(id) {
   }
   
   // Only attach BrowserView for real pages — newtab is handled by HTML newtab-layer
+  // Set correct bounds BEFORE addBrowserView so the view appears at the right position
+  // on the very first frame, preventing the 1-frame shift from (0,0) to the real origin.
   if (tab.bv && tab.url !== 'newtab') {
-    win.addBrowserView(tab.bv);
     setBounds(tab.bv);
+    win.addBrowserView(tab.bv);
   }
   
   activeId = id;
@@ -1488,6 +1566,25 @@ function activateTab(id) {
   send('nav:state', navData(tab));
   // Always refresh privacy-panel stats when switching tabs
   send('blocked:update', { total: totalBlocked, session: tab.blocked || 0 });
+  // Update Discord RPC for the new active tab
+  _rpcScreen = (tab.url === 'newtab') ? 'newtab' : 'website';
+  updateDiscordRPC();
+
+  // Re-apply enabled extensions on the newly activated tab.
+  // Extensions are self-guarded (check window._rawX before running) so this
+  // is safe to call even if the extension was already injected on this page.
+  if (tab.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
+    const exts = settings.extensions || {};
+    for (const [extId, enabled] of Object.entries(exts)) {
+      if (enabled && EXT_SCRIPTS[extId]) {
+        tab.bv.webContents.executeJavaScript(EXT_SCRIPTS[extId]).catch(() => {});
+      }
+    }
+    // Refresh snapshot so any panel opened on this tab shows a current screenshot
+    tab.bv.webContents.capturePage().then(img => {
+      tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(60).toString('base64');
+    }).catch(() => {});
+  }
 }
 
 // ── Tab creation ───────────────────────────────────────────────────────────────
@@ -1534,6 +1631,7 @@ function createTab(url, activate = true) {
     'accounts.google.com', 'google.com', 'googleusercontent.com',
     'login.microsoftonline.com', 'appleid.apple.com',
     'facebook.com', 'discord.com',
+    'accounts.spotify.com', 'spotify.com',
   ];
   wc.setWindowOpenHandler(({ url: u }) => {
     // Block dangerous schemes
@@ -1594,7 +1692,17 @@ function createTab(url, activate = true) {
     if (navUrl && _GOOGLE_RE.test(navUrl)) wc.executeJavaScript(GOOGLE_UA_FIX).catch(() => {});
   });
   // Belt-and-suspenders: also inject on later events to cover SPA navigations.
-  wc.on('dom-ready', () => _injectGoogleUAFix(wc));
+  wc.on('dom-ready', () => {
+    _injectGoogleUAFix(wc);
+    // Inject scrollbar-hiding CSS at dom-ready (before did-stop-loading) so pages like
+    // YouTube never see a scrollbar-wide viewport, preventing the layout shift where
+    // content starts centred then jumps left as the scrollbar width is removed.
+    wc.insertCSS(
+      'html::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }' +
+      'html { scrollbar-width: none !important; }',
+      { cssOrigin: 'user' }
+    ).catch(() => {});
+  });
   wc.on('did-navigate', () => _injectGoogleUAFix(wc));
   wc.on('did-navigate-in-page', () => _injectGoogleUAFix(wc));
 
@@ -1695,7 +1803,14 @@ function createTab(url, activate = true) {
     tab.loading = false;
     tab.url     = normalizeUrl(wc.getURL()) || tab.url;
     send('tab:update', tabData(tab));
-    if (id === activeId) send('nav:state', navData(tab));
+    if (id === activeId) {
+      send('nav:state', navData(tab));
+      // Keep RPC in sync with what the active tab is showing
+      if (!['settings', 'addons'].includes(_rpcScreen)) {
+        _rpcScreen = (tab.url === 'newtab') ? 'newtab' : 'website';
+        updateDiscordRPC();
+      }
+    }
     addHistory(tab.url, tab.title);
     // Inject floating PiP button for any page that might have video
     // Always clear any stale guard first so re-navigation gets a fresh inject.
@@ -1736,7 +1851,7 @@ function createTab(url, activate = true) {
       const _doSnap = () => {
         if (!panelOpen && tab?.bv && !tab.bv.webContents.isDestroyed()) {
           tab.bv.webContents.capturePage().then(img => {
-            tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
+            tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(60).toString('base64');
           }).catch(() => {});
         }
       };
@@ -1805,8 +1920,8 @@ function createTab(url, activate = true) {
   });
 
   wc.on('page-favicon-updated', (_, favs) => {
-    // Only accept valid http/https URLs — data: URIs are massive, chrome:// won't load in renderer
-    const validFav = (favs || []).find(f => /^https?:\/\//i.test(f));
+    // Only accept valid http/https/file URLs — data: URIs are massive, chrome:// won't load in renderer
+    const validFav = (favs || []).find(f => /^https?:\/\//i.test(f) || /^file:\/\//i.test(f));
     // Don't clear an existing favicon when SPA navigation temporarily emits empty favicons
     if (!validFav) return;
     tab.favicon = validFav;
@@ -1963,8 +2078,8 @@ function setupSession(ses) {
       headers['Sec-CH-UA-Platform-Version'] = '"10.0.0"';
       headers['Sec-CH-UA-Arch'] = '"x86"';
       headers['Sec-CH-UA-Bitness'] = '"64"';
-      headers['Sec-CH-UA-Full-Version'] = '"120.0.6099.234"';
-      headers['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="120.0.6099.234", "Google Chrome";v="120.0.6099.234"';
+      headers['Sec-CH-UA-Full-Version'] = '"131.0.6778.205"';
+      headers['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="131.0.6778.205", "Google Chrome";v="131.0.6778.205"';
     }
 
     // For whitelisted domains (Google, Spotify, TikTok, etc.) — spoof UA and return
@@ -2150,12 +2265,24 @@ app.whenReady().then(() => {
   // Register as default browser in Windows Default Apps (writes Registry Capabilities)
   if (process.platform === 'win32') _registerWindowsDefaultBrowser();
 
+  // On macOS: use titleBarStyle:'hidden' + trafficLightPosition so native traffic
+  // lights appear inside the tab row (matching the 78px mac-spacer).
+  // On Windows/Linux: fully frameless (custom window controls in HTML).
+  const _macWinOpts = process.platform === 'darwin' ? {
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 12, y: 8 },
+  } : {
+    frame: false,
+  };
+
   win = new BrowserWindow({
     width: 1280, height: 820,
     minWidth: 640, minHeight: 400,
-    frame: false,
+    ..._macWinOpts,
     backgroundColor: '#080808',
-    icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'logo.icns' : 'logo.ico'),
+    icon: path.join(__dirname, 'assets',
+      process.platform === 'darwin' ? 'logo.icns' :
+      process.platform === 'linux'  ? 'logo.png'  : 'logo.ico'),
     webPreferences: {
       nodeIntegration:  true,
       contextIsolation: false,
@@ -2191,32 +2318,56 @@ app.whenReady().then(() => {
       h['Sec-CH-UA-Platform-Version']  = '"10.0.0"';
       h['Sec-CH-UA-Arch']              = '"x86"';
       h['Sec-CH-UA-Bitness']           = '"64"';
-      h['Sec-CH-UA-Full-Version']      = '"120.0.6099.234"';
-      h['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="120.0.6099.234", "Google Chrome";v="120.0.6099.234"';
+      h['Sec-CH-UA-Full-Version']      = '"131.0.6778.205"';
+      h['Sec-CH-UA-Full-Version-List'] = '"Not_A Brand";v="8.0.0.0", "Chromium";v="131.0.6778.205", "Google Chrome";v="131.0.6778.205"';
       cb({ requestHeaders: h });
     });
     win.show();
-    createTab('newtab', true);
+    // Restore previous session tabs if enabled
+    const _savedSession = (settings.restoreSession && F.sessions) ? load(F.sessions, []) : [];
+    if (_savedSession.length > 0) {
+      // Load the first (active) tab immediately; stagger the rest so they don't
+      // all compete for bandwidth/CPU at startup and slow down the first page.
+      createTab(_savedSession[0], true);
+      _savedSession.slice(1).forEach((url, i) => {
+        setTimeout(() => { try { createTab(url, false); } catch {} }, (i + 1) * 600);
+      });
+    } else {
+      createTab('newtab', true);
+    }
     // Open URL passed on command line (RAW launched as default browser / open-with handler)
     const _startUrl = getArgUrl(process.argv);
     if (_startUrl) createTab(_startUrl, true);
     if (_pendingExtUrl) { createTab(_pendingExtUrl, true); _pendingExtUrl = null; }
-    // Auto-check yt-dlp after UI is stable
-    setTimeout(() => ytdlpCheckUpdate(), 3500);
+    initDiscordRPC();
+    // Report yt-dlp local status at startup — no network call (user triggers explicit checks)
+    setTimeout(() => {
+      try {
+        const bin = ytdlpBinPath();
+        const binExists = fs.existsSync(bin);
+        if (!binExists) {
+          send('ytdlp:status', { ready: false, version: null, updateAvailable: false });
+        } else {
+          const local = ytdlpReadLocalVersion();
+          send('ytdlp:status', { ready: true, version: local || 'unknown', updateAvailable: false });
+        }
+      } catch {}
+    }, 1000);
     // Lightweight anonymous usage/perf snapshot (if enabled)
     setTimeout(() => {
       sendTelemetry('usage', { event: 'app_start' });
       sendTelemetry('perf',  { event: 'baseline' });
     }, 8000);
-    // Keep the cached page snapshot fresh (used by panel popups to show current page state).
-    // Refreshes every 5 s while a real page is active and no panel is open.
+    // Keep the cached page snapshot reasonably fresh for panel popups.
+    // 15 s interval — on-load snapshots (did-stop-loading) cover the common case;
+    // this interval only matters for live-updating pages (news tickers, etc.).
     _snapInterval = setInterval(() => {
       const tab = tabMap.get(activeId);
       if (!tab?.bv || panelOpen || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
       tab.bv.webContents.capturePage().then(img => {
-        tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
+        tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(60).toString('base64');
       }).catch(() => {});
-    }, 5000);
+    }, 15000);
   });
 
   win.on('resize', () => {
@@ -2232,7 +2383,21 @@ app.whenReady().then(() => {
   win.on('unmaximize', () => send('win:state', 'normal'));
   win.on('closed',     () => { win = null; });
 
-app.on('before-quit', () => { if (typeof _snapInterval !== 'undefined') clearInterval(_snapInterval); });
+app.on('before-quit', () => {
+  if (typeof _snapInterval !== 'undefined') clearInterval(_snapInterval);
+  // Save open tabs for session restore (only non-newtab, non-view-source tabs)
+  if (settings.restoreSession && F.sessions) {
+    const sessionUrls = [...tabMap.values()]
+      .filter(t => t.url && t.url !== 'newtab' && !t.url.startsWith('view-source:'))
+      .map(t => t.url);
+    save(F.sessions, sessionUrls);
+  } else if (F.sessions) {
+    // Clear saved session if restore is disabled
+    save(F.sessions, []);
+  }
+  if (_rpcInterval) { clearInterval(_rpcInterval); _rpcInterval = null; }
+  if (discordRpc) { try { discordRpc.destroy(); } catch {} }
+});
 
   // Context menu for editable fields in the main window (omnibox, newtab search, etc.)
   win.webContents.on('context-menu', (_, p) => {
@@ -2367,8 +2532,8 @@ ipcMain.handle('tab:get-time', async (_, id) => {
 // NOTE: Does NOT guard against t.url==='newtab' — use attachBvForNav instead.
 function ensureBvAttached(t) {
   if (!t?.bv || panelOpen) return;
+  try { setBounds(t.bv); } catch {}
   try { win.addBrowserView(t.bv); } catch {}
-  setBounds(t.bv);
 }
 
 // Force-attach BV for a navigation to a real URL.
@@ -2415,10 +2580,16 @@ ipcMain.on('nav:go', (_, { id, tabUrl }) => {
     try { win.removeBrowserView(t.bv); } catch {}
     t.url = 'newtab'; t.title = 'New Tab'; t.favicon = null;
     send('tab:update', tabData(t));
-    if (id === activeId) send('nav:state', navData(t));
+    if (id === activeId) {
+      send('nav:state', navData(t));
+      _rpcScreen = 'newtab'; updateDiscordRPC();
+    }
   } else {
     attachBvForNav(t, url);
     t.bv.webContents.loadURL(url);
+    if (id === activeId && !['settings', 'addons'].includes(_rpcScreen)) {
+      _rpcScreen = 'website'; updateDiscordRPC();
+    }
   }
 });
 ipcMain.on('nav:back', (_, id) => {
@@ -2773,7 +2944,7 @@ async function _openPanel(tab) {
   // Step 2: Capture screenshot at full bounds.
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(60).toString('base64');
   } catch {}
   if (!panelOpen) return;
 
@@ -2867,6 +3038,8 @@ ipcMain.on('omni:drop:show', () => {
   if (panelOpen) return; // panel already parked the BV — don't double-increment
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
+  // Show cached snapshot so the user sees the website instead of a dark background
+  if (tab.snapshot) send('panel:snapshot', tab.snapshot);
   _omniParked = true;
   _parkBV(tab.bv);
 });
@@ -2877,6 +3050,7 @@ ipcMain.on('omni:drop:hide', () => {
   const tab = tabMap.get(activeId);
   if (!tab?.bv || tab.url === 'newtab' || tab.bv.webContents.isDestroyed()) return;
   _unparkBV(tab.bv);
+  send('panel:snapshot:clear'); // remove the snapshot overlay once BV is restored
 });
 
 ipcMain.on('panel:hide', async () => {
@@ -2914,7 +3088,7 @@ ipcMain.on('sidebar:modal:open', async () => {
   // Capture screenshot at current full bounds
   try {
     const img = await wc.capturePage();
-    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(72).toString('base64');
+    if (img) tab.snapshot = 'data:image/jpeg;base64,' + img.toJPEG(60).toString('base64');
   } catch {}
   // Send snapshot to renderer, wait for it to confirm canvas is drawn, then park.
   // This ensures the canvas is visible the instant the BV moves offscreen.
@@ -3536,6 +3710,26 @@ ipcMain.on('settings:set', (_, patch) => {
       }
     }
   }
+
+  // Game Mode — pause/resume Discord RPC and background timers
+  if ('gameMode' in patch) {
+    if (patch.gameMode) {
+      if (_rpcInterval) { clearInterval(_rpcInterval); _rpcInterval = null; }
+      if (discordRpc) { try { discordRpc.destroy(); } catch {} discordRpc = null; }
+    } else {
+      if (!settings.discordRpcDisabled) initDiscordRPC();
+    }
+  }
+
+  // Discord RPC enabled/disabled toggle
+  if ('discordRpcDisabled' in patch) {
+    if (patch.discordRpcDisabled) {
+      if (_rpcInterval) { clearInterval(_rpcInterval); _rpcInterval = null; }
+      if (discordRpc) { try { discordRpc.destroy(); } catch {} discordRpc = null; }
+    } else if (!settings.gameMode) {
+      initDiscordRPC();
+    }
+  }
 });
 
 // ── IPC: Zoom ─────────────────────────────────────────────────────────────────
@@ -3625,6 +3819,7 @@ ipcMain.on('ext:toggle', (_, { id, enabled }) => {
   if (!settings.extensions) settings.extensions = {};
   settings.extensions[id] = !!enabled;
   save(F.settings, settings);
+  send('settings:set', settings); // keep renderer state in sync
   const tab = tabMap.get(activeId);
   if (tab?.bv && tab.url !== 'newtab') {
     const script = enabled ? EXT_SCRIPTS[id] : EXT_UNSCRIPTS[id];
@@ -3680,8 +3875,8 @@ function igActivateTab(id) {
   if (!tab || !incognitoWin || incognitoWin.isDestroyed()) return;
   for (const t of igTabMap.values()) { if (t.bv) try { incognitoWin.removeBrowserView(t.bv); } catch {} }
   if (tab.bv && tab.url !== 'newtab' && !tab.bv.webContents.isDestroyed()) {
-    incognitoWin.addBrowserView(tab.bv);
     igSetBounds(tab.bv);
+    incognitoWin.addBrowserView(tab.bv);
   }
   igActiveId = id;
   sendIg('ig:tab:activate', id);
@@ -3764,10 +3959,16 @@ function igCreateTab(url = 'newtab', activate = true) {
 
 ipcMain.on('incognito:open', () => {
   if (incognitoWin && !incognitoWin.isDestroyed()) { incognitoWin.focus(); return; }
+  const _igMacOpts = process.platform === 'darwin' ? {
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 12, y: 8 },
+  } : { frame: false };
   incognitoWin = new BrowserWindow({
     width: 1200, height: 800, minWidth: 640, minHeight: 400,
-    frame: false, backgroundColor: '#0a071a',
-    icon: path.join(__dirname, 'assets', process.platform === 'darwin' ? 'logo.icns' : 'logo.ico'),
+    ..._igMacOpts, backgroundColor: '#0a071a',
+    icon: path.join(__dirname, 'assets',
+      process.platform === 'darwin' ? 'logo.icns' :
+      process.platform === 'linux'  ? 'logo.png'  : 'logo.ico'),
     webPreferences: { nodeIntegration: true, contextIsolation: false, webviewTag: false },
   });
   igTabMap.clear(); igActiveId = null; igNextId = 5000;
@@ -4187,7 +4388,7 @@ ipcMain.on('ytdlp:cancel', (_, id) => {
 });
 
 // ── Auto update checker ───────────────────────────────────────────────────────
-const CURRENT_VERSION = '1.0.6';
+const CURRENT_VERSION = 'V1.0.6-2';
 ipcMain.handle('check-update', () => new Promise((resolve) => {
   const url = 'https://raw.githubusercontent.com/sharp4real/rawbrowser/refs/heads/main/version';
   const req = https.get(url, { timeout: 8000, headers: { 'User-Agent': SPOOF_UA } }, (res) => {
